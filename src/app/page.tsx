@@ -80,7 +80,10 @@ export default function App() {
   const [tempMember, setTempMember] = useState({ name: '', position: '', avatar_url: '' });
   const [editingTeam, setEditingTeam] = useState<Team | null>(null);
   const [editingMember, setEditingMember] = useState<{teamId: string, memberId: string, name: string, position: string, avatar_url: string | null} | null>(null);
-  const [savingAcquisition, setSavingAcquisition] = useState<string | null>(null);
+
+  // Pending acquisitions state (local cache before save)
+  const [pendingAcquisitions, setPendingAcquisitions] = useState<Record<string, Record<string, number>>>({});
+  const [isSaving, setIsSaving] = useState(false);
 
   // Load SheetJS for XLSX support
   useEffect(() => {
@@ -295,31 +298,65 @@ export default function App() {
     }
   };
 
-  const updateAcquisition = async (teamId: string, memberId: string, productKey: string, value: string) => {
+  const updateAcquisition = (memberId: string, productKey: string, value: string) => {
     const val = parseInt(value) || 0;
-    const key = `${memberId}-${productKey}`;
-    setSavingAcquisition(key);
-    
+    const key = `${memberId}|${activeWeek}`;
+    setPendingAcquisitions(prev => {
+      const newData = {
+        ...prev,
+        [key]: {
+          ...(prev[key] || {}),
+          [productKey]: val
+        }
+      };
+      console.log('Pending acquisitions updated:', newData);
+      return newData;
+    });
+  };
+
+  const saveAllAcquisitions = async () => {
+    console.log('Saving acquisitions:', pendingAcquisitions);
+    setIsSaving(true);
     try {
-      const res = await fetch('/api/acquisitions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          member_id: memberId, 
-          week: activeWeek, 
-          product_key: productKey, 
-          quantity: val 
-        })
+      const savePromises = Object.entries(pendingAcquisitions).flatMap(([key, products]) => {
+        const [memberId, weekStr] = key.split('|');
+        const week = parseInt(weekStr);
+        return Object.entries(products).map(([productKey, quantity]) => {
+          console.log(`Saving: member=${memberId}, week=${week}, product=${productKey}, qty=${quantity}`);
+          return fetch('/api/acquisitions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              member_id: memberId,
+              week: week,
+              product_key: productKey,
+              quantity
+            })
+          });
+        });
       });
-      if (res.ok) {
-        fetchData();
+
+      const results = await Promise.all(savePromises);
+      console.log('Save results:', results);
+
+      // Check for failed requests
+      const failed = results.some(r => !r.ok);
+      if (failed) {
+        throw new Error('Some requests failed');
       }
+
+      setPendingAcquisitions({});
+      await fetchData();
+      alert('Data berhasil disimpan!');
     } catch (error) {
-      console.error('Error saving acquisition:', error);
+      console.error('Error saving acquisitions:', error);
+      alert('Gagal menyimpan data. Silakan coba lagi.');
     } finally {
-      setSavingAcquisition(null);
+      setIsSaving(false);
     }
   };
+
+  const hasPendingChanges = Object.keys(pendingAcquisitions).length > 0;
 
   // --- FITUR EXPORT EXCEL MULTI-WEEK ---
   const handleExportAction = () => {
@@ -634,6 +671,28 @@ export default function App() {
                 <div className="space-y-1"><label className="text-[10px] font-black text-blue-300 ml-4 uppercase tracking-widest">URL Sampul</label><input type="text" value={newTeam.image_url} onChange={(e) => setNewTeam({...newTeam, image_url: e.target.value})} placeholder="https://images..." className="w-full bg-white/10 border border-white/20 rounded-full px-6 py-4 text-sm outline-none focus:bg-white/20 focus:ring-2 focus:ring-[#FDB813]" /></div>
                 <div className="flex items-end"><button onClick={addTeam} className="w-full bg-[#FDB813] text-blue-900 h-[54px] rounded-full font-black text-sm hover:scale-[1.02] transition-all flex items-center justify-center gap-2"><Plus className="w-5 h-5" /> DAFTAR TIM</button></div>
               </div>
+              {/* Save Button Bar */}
+              {hasPendingChanges && (
+                <div className="w-full flex items-center justify-between bg-yellow-500/20 border border-yellow-400/30 rounded-3xl p-6 backdrop-blur-sm">
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-full bg-yellow-400 flex items-center justify-center animate-pulse">
+                      <Edit2 className="w-5 h-5 text-blue-900" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-yellow-100">Ada perubahan yang belum disimpan</p>
+                      <p className="text-xs text-yellow-200/70">{Object.keys(pendingAcquisitions).length} anggota tim dengan data baru</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={saveAllAcquisitions}
+                    disabled={isSaving}
+                    className={`flex items-center gap-2 px-8 py-4 rounded-full font-black text-sm shadow-lg transition-all ${isSaving ? 'bg-slate-400 cursor-not-allowed' : 'bg-green-500 hover:bg-green-400 hover:scale-105 text-white shadow-green-900/20'}`}
+                  >
+                    {isSaving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
+                    {isSaving ? 'MENYIMPAN...' : 'SIMPAN SEMUA'}
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* List Team Manajemen */}
@@ -705,23 +764,32 @@ export default function App() {
                             </div>
                           </div>
                           <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-4 ml-0 md:ml-20">
-                            {Object.keys(PRODUCT_POINTS).map(pKey => (
-                              <div key={pKey} className="group/input">
-                                <label className="text-[9px] font-black text-slate-300 uppercase block tracking-tighter text-center mb-1">{pKey}</label>
-                                <input 
-                                  type="number" 
-                                  min="0" 
-                                  value={((member.weeklyAcquisitions || {})[activeWeek] || {})[pKey] || 0} 
-                                  onChange={(e) => updateAcquisition(team.id, member.id, pKey, e.target.value)} 
-                                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-3 text-sm font-black text-center focus:ring-4 focus:ring-[#FDB813]/20 focus:bg-white focus:border-[#FDB813] outline-none transition-all shadow-sm" 
-                                />
-                                {savingAcquisition === `${member.id}-${pKey}` && (
-                                  <div className="flex justify-center mt-1">
-                                    <Loader2 className="w-3 h-3 text-blue-600 animate-spin" />
-                                  </div>
-                                )}
-                              </div>
-                            ))}
+                            {Object.keys(PRODUCT_POINTS).map(pKey => {
+                              const savedValue = ((member.weeklyAcquisitions || {})[activeWeek] || {})[pKey] || 0;
+                              const pendingKey = `${member.id}|${activeWeek}`;
+                              const pendingValue = pendingAcquisitions[pendingKey]?.[pKey];
+                              const hasPending = pendingValue !== undefined;
+                              const displayValue = hasPending ? pendingValue : savedValue;
+                              const isChanged = hasPending && pendingValue !== savedValue;
+
+                              return (
+                                <div key={pKey} className="group/input">
+                                  <label className={`text-[9px] font-black uppercase block tracking-tighter text-center mb-1 ${isChanged ? 'text-yellow-600' : 'text-slate-300'}`}>{pKey}</label>
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    value={displayValue}
+                                    onChange={(e) => updateAcquisition(member.id, pKey, e.target.value)}
+                                    className={`w-full bg-slate-50 border rounded-2xl p-3 text-sm font-black text-center outline-none transition-all shadow-sm ${isChanged ? 'border-yellow-400 bg-yellow-50 ring-2 ring-yellow-200' : 'border-slate-200 focus:ring-4 focus:ring-[#FDB813]/20 focus:bg-white focus:border-[#FDB813]'}`}
+                                  />
+                                  {isChanged && (
+                                    <div className="flex justify-center mt-1">
+                                      <div className="w-2 h-2 rounded-full bg-yellow-500 animate-pulse" />
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
                           </div>
                         </div>
                       ))}
