@@ -1,9 +1,26 @@
 'use client'
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import {
-  BarChart3, Plus, Trash2, UserPlus, X, Trophy, Medal, Star, Settings, Users, Briefcase, Target, Camera, ImageIcon, TrendingUp, Edit2, Check, Calendar, ChevronRight, Download, FileSpreadsheet, LineChart as LineChartIcon, Save, Loader2
+  BarChart3,
+  Check,
+  Download,
+  Edit2,
+  FileSpreadsheet,
+  ImageIcon,
+  LineChart as LineChartIcon,
+  Loader2,
+  Medal,
+  Plus,
+  Save,
+  Settings,
+  Star,
+  Target,
+  Trash2,
+  TrendingUp,
+  Trophy,
+  UserPlus, X
 } from 'lucide-react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer as RechartsContainer } from 'recharts';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer as RechartsContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
 // --- KONFIGURASI POIN & TARGET ---
 type TieredProduct = { name: string; unit: string; type: 'tiered'; tiers: {limit: number; p: number}[] };
@@ -84,6 +101,45 @@ export default function App() {
   // Pending acquisitions state (local cache before save)
   const [pendingAcquisitions, setPendingAcquisitions] = useState<Record<string, Record<string, number>>>({});
   const [isSaving, setIsSaving] = useState(false);
+
+  // Chart customization state
+  const [showChartControls, setShowChartControls] = useState(false);
+  const [chartFilters, setChartFilters] = useState({
+    filterByTeam: 'all' as string,
+    filterByMember: 'all' as string,
+    metric: 'score' as 'score' | 'quantity',
+    selectedProducts: Object.keys(PRODUCT_POINTS) as string[]
+  });
+  const [teamColors, setTeamColors] = useState<Record<string, string>>({});
+
+  // Load settings from localStorage
+  useEffect(() => {
+    const savedColors = localStorage.getItem('chartTeamColors');
+    const savedFilters = localStorage.getItem('chartFilters');
+    if (savedColors) {
+      try {
+        setTeamColors(JSON.parse(savedColors));
+      } catch (e) {
+        console.error('Failed to load team colors:', e);
+      }
+    }
+    if (savedFilters) {
+      try {
+        setChartFilters(JSON.parse(savedFilters));
+      } catch (e) {
+        console.error('Failed to load chart filters:', e);
+      }
+    }
+  }, []);
+
+  // Save settings to localStorage
+  useEffect(() => {
+    localStorage.setItem('chartTeamColors', JSON.stringify(teamColors));
+  }, [teamColors]);
+
+  useEffect(() => {
+    localStorage.setItem('chartFilters', JSON.stringify(chartFilters));
+  }, [chartFilters]);
 
   // Load SheetJS for XLSX support
   useEffect(() => {
@@ -175,16 +231,52 @@ export default function App() {
     const weeks = [1, 2, 3, 4];
     return weeks.map(w => {
       const dataPoint: Record<string, string | number> = { name: `Week ${w}` };
+
       teams.forEach(t => {
-        let weeklyTeamScore = 0;
+        // Filter by team
+        if (chartFilters.filterByTeam !== 'all' && t.id !== chartFilters.filterByTeam) {
+          return;
+        }
+
+        let metricValue = 0;
+
         (t.members || []).forEach(m => {
-          weeklyTeamScore += getMemberPoints((m.weeklyAcquisitions || {})[w] || {});
+          // Filter by member
+          if (chartFilters.filterByMember !== 'all' && m.id !== chartFilters.filterByMember) {
+            return;
+          }
+
+          const memberAcq = (m.weeklyAcquisitions || {})[w] || {};
+
+          if (chartFilters.metric === 'score') {
+            // Calculate score based on filtered products
+            Object.keys(memberAcq).forEach(productKey => {
+              if (!chartFilters.selectedProducts.includes(productKey)) return;
+              const qty = memberAcq[productKey];
+              const product = PRODUCT_POINTS[productKey];
+              if (!product) return;
+              if ('type' in product && product.type === 'tiered') {
+                const tier = product.tiers.find(tier => qty <= tier.limit) || product.tiers[product.tiers.length - 1];
+                metricValue += qty * tier.p;
+              } else {
+                metricValue += qty * (product as SimpleProduct).p;
+              }
+            });
+          } else {
+            // Calculate quantity based on filtered products
+            Object.keys(memberAcq).forEach(productKey => {
+              if (!chartFilters.selectedProducts.includes(productKey)) return;
+              metricValue += memberAcq[productKey];
+            });
+          }
         });
-        dataPoint[t.name] = weeklyTeamScore;
+
+        dataPoint[t.name] = metricValue;
       });
+
       return dataPoint;
     });
-  }, [teams]);
+  }, [teams, chartFilters]);
 
   const globalMemberRankings = useMemo(() => {
     const allMembers: (Member & { teamName: string, totalPoints: number, acquisitions: Record<string, number> })[] = [];
@@ -521,10 +613,131 @@ export default function App() {
                <div className="relative z-10 mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                  <div>
                    <h2 className="font-black text-xl flex items-center gap-3 text-slate-800 mb-1"><div className="w-10 h-10 rounded-2xl bg-indigo-100 flex items-center justify-center"><LineChartIcon className="text-indigo-600 w-6 h-6"/></div>Tren Performa Tim</h2>
-                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-14">Akumulasi skor antar tim setiap minggunya</p>
+                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-14">Akumulasi skor antar tim setiap minggu</p>
                  </div>
-                 <div className="flex items-center gap-2 bg-slate-50 p-2 rounded-xl border border-slate-100"><span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse"></span><span className="text-[10px] font-black text-slate-500 uppercase tracking-wider italic">Real-time Analysis</span></div>
+                 <div className="flex items-center gap-2">
+                   <button
+                     onClick={() => setShowChartControls(!showChartControls)}
+                     className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all ${showChartControls ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                   >
+                     <Settings className="w-4 h-4" /> {showChartControls ? 'TUTUP' : 'CUSTOMIZE'}
+                   </button>
+                   <div className="flex items-center gap-2 bg-slate-50 p-2 rounded-xl border border-slate-100"><span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse"></span><span className="text-[10px] font-black text-slate-500 uppercase tracking-wider italic">Real-time Analysis</span></div>
+                 </div>
                </div>
+
+               {/* Chart Controls Panel */}
+               {showChartControls && (
+                 <div className="mb-8 p-6 bg-gradient-to-br from-slate-50 to-blue-50 rounded-3xl border border-slate-200">
+                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+                     {/* Filter by Team */}
+                     <div>
+                       <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2">Filter Tim</label>
+                       <select
+                         value={chartFilters.filterByTeam}
+                         onChange={(e) => setChartFilters({ ...chartFilters, filterByTeam: e.target.value, filterByMember: 'all' })}
+                         className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm font-bold outline-none focus:ring-2 focus:ring-blue-200"
+                       >
+                         <option value="all">Semua Tim</option>
+                         {teams.map(t => (
+                           <option key={t.id} value={t.id}>{t.name}</option>
+                         ))}
+                       </select>
+                     </div>
+
+                     {/* Filter by Member */}
+                     <div>
+                       <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2">Filter Anggota</label>
+                       <select
+                         value={chartFilters.filterByMember}
+                         onChange={(e) => setChartFilters({ ...chartFilters, filterByMember: e.target.value })}
+                         className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm font-bold outline-none focus:ring-2 focus:ring-blue-200"
+                         disabled={chartFilters.filterByTeam === 'all'}
+                       >
+                         <option value="all">Semua Anggota</option>
+                         {teams.filter(t => chartFilters.filterByTeam === 'all' || t.id === chartFilters.filterByTeam)
+                           .flatMap(t => t.members || [])
+                           .map(m => (
+                             <option key={m.id} value={m.id}>{m.name}</option>
+                           ))}
+                       </select>
+                     </div>
+
+                     {/* Metric Type */}
+                     <div>
+                       <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2">Metrik</label>
+                       <select
+                         value={chartFilters.metric}
+                         onChange={(e) => setChartFilters({ ...chartFilters, metric: e.target.value as 'score' | 'quantity' })}
+                         className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm font-bold outline-none focus:ring-2 focus:ring-blue-200"
+                       >
+                         <option value="score">Skor (Poin)</option>
+                         <option value="quantity">Jumlah Akuisisi</option>
+                       </select>
+                     </div>
+
+                     {/* Reset Filters */}
+                     <div className="flex items-end">
+                       <button
+                         onClick={() => setChartFilters({
+                           filterByTeam: 'all',
+                           filterByMember: 'all',
+                           metric: 'score',
+                           selectedProducts: Object.keys(PRODUCT_POINTS)
+                         })}
+                         className="w-full bg-slate-200 hover:bg-slate-300 text-slate-700 h-[42px] rounded-xl font-black text-xs transition-all"
+                       >
+                         RESET FILTER
+                       </button>
+                     </div>
+                   </div>
+
+                   {/* Product Filter */}
+                   <div className="mb-6">
+                     <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-3">Filter Produk</label>
+                     <div className="flex flex-wrap gap-2">
+                       {Object.keys(PRODUCT_POINTS).map(p => {
+                         const isSelected = chartFilters.selectedProducts.includes(p);
+                         return (
+                           <button
+                             key={p}
+                             onClick={() => {
+                               const newProducts = isSelected
+                                 ? chartFilters.selectedProducts.filter(prod => prod !== p)
+                                 : [...chartFilters.selectedProducts, p];
+                               if (newProducts.length > 0) {
+                                 setChartFilters({ ...chartFilters, selectedProducts: newProducts });
+                               }
+                             }}
+                             className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase transition-all ${isSelected ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-500 hover:bg-slate-300'}`}
+                           >
+                             {p}
+                           </button>
+                         );
+                       })}
+                     </div>
+                   </div>
+
+                   {/* Team Colors */}
+                   <div>
+                     <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-3">Warna Tim</label>
+                     <div className="flex flex-wrap gap-4">
+                       {teams.map(t => (
+                         <div key={t.id} className="flex items-center gap-2 bg-white px-3 py-2 rounded-xl border border-slate-200 shadow-sm">
+                           <span className="text-[9px] font-bold text-slate-600 truncate max-w-[120px]">{t.name}</span>
+                           <input
+                             type="color"
+                             value={teamColors[t.id] || t.accent_color}
+                             onChange={(e) => setTeamColors({ ...teamColors, [t.id]: e.target.value })}
+                             className="w-8 h-8 rounded-lg border border-slate-200 cursor-pointer"
+                           />
+                         </div>
+                       ))}
+                     </div>
+                   </div>
+                 </div>
+               )}
+
                <div className="h-[350px] w-full">
                  <RechartsContainer width="100%" height="100%">
                     <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
@@ -534,7 +747,7 @@ export default function App() {
                       <Tooltip contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', padding: '12px' }} itemStyle={{ fontSize: '11px', fontWeight: 900 }} labelStyle={{ fontSize: '10px', fontWeight: 900, marginBottom: '8px', color: '#64748b' }} />
                       <Legend verticalAlign="top" align="right" iconType="circle" wrapperStyle={{ fontSize: '10px', fontWeight: 900, textTransform: 'uppercase', paddingBottom: '20px' }} />
                       {teams.map((t, i) => (
-                        <Line key={t.id} type="monotone" dataKey={t.name} stroke={t.accent_color || colors[i % colors.length]} strokeWidth={4} dot={{ r: 6, strokeWidth: 2, fill: 'white' }} activeDot={{ r: 8, strokeWidth: 0 }} animationDuration={1500} />
+                        <Line key={t.id} type="monotone" dataKey={t.name} stroke={teamColors[t.id] || t.accent_color || colors[i % colors.length]} strokeWidth={4} dot={{ r: 6, strokeWidth: 2, fill: 'white' }} activeDot={{ r: 8, strokeWidth: 0 }} animationDuration={1500} />
                       ))}
                     </LineChart>
                  </RechartsContainer>
@@ -663,7 +876,7 @@ export default function App() {
             {/* Control Center */}
             <div className="bg-[#003d79] p-10 rounded-[40px] text-white shadow-2xl flex flex-col items-center gap-8 border-b-[12px] border-[#FDB813] relative overflow-hidden">
               <div className="flex-1 text-center w-full relative z-10">
-                <h2 className="text-3xl font-black mb-2 tracking-tight">Pusat Kendali</h2>
+                <h2 className="text-3xl font-black mb-2 tracking-tight">Management Center</h2>
                 <p className="text-blue-200 text-sm font-medium">Input data akuisisi untuk <span className="text-[#FDB813] font-black underline underline-offset-4">Minggu ke-{activeWeek}</span></p>
               </div>
               <div className="w-full grid grid-cols-1 md:grid-cols-3 gap-6 relative z-10">
