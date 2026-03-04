@@ -680,30 +680,43 @@ export default function App() {
         {selectedMember && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 overflow-y-auto" style={{ scrollBehavior: 'auto' }}>
             <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setSelectedMember(null)}></div>
-            <div className="bg-white w-full max-w-2xl rounded-[40px] p-8 shadow-2xl relative z-10 animate-in zoom-in-95 duration-200 border border-slate-200 my-auto max-h-[90vh] overflow-y-auto scrollbar-hide">
-              <div className="flex justify-between items-start mb-6">
-                <div className="flex items-center gap-4">
-                  <div className="w-16 h-16 rounded-full overflow-hidden bg-slate-200 border-4 border-white shadow-lg">
-                    {selectedMember.member.avatar_url ? (
-                      <img src={selectedMember.member.avatar_url} alt={selectedMember.member.name} className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center bg-slate-200 text-slate-500 font-black text-2xl">
-                        {selectedMember.member.name?.[0]}
-                      </div>
-                    )}
+            <div className="bg-white w-full max-w-2xl rounded-[40px] shadow-2xl relative z-10 animate-in zoom-in-95 duration-200 border border-slate-200 my-auto max-h-[90vh] overflow-y-auto scrollbar-hide">
+              {/* Cover Image with Gradient Fade */}
+              <div className="relative h-48 w-full overflow-hidden rounded-t-[40px]">
+                {selectedMember.member.avatar_url ? (
+                  <img 
+                    src={selectedMember.member.avatar_url} 
+                    alt={selectedMember.member.name} 
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full bg-gradient-to-br from-blue-600 to-blue-800 flex items-center justify-center">
+                    <div className="text-white font-black text-6xl opacity-30">
+                      {selectedMember.member.name?.[0]}
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="font-black text-xl text-slate-800">{selectedMember.member.name}</h3>
-                    <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">{selectedMember.member.position}</p>
-                    <p className="text-[10px] font-bold text-blue-600 mt-0.5">{selectedMember.team.name}</p>
-                  </div>
-                </div>
-                <button onClick={() => setSelectedMember(null)} className="p-2 bg-slate-100 rounded-2xl text-slate-400 hover:text-slate-600 hover:bg-slate-200 transition-colors">
-                  <X className="w-6 h-6" />
+                )}
+                {/* Gradient Fade Overlay */}
+                <div className="absolute inset-0 bg-gradient-to-b from-transparent via-white/10 to-white"></div>
+                {/* Close Button */}
+                <button 
+                  onClick={() => setSelectedMember(null)} 
+                  className="absolute top-4 right-4 p-2.5 bg-white/90 backdrop-blur-sm rounded-2xl text-slate-600 hover:text-slate-800 hover:bg-white transition-all shadow-lg"
+                >
+                  <X className="w-5 h-5" />
                 </button>
               </div>
 
-              {/* Score Summary Cards */}
+              {/* Content Section */}
+              <div className="p-8">
+                {/* Member Info Header */}
+                <div className="text-center mb-8">
+                  <h3 className="font-black text-2xl text-slate-800 mb-1">{selectedMember.member.name}</h3>
+                  <p className="text-sm font-bold text-slate-500 uppercase tracking-widest">{selectedMember.member.position}</p>
+                  <p className="text-xs font-bold text-blue-600 mt-1">{selectedMember.team.name}</p>
+                </div>
+
+                {/* Score Summary Cards */}
               <div className="grid grid-cols-2 gap-4 mb-6">
                 <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-3xl p-5 border border-blue-200">
                   <div className="text-[9px] font-black text-blue-600 uppercase tracking-widest mb-1">Total Akuisisi</div>
@@ -810,6 +823,7 @@ export default function App() {
                     })()}
                   </span>
                 </div>
+              </div>
               </div>
             </div>
           </div>
