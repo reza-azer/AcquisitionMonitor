@@ -1237,8 +1237,8 @@ export default function App() {
                 <h2 className="text-3xl font-black mb-2 tracking-tight">Management Center</h2>
                 <p className="text-blue-200 text-sm font-medium">Input data akuisisi untuk <span className="text-[#FDB813] font-black underline underline-offset-4">Minggu ke-{activeWeek}</span></p>
               </div>
-              <div className="w-full grid grid-cols-1 md:grid-cols-3 gap-6 relative z-10">
-                <div className="space-y-1"><label className="text-[10px] font-black text-blue-300 ml-4 uppercase tracking-widest">Nama Tim Baru</label><input type="text" value={newTeam.name} onChange={(e) => setNewTeam({...newTeam, name: e.target.value})} placeholder="Contoh: Tim Rajawali" className="w-full bg-white/10 border border-white/20 rounded-full px-6 py-4 text-sm outline-none focus:bg-white/20 focus:ring-2 focus:ring-[#FDB813]" /></div>
+              <div className="w-full grid grid-cols-1 md:grid-cols-3 gap-4 relative z-10">
+                <div className="md:col-span-2 space-y-1"><label className="text-[10px] font-black text-blue-300 ml-4 uppercase tracking-widest">Nama Tim Baru</label><input type="text" value={newTeam.name} onChange={(e) => setNewTeam({...newTeam, name: e.target.value})} placeholder="Contoh: Tim Rajawali" className="w-full bg-white/10 border border-white/20 rounded-full px-6 py-4 text-sm outline-none focus:bg-white/20 focus:ring-2 focus:ring-[#FDB813]" /></div>
                 <div className="space-y-1">
                   <label className="text-[10px] font-black text-blue-300 ml-4 uppercase tracking-widest block mb-2">Sampul Tim</label>
                   <ImageUploader
@@ -1249,7 +1249,7 @@ export default function App() {
                     aspectRatio="16/10"
                   />
                 </div>
-                <div className="flex items-end"><button onClick={addTeam} className="w-full bg-[#FDB813] text-blue-900 h-[54px] rounded-full font-black text-sm hover:scale-[1.02] transition-all flex items-center justify-center gap-2"><Plus className="w-5 h-5" /> DAFTAR TIM</button></div>
+                <div className="md:col-span-3 flex items-end"><button onClick={addTeam} className="w-full bg-[#FDB813] text-blue-900 h-[54px] rounded-full font-black text-sm hover:scale-[1.02] transition-all flex items-center justify-center gap-2"><Plus className="w-5 h-5" /> DAFTAR TIM</button></div>
               </div>
               {/* Save Button Bar */}
               {hasPendingChanges && (
@@ -1309,9 +1309,13 @@ export default function App() {
                   <div className="p-10 space-y-16">
                     <div className="bg-slate-50/50 p-8 rounded-[32px] border border-slate-100">
                       <h4 className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-6 flex items-center gap-2"><UserPlus className="w-4 h-4" /> Tambah Anggota Tim</h4>
-                      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                        <input type="text" value={tempMember.name} onChange={(e) => setTempMember({...tempMember, name: e.target.value})} placeholder="Nama Lengkap" className="w-full bg-white border border-slate-200 rounded-full px-5 py-3 text-sm outline-none focus:ring-2 focus:ring-blue-200" />
-                        <input type="text" value={tempMember.position} onChange={(e) => setTempMember({...tempMember, position: e.target.value})} placeholder="Jabatan" className="w-full bg-white border border-slate-200 rounded-full px-5 py-3 text-sm outline-none focus:ring-2 focus:ring-blue-200" />
+                      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <div className="md:col-span-2">
+                          <input type="text" value={tempMember.name} onChange={(e) => setTempMember({...tempMember, name: e.target.value})} placeholder="Nama Lengkap" className="w-full bg-white border border-slate-200 rounded-full px-5 py-3 text-sm outline-none focus:ring-2 focus:ring-blue-200" />
+                        </div>
+                        <div>
+                          <input type="text" value={tempMember.position} onChange={(e) => setTempMember({...tempMember, position: e.target.value})} placeholder="Jabatan" className="w-full bg-white border border-slate-200 rounded-full px-5 py-3 text-sm outline-none focus:ring-2 focus:ring-blue-200" />
+                        </div>
                         <div>
                           <ImageUploader
                             value={tempMember.avatar_url}
@@ -1321,7 +1325,9 @@ export default function App() {
                             aspectRatio="1/1"
                           />
                         </div>
-                        <button onClick={() => addMemberToTeam(team.id)} className="w-full bg-[#003d79] text-white h-[48px] rounded-full font-black text-xs">TAMBAH</button>
+                        <div className="md:col-span-4">
+                          <button onClick={() => addMemberToTeam(team.id)} className="w-full bg-[#003d79] text-white h-[48px] rounded-full font-black text-xs">TAMBAH</button>
+                        </div>
                       </div>
                     </div>
 
