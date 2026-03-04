@@ -21,6 +21,8 @@ import {
 } from 'lucide-react';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer as RechartsContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import ImageUploader from '@/components/ImageUploader';
+import { deleteImage } from '@/lib/storage';
 
 // --- KONFIGURASI POIN & TARGET ---
 type TieredProduct = { name: string; unit: string; type: 'tiered'; tiers: {limit: number; p: number}[] };
@@ -112,6 +114,15 @@ export default function App() {
   });
   const [teamColors, setTeamColors] = useState<Record<string, string>>({});
 
+  // Member detail modal state
+  const [selectedMember, setSelectedMember] = useState<{member: Member, team: Team} | null>(null);
+
+  // Migration modal state
+  const [migratingMember, setMigratingMember] = useState<{member: Member, team: Team} | null>(null);
+  const [migrationTargetTeam, setMigrationTargetTeam] = useState<string>('');
+  const [migrateWithData, setMigrateWithData] = useState<boolean | null>(null);
+  const [isMigrating, setIsMigrating] = useState(false);
+
   // Load settings from localStorage
   useEffect(() => {
     const savedColors = localStorage.getItem('chartTeamColors');
@@ -140,6 +151,18 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('chartFilters', JSON.stringify(chartFilters));
   }, [chartFilters]);
+
+  // Lock body scroll when modal is open
+  useEffect(() => {
+    if (selectedMember) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [selectedMember]);
 
   // Load SheetJS for XLSX support
   useEffect(() => {
@@ -310,6 +333,12 @@ export default function App() {
   const deleteTeam = async (id: string) => {
     if (window.confirm("Hapus tim ini beserta seluruh anggotanya?")) {
       try {
+        // Get team data to find image URL
+        const team = teams.find(t => t.id === id);
+        if (team?.image_url && team.image_url.includes('supabase.co/storage')) {
+          await deleteImage(team.image_url);
+        }
+        
         const res = await fetch(`/api/teams?id=${id}`, { method: 'DELETE' });
         if (res.ok) fetchData();
       } catch (error) {
@@ -360,6 +389,15 @@ export default function App() {
   const deleteMember = async (teamId: string, memberId: string) => {
     if (window.confirm("Hapus anggota ini?")) {
       try {
+        // Get member data to find avatar URL
+        const member = teams
+          .flatMap(t => t.members || [])
+          .find(m => m.id === memberId);
+        
+        if (member?.avatar_url && member.avatar_url.includes('supabase.co/storage')) {
+          await deleteImage(member.avatar_url);
+        }
+        
         const res = await fetch(`/api/members?id=${memberId}`, { method: 'DELETE' });
         if (res.ok) fetchData();
       } catch (error) {
@@ -374,11 +412,11 @@ export default function App() {
       const res = await fetch('/api/members', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          id: editingMember.memberId, 
-          name: editingMember.name, 
-          position: editingMember.position, 
-          avatar_url: editingMember.avatar_url 
+        body: JSON.stringify({
+          id: editingMember.memberId,
+          name: editingMember.name,
+          position: editingMember.position,
+          avatar_url: editingMember.avatar_url
         })
       });
       if (res.ok) {
@@ -387,6 +425,38 @@ export default function App() {
       }
     } catch (error) {
       console.error('Error updating member:', error);
+    }
+  };
+
+  const migrateMember = async () => {
+    if (!migratingMember || !migrationTargetTeam || migrateWithData === null) return;
+    
+    setIsMigrating(true);
+    try {
+      const res = await fetch('/api/members/migrate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          member_id: migratingMember.member.id,
+          new_team_id: migrationTargetTeam,
+          migrate_data: migrateWithData
+        })
+      });
+      
+      if (res.ok) {
+        await fetchData();
+        setMigratingMember(null);
+        setMigrationTargetTeam('');
+        setMigrateWithData(null);
+        alert('Anggota berhasil dipindahkan ke tim baru!');
+      } else {
+        throw new Error('Migration failed');
+      }
+    } catch (error) {
+      console.error('Error migrating member:', error);
+      alert('Gagal memindahkan anggota. Silakan coba lagi.');
+    } finally {
+      setIsMigrating(false);
     }
   };
 
@@ -602,6 +672,300 @@ export default function App() {
                >
                  <Download className="w-5 h-5"/> UNDUH LAPORAN .XLSX
                </button>
+            </div>
+          </div>
+        )}
+
+        {/* --- MEMBER DETAIL MODAL --- */}
+        {selectedMember && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 overflow-y-auto" style={{ scrollBehavior: 'auto' }}>
+            <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setSelectedMember(null)}></div>
+            <div className="bg-white w-full max-w-2xl rounded-[40px] shadow-2xl relative z-10 animate-in zoom-in-95 duration-200 border border-slate-200 my-auto max-h-[90vh] overflow-y-auto scrollbar-hide">
+              {/* Cover Image with Gradient Fade */}
+              <div className="relative h-48 w-full overflow-hidden rounded-t-[40px]">
+                {selectedMember.member.avatar_url ? (
+                  <img 
+                    src={selectedMember.member.avatar_url} 
+                    alt={selectedMember.member.name} 
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full bg-gradient-to-br from-blue-600 to-blue-800 flex items-center justify-center">
+                    <div className="text-white font-black text-6xl opacity-30">
+                      {selectedMember.member.name?.[0]}
+                    </div>
+                  </div>
+                )}
+                {/* Gradient Fade Overlay */}
+                <div className="absolute inset-0 bg-gradient-to-b from-transparent via-white/10 to-white"></div>
+                {/* Close Button */}
+                <button 
+                  onClick={() => setSelectedMember(null)} 
+                  className="absolute top-4 right-4 p-2.5 bg-white/90 backdrop-blur-sm rounded-2xl text-slate-600 hover:text-slate-800 hover:bg-white transition-all shadow-lg"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Content Section */}
+              <div className="p-8">
+                {/* Member Info Header */}
+                <div className="text-center mb-8">
+                  <h3 className="font-black text-2xl text-slate-800 mb-1">{selectedMember.member.name}</h3>
+                  <p className="text-sm font-bold text-slate-500 uppercase tracking-widest">{selectedMember.member.position}</p>
+                  <p className="text-xs font-bold text-blue-600 mt-1">{selectedMember.team.name}</p>
+                </div>
+
+                {/* Score Summary Cards */}
+              <div className="grid grid-cols-2 gap-4 mb-6">
+                <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-3xl p-5 border border-blue-200">
+                  <div className="text-[9px] font-black text-blue-600 uppercase tracking-widest mb-1">Total Akuisisi</div>
+                  <div className="text-3xl font-black text-blue-900">
+                    {(() => {
+                      const total = Object.values(selectedMember.member.weeklyAcquisitions || {})
+                        .flatMap(week => Object.values(week))
+                        .reduce((sum, qty) => sum + qty, 0);
+                      return total;
+                    })()}
+                  </div>
+                </div>
+                <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-3xl p-5 border border-green-200">
+                  <div className="text-[9px] font-black text-green-600 uppercase tracking-widest mb-1">Total Skor</div>
+                  <div className="text-3xl font-black text-green-900">
+                    {(() => {
+                      let totalScore = 0;
+                      Object.values(selectedMember.member.weeklyAcquisitions || {}).forEach(weekAcq => {
+                        totalScore += getMemberPoints(weekAcq);
+                      });
+                      return totalScore;
+                    })()}
+                  </div>
+                </div>
+              </div>
+
+              {/* Weekly Breakdown */}
+              <div className="mb-6">
+                <h4 className="font-black text-sm text-slate-700 mb-3 flex items-center gap-2">
+                  <BarChart3 className="w-4 h-4 text-blue-600" />
+                  BREAKDOWN PER MINGGU
+                </h4>
+                <div className="space-y-3">
+                  {[1, 2, 3, 4].map(week => {
+                    const weekAcq = (selectedMember.member.weeklyAcquisitions || {})[week] || {};
+                    const weekScore = getMemberPoints(weekAcq);
+                    const weekTotal = Object.values(weekAcq).reduce((sum: number, qty: number) => sum + qty, 0);
+                    const hasData = weekTotal > 0;
+
+                    return (
+                      <div
+                        key={week}
+                        className={`rounded-2xl border p-4 transition-all ${hasData ? 'bg-white border-slate-200 shadow-sm' : 'bg-slate-50 border-slate-100 opacity-50'}`}
+                      >
+                        <div className="flex justify-between items-center mb-3">
+                          <div className="flex items-center gap-2">
+                            <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-black text-xs ${hasData ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-400'}`}>
+                              W{week}
+                            </div>
+                            <span className="text-xs font-bold text-slate-500 uppercase tracking-wide">
+                              {hasData ? `${weekTotal} Akuisisi` : 'Tidak ada data'}
+                            </span>
+                          </div>
+                          <div className={`text-lg font-black ${hasData ? 'text-green-600' : 'text-slate-300'}`}>
+                            +{weekScore} Poin
+                          </div>
+                        </div>
+
+                        {hasData && (
+                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                            {Object.entries(weekAcq)
+                              .filter(([_, qty]) => qty > 0)
+                              .map(([product, qty]) => {
+                                const productConfig = PRODUCT_POINTS[product];
+                                let pointsEarned = 0;
+                                if (productConfig) {
+                                  if ('type' in productConfig && productConfig.type === 'tiered') {
+                                    const tier = productConfig.tiers.find(t => qty <= t.limit) || productConfig.tiers[productConfig.tiers.length - 1];
+                                    pointsEarned = qty * tier.p;
+                                  } else {
+                                    pointsEarned = qty * (productConfig as SimpleProduct).p;
+                                  }
+                                }
+                                return (
+                                  <div key={product} className="bg-slate-50 rounded-xl p-2.5 border border-slate-100">
+                                    <div className="text-[9px] font-black text-slate-400 uppercase">{product}</div>
+                                    <div className="flex justify-between items-center mt-1">
+                                      <span className="text-sm font-bold text-slate-700">{qty} {productConfig?.unit}</span>
+                                      <span className="text-xs font-black text-green-600">+{pointsEarned}</span>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Score Calculation Info */}
+              <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200">
+                <div className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-2">Ringkasan Skor</div>
+                <div className="flex items-center gap-2 text-xs text-slate-600">
+                  <Trophy className="w-3.5 h-3.5 text-yellow-600" />
+                  <span className="font-bold">
+                    {(() => {
+                      let totalScore = 0;
+                      Object.values(selectedMember.member.weeklyAcquisitions || {}).forEach(weekAcq => {
+                        totalScore += getMemberPoints(weekAcq);
+                      });
+                      return `Total kumulatif: ${totalScore} poin dari semua minggu`;
+                    })()}
+                  </span>
+                </div>
+              </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* --- MEMBER MIGRATION MODAL --- */}
+        {migratingMember && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 overflow-y-auto" style={{ scrollBehavior: 'auto' }}>
+            <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => { setMigratingMember(null); setMigrationTargetTeam(''); setMigrateWithData(null); }}></div>
+            <div className="bg-white w-full max-w-xl rounded-[40px] p-8 shadow-2xl relative z-10 animate-in zoom-in-95 duration-200 border border-slate-200 my-auto max-h-[90vh] overflow-y-auto scrollbar-hide">
+              <div className="flex justify-between items-start mb-6">
+                <div>
+                  <h3 className="font-black text-xl text-slate-800 flex items-center gap-2">
+                    <UserPlus className="w-6 h-6 text-blue-600" />
+                    Pindahkan Anggota
+                  </h3>
+                  <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-1">Transfer ke tim lain</p>
+                </div>
+                <button onClick={() => { setMigratingMember(null); setMigrationTargetTeam(''); setMigrateWithData(null); }} className="p-2 bg-slate-100 rounded-2xl text-slate-400 hover:text-slate-600 hover:bg-slate-200 transition-colors">
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+
+              {/* Member Info */}
+              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-3xl p-6 border border-blue-100 mb-6">
+                <div className="flex items-center gap-4 mb-4">
+                  <div className="w-14 h-14 rounded-full overflow-hidden bg-slate-200 border-3 border-white shadow-md">
+                    {migratingMember.member.avatar_url ? (
+                      <img src={migratingMember.member.avatar_url} alt={migratingMember.member.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-slate-200 text-slate-500 font-black text-xl">
+                        {migratingMember.member.name?.[0]}
+                      </div>
+                    )}
+                  </div>
+                  <div>
+                    <h4 className="font-black text-slate-800">{migratingMember.member.name}</h4>
+                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">{migratingMember.member.position}</p>
+                    <p className="text-[9px] font-bold text-blue-600 mt-0.5">{migratingMember.team.name}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 text-xs text-slate-600 bg-white/60 rounded-xl p-3 border border-blue-100">
+                  <Trophy className="w-3.5 h-3.5 text-yellow-600" />
+                  <span className="font-bold">Total Skor: <span className="text-blue-700">
+                    {(() => {
+                      let totalScore = 0;
+                      Object.values(migratingMember.member.weeklyAcquisitions || {}).forEach(weekAcq => {
+                        totalScore += getMemberPoints(weekAcq);
+                      });
+                      return totalScore;
+                    })()}
+                  </span> poin</span>
+                </div>
+              </div>
+
+              {/* Step 1: Select Target Team */}
+              <div className="mb-6">
+                <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-3">
+                  <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-blue-600 text-white text-[8px] mr-1">1</span>
+                  Pilih Tim Tujuan
+                </label>
+                <select
+                  value={migrationTargetTeam}
+                  onChange={(e) => setMigrationTargetTeam(e.target.value)}
+                  className="w-full bg-white border border-slate-200 rounded-2xl px-4 py-4 text-sm font-bold outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400"
+                >
+                  <option value="">-- Pilih Tim --</option>
+                  {teams.filter(t => t.id !== migratingMember.team.id).map(t => (
+                    <option key={t.id} value={t.id}>{t.name}</option>
+                  ))}
+                </select>
+                {teams.filter(t => t.id !== migratingMember.team.id).length === 0 && (
+                  <p className="text-xs text-slate-400 font-bold mt-2">Tidak ada tim lain untuk dipindahkan.</p>
+                )}
+              </div>
+
+              {/* Step 2: Choose Data Migration Option */}
+              {migrationTargetTeam && (
+                <div className="mb-6 animate-in fade-in slide-in-from-top-2 duration-300">
+                  <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-3">
+                    <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-blue-600 text-white text-[8px] mr-1">2</span>
+                    Opsi Data Akuisisi
+                  </label>
+                  <div className="space-y-3">
+                    <button
+                      onClick={() => setMigrateWithData(true)}
+                      className={`w-full p-5 rounded-2xl border-2 text-left transition-all ${migrateWithData === true ? 'bg-green-50 border-green-500 shadow-md' : 'bg-white border-slate-200 hover:border-slate-300'}`}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 ${migrateWithData === true ? 'border-green-500 bg-green-500' : 'border-slate-300'}`}>
+                          {migrateWithData === true && <Check className="w-4 h-4 text-white" />}
+                        </div>
+                        <div className="flex-1">
+                          <div className="font-black text-slate-800 text-sm mb-1">Pindahkan Semua Data</div>
+                          <div className="text-[10px] text-slate-500 font-bold leading-relaxed">
+                            Seluruh akuisisi, poin, dan riwayat data akan ikut dipindahkan ke tim baru. Anggota tetap mempertahankan semua pencapaian.
+                          </div>
+                        </div>
+                      </div>
+                    </button>
+                    <button
+                      onClick={() => setMigrateWithData(false)}
+                      className={`w-full p-5 rounded-2xl border-2 text-left transition-all ${migrateWithData === false ? 'bg-orange-50 border-orange-500 shadow-md' : 'bg-white border-slate-200 hover:border-slate-300'}`}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 ${migrateWithData === false ? 'border-orange-500 bg-orange-500' : 'border-slate-300'}`}>
+                          {migrateWithData === false && <Check className="w-4 h-4 text-white" />}
+                        </div>
+                        <div className="flex-1">
+                          <div className="font-black text-slate-800 text-sm mb-1">Hanya Anggota</div>
+                          <div className="text-[10px] text-slate-500 font-bold leading-relaxed">
+                            Hanya memindahkan anggota ke tim baru. Semua data akuisisi dan poin akan dihapus (reset).
+                          </div>
+                        </div>
+                      </div>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              {migrateWithData !== null && (
+                <div className="flex gap-3 mt-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                  <button
+                    onClick={() => { setMigratingMember(null); setMigrationTargetTeam(''); setMigrateWithData(null); }}
+                    className="flex-1 py-4 bg-slate-100 text-slate-700 rounded-2xl font-black text-sm hover:bg-slate-200 transition-all"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    onClick={migrateMember}
+                    disabled={isMigrating}
+                    className={`flex-1 py-4 rounded-2xl font-black text-sm shadow-lg transition-all flex items-center justify-center gap-2 ${isMigrating ? 'bg-slate-400 cursor-not-allowed' : migrateWithData ? 'bg-green-600 hover:bg-green-700 text-white shadow-green-200' : 'bg-orange-600 hover:bg-orange-700 text-white shadow-orange-200'}`}
+                  >
+                    {isMigrating ? (
+                      <><Loader2 className="w-5 h-5 animate-spin" /> MEMINDAHKAN...</>
+                    ) : (
+                      <><UserPlus className="w-5 h-5" /> {migrateWithData ? 'PINDAHKAN DENGAN DATA' : 'PINDAHKAN SAJA'}</>
+                    )}
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -828,12 +1192,20 @@ export default function App() {
                           const pts = getMemberPoints((m.weeklyAcquisitions || {})[activeWeek] || {});
                           const tier = getTierByRank(m.id);
                           return (
-                            <div key={m.id} className={`flex justify-between items-center p-3 rounded-full border transition-all ${pts > 0 ? tier.bg + ' border-transparent shadow-sm' : 'bg-white/30 border-slate-100/30 opacity-60'}`}>
+                            <div
+                              key={m.id}
+                              onClick={() => setSelectedMember({ member: m, team })}
+                              className={`flex justify-between items-center p-3 rounded-full border transition-all cursor-pointer hover:shadow-md hover:scale-[1.02] ${pts > 0 ? tier.bg + ' border-transparent shadow-sm' : 'bg-white/30 border-slate-100/30 opacity-60'}`}
+                            >
                               <div className="flex items-center gap-3 overflow-hidden">
                                 <div className="w-10 h-10 rounded-full overflow-hidden bg-slate-200 flex-shrink-0 border-2 border-white shadow-sm">
                                   {m.avatar_url ? <img src={m.avatar_url} alt={m.name} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center bg-slate-200 text-slate-500 font-black text-xs">{m.name?.[0]}</div>}
                                 </div>
-                                <div className="truncate"><div className="font-bold text-slate-800 text-sm leading-tight truncate">{m.name}</div><div className={`text-[9px] font-black uppercase flex items-center gap-1 mt-0.5 ${tier.color}`}>{tier.icon} {tier.label}</div></div>
+                                <div className="truncate">
+                                  <div className="font-bold text-slate-800 text-sm leading-tight truncate">{m.name}</div>
+                                  <div className="text-[9px] font-bold text-slate-500 uppercase tracking-wide truncate">{m.position}</div>
+                                  <div className={`text-[9px] font-black uppercase flex items-center gap-1 mt-0.5 ${tier.color}`}>{tier.icon} {tier.label}</div>
+                                </div>
                               </div>
                               <div className={`text-lg font-black pr-2 flex-shrink-0 ${tier.color}`}>{pts}</div>
                             </div>
@@ -879,10 +1251,19 @@ export default function App() {
                 <h2 className="text-3xl font-black mb-2 tracking-tight">Management Center</h2>
                 <p className="text-blue-200 text-sm font-medium">Input data akuisisi untuk <span className="text-[#FDB813] font-black underline underline-offset-4">Minggu ke-{activeWeek}</span></p>
               </div>
-              <div className="w-full grid grid-cols-1 md:grid-cols-3 gap-6 relative z-10">
-                <div className="space-y-1"><label className="text-[10px] font-black text-blue-300 ml-4 uppercase tracking-widest">Nama Tim Baru</label><input type="text" value={newTeam.name} onChange={(e) => setNewTeam({...newTeam, name: e.target.value})} placeholder="Contoh: Tim Rajawali" className="w-full bg-white/10 border border-white/20 rounded-full px-6 py-4 text-sm outline-none focus:bg-white/20 focus:ring-2 focus:ring-[#FDB813]" /></div>
-                <div className="space-y-1"><label className="text-[10px] font-black text-blue-300 ml-4 uppercase tracking-widest">URL Sampul</label><input type="text" value={newTeam.image_url} onChange={(e) => setNewTeam({...newTeam, image_url: e.target.value})} placeholder="https://images..." className="w-full bg-white/10 border border-white/20 rounded-full px-6 py-4 text-sm outline-none focus:bg-white/20 focus:ring-2 focus:ring-[#FDB813]" /></div>
-                <div className="flex items-end"><button onClick={addTeam} className="w-full bg-[#FDB813] text-blue-900 h-[54px] rounded-full font-black text-sm hover:scale-[1.02] transition-all flex items-center justify-center gap-2"><Plus className="w-5 h-5" /> DAFTAR TIM</button></div>
+              <div className="w-full grid grid-cols-1 md:grid-cols-3 gap-4 relative z-10">
+                <div className="md:col-span-2 space-y-1"><label className="text-[10px] font-black text-blue-300 ml-4 uppercase tracking-widest">Nama Tim Baru</label><input type="text" value={newTeam.name} onChange={(e) => setNewTeam({...newTeam, name: e.target.value})} placeholder="Contoh: Tim Rajawali" className="w-full bg-white/10 border border-white/20 rounded-full px-6 py-4 text-sm outline-none focus:bg-white/20 focus:ring-2 focus:ring-[#FDB813]" /></div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black text-blue-300 ml-4 uppercase tracking-widest block mb-2">Sampul Tim</label>
+                  <ImageUploader
+                    value={newTeam.image_url}
+                    onChange={(url) => setNewTeam({...newTeam, image_url: url || ''})}
+                    label="Team Cover"
+                    folder="teams"
+                    aspectRatio="16/10"
+                  />
+                </div>
+                <div className="md:col-span-3 flex items-end"><button onClick={addTeam} className="w-full bg-[#FDB813] text-blue-900 h-[54px] rounded-full font-black text-sm hover:scale-[1.02] transition-all flex items-center justify-center gap-2"><Plus className="w-5 h-5" /> DAFTAR TIM</button></div>
               </div>
               {/* Save Button Bar */}
               {hasPendingChanges && (
@@ -902,7 +1283,7 @@ export default function App() {
                     className={`flex items-center gap-2 px-8 py-4 rounded-full font-black text-sm shadow-lg transition-all ${isSaving ? 'bg-slate-400 cursor-not-allowed' : 'bg-green-500 hover:bg-green-400 hover:scale-105 text-white shadow-green-900/20'}`}
                   >
                     {isSaving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
-                    {isSaving ? 'MENYIMPAN...' : 'SIMPAN SEMUA'}
+                    {isSaving ? 'SAVING...' : 'SAVE'}
                   </button>
                 </div>
               )}
@@ -920,7 +1301,16 @@ export default function App() {
                       {editingTeam?.id === team.id ? (
                         <div className="flex flex-col md:flex-row items-center gap-3 w-full max-w-2xl bg-white p-3 rounded-2xl shadow-md border border-blue-100">
                           <input className="flex-1 w-full bg-slate-50 border border-slate-100 rounded-lg px-3 py-2 text-sm font-black outline-none" value={editingTeam.name} onChange={(e) => setEditingTeam({...editingTeam, name: e.target.value})} placeholder="Nama tim..."/>
-                          <input className="flex-1 w-full bg-slate-50 border border-slate-100 rounded-lg px-3 py-2 text-sm font-black outline-none" value={editingTeam.image_url || ''} onChange={(e) => setEditingTeam({...editingTeam, image_url: e.target.value})} placeholder="URL sampul..."/>
+                          <div className="flex-1">
+                            <ImageUploader
+                              value={editingTeam.image_url}
+                              onChange={(url) => setEditingTeam({...editingTeam, image_url: url})}
+                              label="Team Cover"
+                              folder="teams"
+                              entityId={editingTeam.id}
+                              aspectRatio="16/10"
+                            />
+                          </div>
                           <div className="flex gap-2"><button onClick={updateTeam} className="p-3 bg-green-500 text-white rounded-xl"><Check className="w-5 h-5"/></button><button onClick={() => setEditingTeam(null)} className="p-3 bg-slate-100 text-slate-500 rounded-xl"><X className="w-5 h-5"/></button></div>
                         </div>
                       ) : (
@@ -933,11 +1323,25 @@ export default function App() {
                   <div className="p-10 space-y-16">
                     <div className="bg-slate-50/50 p-8 rounded-[32px] border border-slate-100">
                       <h4 className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-6 flex items-center gap-2"><UserPlus className="w-4 h-4" /> Tambah Anggota Tim</h4>
-                      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                        <input type="text" value={tempMember.name} onChange={(e) => setTempMember({...tempMember, name: e.target.value})} placeholder="Nama Lengkap" className="w-full bg-white border border-slate-200 rounded-full px-5 py-3 text-sm outline-none focus:ring-2 focus:ring-blue-200" />
-                        <input type="text" value={tempMember.position} onChange={(e) => setTempMember({...tempMember, position: e.target.value})} placeholder="Jabatan" className="w-full bg-white border border-slate-200 rounded-full px-5 py-3 text-sm outline-none focus:ring-2 focus:ring-blue-200" />
-                        <input type="text" value={tempMember.avatar_url} onChange={(e) => setTempMember({...tempMember, avatar_url: e.target.value})} placeholder="URL Avatar" className="w-full bg-white border border-slate-200 rounded-full px-5 py-3 text-sm outline-none focus:ring-2 focus:ring-blue-200" />
-                        <button onClick={() => addMemberToTeam(team.id)} className="w-full bg-[#003d79] text-white h-[48px] rounded-full font-black text-xs">TAMBAH</button>
+                      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <div className="md:col-span-2">
+                          <input type="text" value={tempMember.name} onChange={(e) => setTempMember({...tempMember, name: e.target.value})} placeholder="Nama Lengkap" className="w-full bg-white border border-slate-200 rounded-full px-5 py-3 text-sm outline-none focus:ring-2 focus:ring-blue-200" />
+                        </div>
+                        <div>
+                          <input type="text" value={tempMember.position} onChange={(e) => setTempMember({...tempMember, position: e.target.value})} placeholder="Jabatan" className="w-full bg-white border border-slate-200 rounded-full px-5 py-3 text-sm outline-none focus:ring-2 focus:ring-blue-200" />
+                        </div>
+                        <div>
+                          <ImageUploader
+                            value={tempMember.avatar_url}
+                            onChange={(url) => setTempMember({...tempMember, avatar_url: url || ''})}
+                            label="Member Avatar"
+                            folder="members"
+                            aspectRatio="1/1"
+                          />
+                        </div>
+                        <div className="md:col-span-4">
+                          <button onClick={() => addMemberToTeam(team.id)} className="w-full bg-[#003d79] text-white h-[48px] rounded-full font-black text-xs">TAMBAH</button>
+                        </div>
                       </div>
                     </div>
 
@@ -956,7 +1360,16 @@ export default function App() {
                                       <div className="flex flex-col"><label className="text-[8px] font-black text-blue-400 uppercase tracking-widest ml-1 mb-1">Nama</label><input className="text-sm font-black p-2 rounded-lg border border-blue-200 outline-none" value={editingMember.name} onChange={(e) => setEditingMember({...editingMember, name: e.target.value})} /></div>
                                       <div className="flex flex-col"><label className="text-[8px] font-black text-blue-400 uppercase tracking-widest ml-1 mb-1">Jabatan</label><input className="text-sm font-black p-2 rounded-lg border border-blue-200 outline-none" value={editingMember.position} onChange={(e) => setEditingMember({...editingMember, position: e.target.value})} /></div>
                                     </div>
-                                    <div className="flex flex-col"><label className="text-[8px] font-black text-blue-400 uppercase tracking-widest ml-1 mb-1">URL Avatar</label><input className="text-sm font-black p-2 rounded-lg border border-blue-200 outline-none" value={editingMember.avatar_url || ''} onChange={(e) => setEditingMember({...editingMember, avatar_url: e.target.value})} /></div>
+                                    <div className="flex flex-col"><label className="text-[8px] font-black text-blue-400 uppercase tracking-widest ml-1 mb-1">Avatar</label>
+                                      <ImageUploader
+                                        value={editingMember.avatar_url}
+                                        onChange={(url) => setEditingMember({...editingMember, avatar_url: url})}
+                                        label="Member Avatar"
+                                        folder="members"
+                                        entityId={editingMember.memberId}
+                                        aspectRatio="1/1"
+                                      />
+                                    </div>
                                     <div className="flex gap-2"><button onClick={updateMember} className="flex-1 py-2 bg-green-500 text-white rounded-lg text-[10px] font-black uppercase flex items-center justify-center gap-2"><Check className="w-3 h-3"/> Simpan</button><button onClick={() => setEditingMember(null)} className="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg text-[10px] font-black uppercase">Batal</button></div>
                                   </div>
                                 ) : (
@@ -965,6 +1378,13 @@ export default function App() {
                                       <h5 className="font-black text-slate-800 text-lg leading-none truncate">{member.name}</h5>
                                       <button onClick={() => setEditingMember({teamId: team.id, memberId: member.id, name: member.name, position: member.position, avatar_url: member.avatar_url})} className="p-1 text-slate-300 hover:text-blue-500 transition-colors"><Edit2 className="w-3.5 h-3.5"/></button>
                                       <button onClick={() => deleteMember(team.id, member.id)} className="p-1 text-slate-300 hover:text-red-500 transition-colors"><Trash2 className="w-3.5 h-3.5"/></button>
+                                      <button 
+                                        onClick={() => setMigratingMember({ member, team })} 
+                                        className="p-1 text-slate-300 hover:text-purple-500 transition-colors"
+                                        title="Pindahkan ke tim lain"
+                                      >
+                                        <UserPlus className="w-3.5 h-3.5"/>
+                                      </button>
                                     </div>
                                     <p className="text-[10px] text-slate-400 font-bold uppercase mt-2 tracking-widest">{member.position}</p>
                                   </>
