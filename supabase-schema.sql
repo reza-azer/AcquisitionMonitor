@@ -88,12 +88,30 @@ CREATE TABLE products (
 CREATE INDEX idx_products_category ON products(category);
 CREATE INDEX idx_products_active ON products(is_active);
 
+-- Acquisition Audit Log table (tracks changes to acquisitions)
+CREATE TABLE acquisition_audit_log (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  member_id UUID REFERENCES members(id) ON DELETE SET NULL,
+  member_name TEXT NOT NULL,
+  date DATE NOT NULL,
+  product_key TEXT NOT NULL,
+  old_quantity INTEGER NOT NULL,
+  new_quantity INTEGER NOT NULL,
+  changed_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW())
+);
+
+-- Create indexes for faster queries
+CREATE INDEX idx_audit_log_member ON acquisition_audit_log(member_id);
+CREATE INDEX idx_audit_log_date ON acquisition_audit_log(date);
+CREATE INDEX idx_audit_log_changed_at ON acquisition_audit_log(changed_at DESC);
+
 -- Enable Row Level Security (RLS)
 ALTER TABLE teams ENABLE ROW LEVEL SECURITY;
 ALTER TABLE members ENABLE ROW LEVEL SECURITY;
 ALTER TABLE acquisitions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE attendances ENABLE ROW LEVEL SECURITY;
 ALTER TABLE products ENABLE ROW LEVEL SECURITY;
+ALTER TABLE acquisition_audit_log ENABLE ROW LEVEL SECURITY;
 
 -- Create policies for public read/write (adjust for production with proper auth)
 -- For now, allowing full access for development purposes
@@ -103,6 +121,7 @@ CREATE POLICY "Allow full access to members" ON members FOR ALL USING (true) WIT
 CREATE POLICY "Allow full access to acquisitions" ON acquisitions FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow full access to attendances" ON attendances FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow full access to products" ON products FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow full access to acquisition_audit_log" ON acquisition_audit_log FOR ALL USING (true) WITH CHECK (true);
 
 -- ============================================
 -- SUPABASE STORAGE SETUP

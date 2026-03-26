@@ -13,6 +13,7 @@ import {
   Search,
   Edit2,
   History,
+  Trash2,
 } from 'lucide-react';
 import GridLoader from '@/components/GridLoader';
 
@@ -48,6 +49,7 @@ interface Team {
 interface Acquisition {
   id?: string;
   member_id: string;
+  member_name?: string;
   date: string;
   week?: number;
   product_key: string;
@@ -70,7 +72,86 @@ export default function InputAcquisition({ products, teams, members }: InputAcqu
   const [saveStatus, setSaveStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [error, setError] = useState<string | null>(null);
   const [recentInputs, setRecentInputs] = useState<Acquisition[]>([]);
+  const [auditLogs, setAuditLogs] = useState<any[]>([]);
   const [isLoadingExistingData, setIsLoadingExistingData] = useState(false);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+
+  // Load audit logs and recent inputs from database on mount
+  useEffect(() => {
+    const loadData = async () => {
+      setIsLoadingHistory(true);
+      try {
+        // Fetch audit logs from database
+        const auditRes = await fetch('/api/audit-log?limit=50');
+        if (auditRes.ok) {
+          const dbLogs = await auditRes.json();
+          if (dbLogs.length > 0) {
+            console.log('[InputAcquisition] Loaded', dbLogs.length, 'audit logs from DB');
+            setAuditLogs(dbLogs);
+            localStorage.setItem('auditLogs', JSON.stringify(dbLogs));
+          }
+        }
+        
+        // Fetch recent inputs from acquisitions table (last 20 with quantity > 0)
+        const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+        const inputRes = await fetch(`/api/acquisitions?startDate=${thirtyDaysAgo}`);
+        if (inputRes.ok) {
+          const allInputs = await inputRes.json();
+          // Filter only quantity > 0 and get latest 20
+          const recentOnly = allInputs
+            .filter((item: Acquisition) => item.quantity > 0)
+            .sort((a: Acquisition, b: Acquisition) => 
+              new Date(b.updated_at || b.date).getTime() - new Date(a.updated_at || a.date).getTime()
+            )
+            .slice(0, 20)
+            .map((item: Acquisition) => ({
+              ...item,
+              member_name: members.find(m => m.id === item.member_id)?.name || 'Unknown'
+            }));
+          
+          if (recentOnly.length > 0) {
+            console.log('[InputAcquisition] Loaded', recentOnly.length, 'recent inputs from DB');
+            setRecentInputs(recentOnly);
+            localStorage.setItem('recentInputs', JSON.stringify(recentOnly));
+          }
+        }
+      } catch (error) {
+        console.error('[InputAcquisition] Error loading data:', error);
+        
+        // Fallback to localStorage
+        const savedRecent = localStorage.getItem('recentInputs');
+        const savedAudit = localStorage.getItem('auditLogs');
+        if (savedRecent) {
+          try {
+            setRecentInputs(JSON.parse(savedRecent));
+          } catch (e) {
+            console.error('Failed to load recent inputs:', e);
+          }
+        }
+        if (savedAudit) {
+          try {
+            setAuditLogs(JSON.parse(savedAudit));
+          } catch (e) {
+            console.error('Failed to load audit logs:', e);
+          }
+        }
+      } finally {
+        setIsLoadingHistory(false);
+      }
+    };
+
+    loadData();
+  }, []);
+
+  // Save recent inputs to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem('recentInputs', JSON.stringify(recentInputs));
+  }, [recentInputs]);
+
+  // Save audit logs to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem('auditLogs', JSON.stringify(auditLogs));
+  }, [auditLogs]);
 
   // Filter members by search term
   const filteredMembers = members.filter(member =>
@@ -131,6 +212,17 @@ export default function InputAcquisition({ products, teams, members }: InputAcqu
     setError(null);
 
     try {
+      // First, fetch existing data to compare for audit log
+      const existingRes = await fetch(
+        `/api/acquisitions?member_id=${selectedMemberId}&date=${selectedDate}`
+      );
+      const existingData = await existingRes.json();
+      const existingMap: Record<string, number> = {};
+      existingData.forEach((item: Acquisition) => {
+        existingMap[item.product_key] = item.quantity;
+      });
+
+      // Save all products
       const savePromises = products
         .filter(p => p.is_active)
         .map(product => {
@@ -162,22 +254,76 @@ export default function InputAcquisition({ products, teams, members }: InputAcqu
       console.log('[InputAcquisition] Save successful!');
       setSaveStatus('success');
 
-      // Add only products with quantity > 0 to recent inputs (local only, no DB fetch)
       const timestamp = new Date().toISOString();
-      const newInputs = products
-        .filter(p => p.is_active && inputData[p.product_key] > 0)
-        .map(p => ({
-          id: `temp-${Date.now()}-${p.product_key}`,
+      const memberName = selectedMember?.name || 'Unknown';
+
+      // Create audit logs for changed values
+      const changedLogs = products
+        .filter(p => p.is_active)
+        .map(p => {
+          const oldQty = existingMap[p.product_key] || 0;
+          const newQty = inputData[p.product_key] || 0;
+          return { oldQty, newQty, product: p };
+        })
+        .filter(({ oldQty, newQty }) => oldQty !== newQty)
+        .map(({ oldQty, newQty, product }) => ({
+          id: `audit-${Date.now()}-${product.product_key}`,
           member_id: selectedMemberId,
+          member_name: memberName,
           date: selectedDate,
-          product_key: p.product_key,
-          quantity: inputData[p.product_key],
-          updated_at: timestamp,
-          week: 1 // placeholder
+          product_key: product.product_key,
+          product_name: product.product_name,
+          old_quantity: oldQty,
+          new_quantity: newQty,
+          changed_at: timestamp,
+          unit: product.unit
         }));
 
-      // Prepend new inputs to show newest first, keep last 20
-      setRecentInputs(prev => [...newInputs, ...prev].slice(0, 20));
+      // Add audit logs to state and save to database
+      if (changedLogs.length > 0) {
+        console.log('[InputAcquisition] Audit logs created:', changedLogs.length);
+
+        // Save to database
+        try {
+          const auditRes = await fetch('/api/audit-log', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ logs: changedLogs })
+          });
+          if (auditRes.ok) {
+            console.log('[InputAcquisition] Audit logs saved to DB');
+          } else {
+            console.error('[InputAcquisition] Failed to save audit logs to DB');
+          }
+        } catch (auditError) {
+          console.error('[InputAcquisition] Audit log API error:', auditError);
+        }
+
+        // Also save to localStorage and update state
+        setAuditLogs(prev => [...changedLogs, ...prev].slice(0, 50));
+      }
+
+      // Refresh recent inputs from database to show latest data
+      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      const inputRes = await fetch(`/api/acquisitions?startDate=${thirtyDaysAgo}`);
+      if (inputRes.ok) {
+        const allInputs = await inputRes.json();
+        const recentOnly = allInputs
+          .filter((item: Acquisition) => item.quantity > 0)
+          .sort((a: Acquisition, b: Acquisition) => 
+            new Date(b.updated_at || b.date).getTime() - new Date(a.updated_at || a.date).getTime()
+          )
+          .slice(0, 20)
+          .map((item: Acquisition) => ({
+            ...item,
+            member_name: members.find(m => m.id === item.member_id)?.name || 'Unknown'
+          }));
+        
+        console.log('[InputAcquisition] Refreshed recent inputs:', recentOnly.length);
+        setRecentInputs(recentOnly);
+        localStorage.setItem('recentInputs', JSON.stringify(recentOnly));
+      }
+
       setInputData({});
 
       setTimeout(() => setSaveStatus('idle'), 3000);
@@ -191,6 +337,15 @@ export default function InputAcquisition({ products, teams, members }: InputAcqu
   };
 
   const hasChanges = Object.values(inputData).some(qty => qty !== 0);
+
+  const clearHistory = () => {
+    if (window.confirm('Hapus semua riwayat input dan koreksi?')) {
+      setRecentInputs([]);
+      setAuditLogs([]);
+      localStorage.removeItem('recentInputs');
+      localStorage.removeItem('auditLogs');
+    }
+  };
 
   const getCategoryColor = (category: string) => {
     const colors = {
@@ -394,12 +549,15 @@ export default function InputAcquisition({ products, teams, members }: InputAcqu
           )}
         </div>
 
-        {/* Right Column - Recent Inputs */}
+        {/* Right Column - History Panels */}
         <div className="space-y-6">
+          {/* Input Terakhir Panel */}
           <div className="bg-white border border-slate-200 rounded-2xl p-6">
-            <div className="flex items-center gap-2 mb-4">
-              <History className="w-5 h-5 text-slate-600" />
-              <h3 className="text-md font-bold text-slate-800">Input Terakhir</h3>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <History className="w-5 h-5 text-slate-600" />
+                <h3 className="text-md font-bold text-slate-800">Input Terakhir</h3>
+              </div>
             </div>
 
             {recentInputs.length === 0 ? (
@@ -419,7 +577,7 @@ export default function InputAcquisition({ products, teams, members }: InputAcqu
                           {products.find(p => p.product_key === input.product_key)?.product_name || input.product_key}
                         </div>
                         <div className="text-xs text-slate-500">
-                          {members.find(m => m.id === input.member_id)?.name || 'Unknown'}
+                          {input.member_name || members.find(m => m.id === input.member_id)?.name || 'Unknown'}
                         </div>
                       </div>
                       <div className="text-right">
@@ -447,6 +605,79 @@ export default function InputAcquisition({ products, teams, members }: InputAcqu
                     </div>
                   </div>
                 ))}
+              </div>
+            )}
+          </div>
+
+          {/* Riwayat Koreksi Panel */}
+          <div className="bg-white border border-slate-200 rounded-2xl p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Edit2 className="w-5 h-5 text-slate-600" />
+                <h3 className="text-md font-bold text-slate-800">Riwayat Koreksi</h3>
+              </div>
+              {auditLogs.length > 0 && (
+                <button
+                  onClick={clearHistory}
+                  className="text-xs font-bold text-red-600 hover:text-red-700 flex items-center gap-1 px-3 py-1.5 rounded-lg hover:bg-red-50 transition-colors"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  Clear
+                </button>
+              )}
+            </div>
+
+            {isLoadingHistory ? (
+              <div className="flex justify-center py-8">
+                <GridLoader pattern="edge-cw" size="md" color="#64748b" mode="stagger" />
+              </div>
+            ) : auditLogs.length === 0 ? (
+              <div className="text-center py-8 text-slate-400 text-sm">
+                Belum ada koreksi
+              </div>
+            ) : (
+              <div className="space-y-2 max-h-[600px] overflow-y-auto">
+                {auditLogs.map((log, idx) => {
+                  const isIncrease = log.new_quantity > log.old_quantity;
+                  const isDecrease = log.new_quantity < log.old_quantity;
+                  const colorClass = isIncrease ? 'text-green-600' : isDecrease ? 'text-red-600' : 'text-slate-600';
+                  const arrowColor = isIncrease ? 'text-green-500' : isDecrease ? 'text-red-500' : 'text-slate-400';
+
+                  return (
+                    <div
+                      key={log.id || idx}
+                      className="p-3 bg-slate-50 rounded-xl border border-slate-100"
+                    >
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="flex-1">
+                          <div className="font-semibold text-slate-800 text-sm">
+                            {log.product_name || log.product_key}
+                          </div>
+                          <div className="text-xs text-slate-500">
+                            {log.member_name || 'Unknown'}
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className={`font-bold text-sm ${colorClass}`}>
+                            {log.old_quantity} → {log.new_quantity} {log.unit}
+                          </div>
+                          <div className={`text-xs flex items-center gap-1 justify-end mt-1 ${colorClass}`}>
+                            <span className="text-xs">
+                              {isIncrease ? '↑' : isDecrease ? '↓' : '•'}
+                            </span>
+                            {log.changed_at && formatTime(log.changed_at)}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between text-xs text-slate-500">
+                        <span className="flex items-center gap-1">
+                          <Calendar className="w-3 h-3" />
+                          {formatDate(log.date)}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
