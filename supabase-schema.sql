@@ -40,6 +40,23 @@ CREATE INDEX idx_acquisitions_member_week ON acquisitions(member_id, week);
 CREATE INDEX idx_acquisitions_week ON acquisitions(week);
 CREATE INDEX idx_members_team ON members(team_id);
 
+-- Attendances table (daily attendance records)
+CREATE TABLE attendances (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  member_id UUID REFERENCES members(id) ON DELETE CASCADE NOT NULL,
+  date DATE NOT NULL,
+  status TEXT NOT NULL CHECK (status IN ('present', 'late', 'leave', 'alpha')),
+  leave_reason TEXT,  -- sick, family_affairs, annual_leave, others
+  late_minutes INTEGER DEFAULT 0,
+  notes TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW()),
+  UNIQUE(member_id, date)
+);
+
+CREATE INDEX idx_attendances_date ON attendances(date);
+CREATE INDEX idx_attendances_member ON attendances(member_id);
+CREATE INDEX idx_attendances_member_date ON attendances(member_id, date);
+
 -- Enable Row Level Security (RLS)
 ALTER TABLE teams ENABLE ROW LEVEL SECURITY;
 ALTER TABLE members ENABLE ROW LEVEL SECURITY;
@@ -51,6 +68,7 @@ ALTER TABLE acquisitions ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Allow full access to teams" ON teams FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow full access to members" ON members FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow full access to acquisitions" ON acquisitions FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow full access to attendances" ON attendances FOR ALL USING (true) WITH CHECK (true);
 
 -- ============================================
 -- SUPABASE STORAGE SETUP

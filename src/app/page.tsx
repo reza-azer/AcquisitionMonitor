@@ -5,6 +5,7 @@ import {
   Download,
   Edit2,
   FileSpreadsheet,
+  FileText,
   ImageIcon,
   LineChart as LineChartIcon,
   Loader2,
@@ -23,6 +24,8 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer as RechartsContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import ImageUploader from '@/components/ImageUploader';
 import { deleteImage } from '@/lib/storage';
+import AttendanceManager from '@/components/AttendanceManager';
+import AttendanceSummary from '@/components/AttendanceSummary';
 
 // --- KONFIGURASI POIN & TARGET ---
 type TieredProduct = { name: string; unit: string; type: 'tiered'; tiers: {limit: number; p: number}[] };
@@ -603,6 +606,7 @@ export default function App() {
             </div>
             <nav className="hidden md:flex bg-blue-900/40 p-1 rounded-xl gap-1 border border-white/5">
               <button onClick={() => setViewMode('dashboard')} className={`flex items-center gap-2 px-5 py-2 rounded-lg text-xs font-bold transition-all ${viewMode === 'dashboard' ? 'bg-white text-blue-900 shadow-md' : 'text-white/70 hover:text-white'}`}><BarChart3 className="w-4 h-4" /> Dashboard</button>
+              <button onClick={() => setViewMode('absensi')} className={`flex items-center gap-2 px-5 py-2 rounded-lg text-xs font-bold transition-all ${viewMode === 'absensi' ? 'bg-white text-blue-900 shadow-md' : 'text-white/70 hover:text-white'}`}><FileText className="w-4 h-4" /> Absensi</button>
               <button onClick={() => setViewMode('manage')} className={`flex items-center gap-2 px-5 py-2 rounded-lg text-xs font-bold transition-all ${viewMode === 'manage' ? 'bg-white text-blue-900 shadow-md' : 'text-white/70 hover:text-white'}`}><Settings className="w-4 h-4" /> Manage</button>
             </nav>
           </div>
@@ -1433,11 +1437,22 @@ export default function App() {
             </div>
           </div>
         )}
+
+        {viewMode === 'absensi' && (
+          <div className="space-y-8 animate-in fade-in duration-500">
+            <div className="bg-white rounded-[40px] p-8 border border-slate-200 shadow-sm">
+              <AttendanceManager members={teams.flatMap(t => t.members || [])} />
+            </div>
+            <div className="bg-white rounded-[40px] p-8 border border-slate-200 shadow-sm">
+              <AttendanceSummary members={teams.flatMap(t => t.members || [])} />
+            </div>
+          </div>
+        )}
       </main>
 
       <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-slate-200 px-8 py-4 md:hidden flex justify-around items-center z-50 rounded-t-[40px] shadow-2xl">
          <button onClick={() => setViewMode('dashboard')} className={`flex flex-col items-center gap-1 transition-all ${viewMode === 'dashboard' ? 'text-blue-900 scale-110' : 'text-slate-300'}`}><BarChart3 className="w-6 h-6"/><span className="text-[8px] font-black uppercase">Dashboard</span></button>
-         <div className="w-12 h-12 bg-[#003d79] rounded-2xl flex items-center justify-center text-[#FDB813] font-black shadow-lg">W{activeWeek}</div>
+         <button onClick={() => setViewMode('absensi')} className={`flex flex-col items-center gap-1 transition-all ${viewMode === 'absensi' ? 'text-blue-900 scale-110' : 'text-slate-300'}`}><FileText className="w-6 h-6"/><span className="text-[8px] font-black uppercase">Absensi</span></button>
          <button onClick={() => setViewMode('manage')} className={`flex flex-col items-center gap-1 transition-all ${viewMode === 'manage' ? 'text-blue-900 scale-110' : 'text-slate-300'}`}><Settings className="w-6 h-6"/><span className="text-[8px] font-black uppercase">Manage</span></button>
       </div>
     </div>
