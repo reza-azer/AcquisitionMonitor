@@ -29,7 +29,7 @@ export default function AutoSaveIndicator({
   if (isSaving) {
     return (
       <div className="flex items-center gap-2 text-blue-600 bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-100">
-        <GridLoader pattern="edge-cw" size="xs" color="#2563EB" mode="stagger" />
+        <GridLoader pattern="edge-cw" size="sm" color="#2563EB" mode="stagger" />
         <span className="text-xs font-bold">Saving...</span>
       </div>
     );
