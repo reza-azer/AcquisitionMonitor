@@ -7,7 +7,6 @@ import {
   Trash2,
   Save,
   X,
-  Loader2,
   AlertCircle,
   CheckCircle2,
   Package,
@@ -15,6 +14,7 @@ import {
   Target,
   Award,
 } from 'lucide-react';
+import GridLoader from '@/components/GridLoader';
 
 interface Product {
   id?: string;
@@ -506,7 +506,7 @@ export default function ProductManager({ products, onSaveProducts }: ProductMana
                 className="flex-1 py-3 bg-blue-600 text-white rounded-xl text-sm font-black hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-2 transition-colors"
               >
                 {isSaving ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <GridLoader pattern="breathing" size="sm" color="white" />
                 ) : (
                   <Save className="w-4 h-4" />
                 )}

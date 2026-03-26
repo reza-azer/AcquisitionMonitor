@@ -27,6 +27,7 @@ import { deleteImage } from '@/lib/storage';
 import AttendanceManager from '@/components/AttendanceManager';
 import AttendanceSummary from '@/components/AttendanceSummary';
 import ProductManager from '@/components/ProductManager';
+import GridLoader from '@/components/GridLoader';
 
 // --- KONFIGURASI POIN & TARGET ---
 type TieredProduct = { name: string; unit: string; type: 'tiered'; tiers: {limit: number; p: number}[] };
@@ -601,8 +602,8 @@ export default function App() {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <div className="text-center">
-          <Loader2 className="w-12 h-12 text-blue-600 animate-spin mx-auto mb-4" />
-          <p className="text-slate-500 font-bold">Loading data...</p>
+          <GridLoader pattern="plus-hollow" size="lg" color="blue" mode="pulse" />
+          <p className="text-slate-500 font-bold mt-4">Loading data...</p>
         </div>
       </div>
     );
@@ -982,7 +983,7 @@ export default function App() {
                     className={`flex-1 py-4 rounded-2xl font-black text-sm shadow-lg transition-all flex items-center justify-center gap-2 ${isMigrating ? 'bg-slate-400 cursor-not-allowed' : migrateWithData ? 'bg-green-600 hover:bg-green-700 text-white shadow-green-200' : 'bg-orange-600 hover:bg-orange-700 text-white shadow-orange-200'}`}
                   >
                     {isMigrating ? (
-                      <><Loader2 className="w-5 h-5 animate-spin" /> MEMINDAHKAN...</>
+                      <><GridLoader pattern="breathing" size="sm" color="white" /> MEMINDAHKAN...</>
                     ) : (
                       <><UserPlus className="w-5 h-5" /> {migrateWithData ? 'PINDAHKAN DENGAN DATA' : 'PINDAHKAN SAJA'}</>
                     )}
@@ -1331,7 +1332,7 @@ export default function App() {
                     disabled={isSaving}
                     className={`flex items-center gap-2 px-8 py-4 rounded-full font-black text-sm shadow-lg transition-all ${isSaving ? 'bg-slate-400 cursor-not-allowed' : 'bg-green-500 hover:bg-green-400 hover:scale-105 text-white shadow-green-900/20'}`}
                   >
-                    {isSaving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
+                    {isSaving ? <GridLoader pattern="breathing" size="sm" color="white" /> : <Save className="w-5 h-5" />}
                     {isSaving ? 'SAVING...' : 'SAVE'}
                   </button>
                 </div>

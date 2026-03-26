@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Calendar, CheckCircle2, Clock, FileText, XCircle, Save, Loader2, AlertCircle } from 'lucide-react';
+import { Calendar, CheckCircle2, Clock, FileText, XCircle, Save, AlertCircle } from 'lucide-react';
+import GridLoader from '@/components/GridLoader';
 
 interface Member {
   id: string;
@@ -204,7 +205,7 @@ export default function AttendanceManager({ members }: AttendanceManagerProps) {
             className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-black hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             {isSaving ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
+              <GridLoader pattern="breathing" size="sm" color="white" />
             ) : (
               <Save className="w-4 h-4" />
             )}
@@ -264,7 +265,7 @@ export default function AttendanceManager({ members }: AttendanceManagerProps) {
       {/* Attendance Table */}
       {isLoading ? (
         <div className="flex items-center justify-center py-12">
-          <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
+          <GridLoader pattern="wave-tb" size="lg" color="blue" mode="stagger" />
         </div>
       ) : (
         <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">

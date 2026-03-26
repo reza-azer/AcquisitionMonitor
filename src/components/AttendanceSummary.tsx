@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Calendar, CheckCircle2, Clock, FileText, XCircle, Loader2, AlertCircle, TrendingUp } from 'lucide-react';
+import { Calendar, CheckCircle2, Clock, FileText, XCircle, AlertCircle, TrendingUp } from 'lucide-react';
+import GridLoader from '@/components/GridLoader';
 
 interface MemberSummary {
   member_id: string;
@@ -201,7 +202,7 @@ export default function AttendanceSummary({ members }: AttendanceSummaryProps) {
       {/* Summary Table */}
       {isLoading ? (
         <div className="flex items-center justify-center py-12">
-          <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
+          <GridLoader pattern="ripple-out" size="lg" color="blue" mode="pulse" />
         </div>
       ) : (
         <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
