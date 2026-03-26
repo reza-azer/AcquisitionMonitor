@@ -609,11 +609,6 @@ export default function App() {
             <h1 className="text-lg font-bold tracking-tight">Acquisition Monitor</h1>
           </div>
           <div className="flex items-center gap-4">
-            <div className="hidden md:flex bg-blue-900/60 rounded-full p-1 border border-white/10">
-              {[1, 2, 3, 4].map(w => (
-                <button key={w} onClick={() => setActiveWeek(w)} className={`px-4 py-1.5 rounded-full text-[10px] font-black transition-all ${activeWeek === w ? 'bg-[#FDB813] text-blue-900 shadow-sm' : 'text-white/60 hover:text-white'}`}>WEEK {w}</button>
-              ))}
-            </div>
             <nav className="hidden md:flex bg-blue-900/40 p-1 rounded-xl gap-1 border border-white/5 overflow-x-auto">
               <button onClick={() => setViewMode('dashboard')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${viewMode === 'dashboard' ? 'bg-white text-blue-900 shadow-md' : 'text-white/70 hover:text-white'}`}><BarChart3 className="w-4 h-4" /> Dashboard</button>
               <button onClick={() => setViewMode('analytics')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${viewMode === 'analytics' ? 'bg-white text-blue-900 shadow-md' : 'text-white/70 hover:text-white'}`}><Activity className="w-4 h-4" /> Analytics</button>
@@ -640,11 +635,6 @@ export default function App() {
             >
               <FileSpreadsheet className="w-4 h-4" /> EXPORT EXCEL
             </button>
-            <div className="md:hidden flex bg-white p-2 rounded-2xl border border-slate-200 shadow-sm overflow-x-auto gap-2">
-              {[1, 2, 3, 4].map(w => (
-                <button key={w} onClick={() => setActiveWeek(w)} className={`flex-shrink-0 px-6 py-2 rounded-xl text-xs font-black transition-all ${activeWeek === w ? 'bg-[#003d79] text-white shadow-lg' : 'bg-slate-50 text-slate-400'}`}>W{w}</button>
-              ))}
-            </div>
           </div>
         </div>
 
@@ -989,6 +979,31 @@ export default function App() {
 
         {viewMode === 'dashboard' && (
           <div className="space-y-8 animate-in fade-in duration-500">
+            {/* Week Selector */}
+            <div className="bg-white rounded-[40px] p-8 border border-slate-200 shadow-sm">
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+                <div>
+                  <h2 className="text-2xl font-black text-slate-800 flex items-center gap-3">
+                    <Trophy className="w-7 h-7 text-blue-600" />
+                    Weekly Acquisition Dashboard
+                  </h2>
+                  <p className="text-sm font-bold text-slate-500 mt-1">Track your team's performance for Week {activeWeek}</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="hidden md:flex bg-blue-100 rounded-full p-1 border border-blue-200">
+                    {[1, 2, 3, 4].map(w => (
+                      <button key={w} onClick={() => setActiveWeek(w)} className={`px-5 py-2 rounded-full text-xs font-black transition-all ${activeWeek === w ? 'bg-[#003d79] text-white shadow-md' : 'text-blue-700 hover:bg-blue-200'}`}>Week {w}</button>
+                    ))}
+                  </div>
+                  <div className="md:hidden flex bg-blue-100 p-1 rounded-2xl border border-blue-200 overflow-x-auto">
+                    {[1, 2, 3, 4].map(w => (
+                      <button key={w} onClick={() => setActiveWeek(w)} className={`flex-shrink-0 px-5 py-2 rounded-xl text-xs font-black transition-all ${activeWeek === w ? 'bg-[#003d79] text-white shadow-md' : 'text-blue-700'}`}>W{w}</button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+
             {/* Chart Section */}
             <div className="bg-white rounded-[40px] p-8 border border-slate-200 shadow-sm relative overflow-hidden">
               <div className="relative z-10 mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -1507,12 +1522,13 @@ export default function App() {
         )}
       </main>
 
-      <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-slate-200 px-6 py-3 md:hidden flex justify-around items-center z-50 rounded-t-[40px] shadow-2xl overflow-x-auto">
+      <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-slate-200 px-4 py-3 md:hidden flex justify-around items-center z-50 rounded-t-[40px] shadow-2xl overflow-x-auto">
         <button onClick={() => setViewMode('dashboard')} className={`flex flex-col items-center gap-1 transition-all flex-shrink-0 ${viewMode === 'dashboard' ? 'text-blue-900 scale-110' : 'text-slate-300'}`}><BarChart3 className="w-5 h-5" /><span className="text-[7px] font-black uppercase">Home</span></button>
         <button onClick={() => setViewMode('analytics')} className={`flex flex-col items-center gap-1 transition-all flex-shrink-0 ${viewMode === 'analytics' ? 'text-blue-900 scale-110' : 'text-slate-300'}`}><Activity className="w-5 h-5" /><span className="text-[7px] font-black uppercase">Analytics</span></button>
         <button onClick={() => setViewMode('report')} className={`flex flex-col items-center gap-1 transition-all flex-shrink-0 ${viewMode === 'report' ? 'text-blue-900 scale-110' : 'text-slate-300'}`}><FileSpreadsheet className="w-5 h-5" /><span className="text-[7px] font-black uppercase">Report</span></button>
         <button onClick={() => setViewMode('absensi')} className={`flex flex-col items-center gap-1 transition-all flex-shrink-0 ${viewMode === 'absensi' ? 'text-blue-900 scale-110' : 'text-slate-300'}`}><FileText className="w-5 h-5" /><span className="text-[7px] font-black uppercase">Absensi</span></button>
         <button onClick={() => setViewMode('backup')} className={`flex flex-col items-center gap-1 transition-all flex-shrink-0 ${viewMode === 'backup' ? 'text-blue-900 scale-110' : 'text-slate-300'}`}><Database className="w-5 h-5" /><span className="text-[7px] font-black uppercase">Backup</span></button>
+        <button onClick={() => setViewMode('manage')} className={`flex flex-col items-center gap-1 transition-all flex-shrink-0 ${viewMode === 'manage' ? 'text-blue-900 scale-110' : 'text-slate-300'}`}><Settings className="w-5 h-5" /><span className="text-[7px] font-black uppercase">Manage</span></button>
       </div>
     </div>
   );
