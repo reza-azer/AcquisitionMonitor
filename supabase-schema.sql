@@ -76,25 +76,12 @@ CREATE TABLE products (
 CREATE INDEX idx_products_category ON products(category);
 CREATE INDEX idx_products_active ON products(is_active);
 
--- Backup History table (tracks backup/export operations)
-CREATE TABLE backup_history (
-  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-  backup_type TEXT NOT NULL CHECK (backup_type IN ('full', 'partial')),
-  tables_included TEXT[] NOT NULL,
-  record_count INTEGER NOT NULL,
-  file_size_kb INTEGER,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW())
-);
-
-CREATE INDEX idx_backup_history_created ON backup_history(created_at);
-
 -- Enable Row Level Security (RLS)
 ALTER TABLE teams ENABLE ROW LEVEL SECURITY;
 ALTER TABLE members ENABLE ROW LEVEL SECURITY;
 ALTER TABLE acquisitions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE attendances ENABLE ROW LEVEL SECURITY;
 ALTER TABLE products ENABLE ROW LEVEL SECURITY;
-ALTER TABLE backup_history ENABLE ROW LEVEL SECURITY;
 
 -- Create policies for public read/write (adjust for production with proper auth)
 -- For now, allowing full access for development purposes
@@ -104,7 +91,6 @@ CREATE POLICY "Allow full access to members" ON members FOR ALL USING (true) WIT
 CREATE POLICY "Allow full access to acquisitions" ON acquisitions FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow full access to attendances" ON attendances FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow full access to products" ON products FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Allow full access to backup_history" ON backup_history FOR ALL USING (true) WITH CHECK (true);
 
 -- ============================================
 -- SUPABASE STORAGE SETUP

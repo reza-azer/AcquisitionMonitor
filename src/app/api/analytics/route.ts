@@ -4,10 +4,13 @@ import { supabase } from '@/lib/supabase';
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const week = searchParams.get('week');
+    const reportType = searchParams.get('type') || 'weekly';
+    const startDate = searchParams.get('startDate');
+    const endDate = searchParams.get('endDate');
     const teamId = searchParams.get('teamId');
     const category = searchParams.get('category');
 
+    // Fetch base data
     const { data: teams, error: teamsError } = await supabase.from('teams').select('id, name, accent_color');
     if (teamsError) throw teamsError;
 
@@ -21,23 +24,39 @@ export async function GET(request: Request) {
     const { data: products, error: productsError } = await productsQuery;
     if (productsError) throw productsError;
 
+    // Determine week number for weekly report
+    const today = new Date();
+    let weekFilter: number | null = null;
+    if (reportType === 'weekly') {
+      weekFilter = Math.ceil(today.getDate() / 7);
+    }
+
+    // Fetch acquisitions with optional week filter
     let acquisitionsQuery = supabase.from('acquisitions').select('*');
-    if (week) acquisitionsQuery = acquisitionsQuery.eq('week', parseInt(week));
+    if (weekFilter) acquisitionsQuery = acquisitionsQuery.eq('week', weekFilter);
     const { data: acquisitions, error: acquisitionsError } = await acquisitionsQuery;
     if (acquisitionsError) throw acquisitionsError;
 
-    const today = new Date();
-    const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-    const { data: attendances, error: attendancesError } = await supabase
-      .from('attendances')
-      .select('member_id, date, status')
-      .gte('date', startOfMonth.toISOString().split('T')[0]);
+    // Fetch attendances based on report type
+    let attendanceQuery = supabase.from('attendances').select('member_id, date, status, late_minutes');
+    if (reportType === 'custom' && startDate && endDate) {
+      attendanceQuery = attendanceQuery.gte('date', startDate).lte('date', endDate);
+    } else if (reportType === 'monthly') {
+      const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+      attendanceQuery = attendanceQuery.gte('date', startOfMonth.toISOString().split('T')[0]);
+    } else {
+      // Weekly - get current month attendance
+      const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+      attendanceQuery = attendanceQuery.gte('date', startOfMonth.toISOString().split('T')[0]);
+    }
+    const { data: attendances, error: attendancesError } = await attendanceQuery;
     if (attendancesError) throw attendancesError;
 
     const memberIds = members.map(m => m.id);
     const filteredAcquisitions = acquisitions.filter(a => memberIds.includes(a.member_id));
 
-    const weeklyTrends: Record<number, { week: number; totalPoints: number; totalQuantity: number }> = [];
+    // Calculate weekly trends (all 4 weeks)
+    const weeklyTrends: { week: number; totalPoints: number; totalQuantity: number }[] = [];
     for (let w = 1; w <= 4; w++) {
       const weekAcq = acquisitions.filter(a => a.week === w);
       let totalPoints = 0;
@@ -47,7 +66,7 @@ export async function GET(request: Request) {
         if (!product) return;
         totalQuantity += a.quantity;
         if (product.is_tiered && product.tier_config) {
-          const tier = product.tier_config.find(t => a.quantity <= t.limit) || product.tier_config[product.tier_config.length - 1];
+          const tier = product.tier_config.find((t: { limit: number }) => a.quantity <= t.limit) || product.tier_config[product.tier_config.length - 1];
           totalPoints += a.quantity * tier.points;
         } else {
           totalPoints += a.quantity * (product.flat_points || 0);
@@ -56,10 +75,12 @@ export async function GET(request: Request) {
       weeklyTrends.push({ week: w, totalPoints, totalQuantity });
     }
 
+    // Calculate team performance
     const teamPerformance = teams.map(team => {
       const teamMembers = members.filter(m => m.team_id === team.id);
       const teamMemberIds = teamMembers.map(m => m.id);
       const teamAcquisitions = filteredAcquisitions.filter(a => teamMemberIds.includes(a.member_id));
+      const teamAttendances = attendances.filter(a => teamMemberIds.includes(a.member_id));
       let totalPoints = 0;
       let totalQuantity = 0;
       const productBreakdown: Record<string, number> = {};
@@ -69,23 +90,42 @@ export async function GET(request: Request) {
         totalQuantity += a.quantity;
         productBreakdown[a.product_key] = (productBreakdown[a.product_key] || 0) + a.quantity;
         if (product.is_tiered && product.tier_config) {
-          const tier = product.tier_config.find(t => a.quantity <= t.limit) || product.tier_config[product.tier_config.length - 1];
+          const tier = product.tier_config.find((t: { limit: number }) => a.quantity <= t.limit) || product.tier_config[product.tier_config.length - 1];
           totalPoints += a.quantity * tier.points;
         } else {
           totalPoints += a.quantity * (product.flat_points || 0);
         }
       });
-      const teamAttendance = attendances.filter(a => teamMemberIds.includes(a.member_id));
-      const presentCount = teamAttendance.filter(a => a.status === 'present' || a.status === 'late').length;
-      const attendanceRate = teamAttendance.length > 0 ? Math.round((presentCount / teamAttendance.length) * 100) : 0;
+      const totalDays = teamAttendances.length;
+      const presentDays = teamAttendances.filter(a => a.status === 'present' || a.status === 'late').length;
+      const lateDays = teamAttendances.filter(a => a.status === 'late').length;
+      const leaveDays = teamAttendances.filter(a => a.status === 'leave').length;
+      const alphaDays = teamAttendances.filter(a => a.status === 'alpha').length;
+      const attendanceRate = totalDays > 0 ? Math.round((presentDays / totalDays) * 100) : 0;
+      const totalTarget = products.reduce((sum, p) => sum + p.weekly_target, 0);
+      const targetAchievement = totalTarget > 0 ? Math.round((totalQuantity / totalTarget) * 100) : 0;
       return {
-        teamId: team.id, teamName: team.name, accentColor: team.accent_color, totalPoints, totalQuantity,
-        attendanceRate, productBreakdown, memberCount: teamMembers.length,
+        teamId: team.id,
+        teamName: team.name,
+        accentColor: team.accent_color,
+        memberCount: teamMembers.length,
+        totalPoints,
+        totalQuantity,
+        attendanceRate,
+        productBreakdown,
+        presentDays,
+        lateDays,
+        leaveDays,
+        alphaDays,
+        totalDays,
+        targetAchievement,
       };
     }).sort((a, b) => b.totalPoints - a.totalPoints);
 
+    // Calculate member rankings
     const memberRankings = members.map(member => {
       const memberAcquisitions = filteredAcquisitions.filter(a => a.member_id === member.id);
+      const memberAttendances = attendances.filter(a => a.member_id === member.id);
       let totalPoints = 0;
       let totalQuantity = 0;
       const productBreakdown: Record<string, number> = {};
@@ -95,58 +135,128 @@ export async function GET(request: Request) {
         totalQuantity += a.quantity;
         productBreakdown[a.product_key] = (productBreakdown[a.product_key] || 0) + a.quantity;
         if (product.is_tiered && product.tier_config) {
-          const tier = product.tier_config.find(t => a.quantity <= t.limit) || product.tier_config[product.tier_config.length - 1];
+          const tier = product.tier_config.find((t: { limit: number }) => a.quantity <= t.limit) || product.tier_config[product.tier_config.length - 1];
           totalPoints += a.quantity * tier.points;
         } else {
           totalPoints += a.quantity * (product.flat_points || 0);
         }
       });
-      const memberAttendance = attendances.filter(a => a.member_id === member.id);
-      const presentCount = memberAttendance.filter(a => a.status === 'present' || a.status === 'late').length;
-      const attendanceRate = memberAttendance.length > 0 ? Math.round((presentCount / memberAttendance.length) * 100) : 0;
+      const totalDays = memberAttendances.length;
+      const presentDays = memberAttendances.filter(a => a.status === 'present' || a.status === 'late').length;
+      const attendanceRate = totalDays > 0 ? Math.round((presentDays / totalDays) * 100) : 0;
+      const targetAchievements = products.map(p => {
+        const qty = productBreakdown[p.product_key] || 0;
+        return {
+          productKey: p.product_key,
+          productName: p.product_name,
+          quantity: qty,
+          target: p.weekly_target,
+          achievement: p.weekly_target > 0 ? Math.round((qty / p.weekly_target) * 100) : 0,
+        };
+      });
       return {
-        memberId: member.id, memberName: member.name, position: member.position, teamId: member.team_id,
-        teamName: teams.find(t => t.id === member.team_id)?.name || '', totalPoints, totalQuantity,
-        attendanceRate, productBreakdown,
+        memberId: member.id,
+        memberName: member.name,
+        position: member.position,
+        teamId: member.team_id,
+        teamName: teams.find(t => t.id === member.team_id)?.name || '',
+        totalPoints,
+        totalQuantity,
+        attendanceRate,
+        productBreakdown,
+        presentDays,
+        totalDays,
+        targetAchievements,
       };
     }).sort((a, b) => b.totalPoints - a.totalPoints);
 
+    // Calculate category/product performance
     const categoryPerformance = products.map(product => {
       const productAcquisitions = filteredAcquisitions.filter(a => a.product_key === product.product_key);
       const totalQuantity = productAcquisitions.reduce((sum, a) => sum + a.quantity, 0);
       let totalPoints = 0;
       productAcquisitions.forEach(a => {
         if (product.is_tiered && product.tier_config) {
-          const tier = product.tier_config.find(t => a.quantity <= t.limit) || product.tier_config[product.tier_config.length - 1];
+          const tier = product.tier_config.find((t: { limit: number }) => a.quantity <= t.limit) || product.tier_config[product.tier_config.length - 1];
           totalPoints += a.quantity * tier.points;
         } else {
           totalPoints += a.quantity * (product.flat_points || 0);
         }
       });
       return {
-        productKey: product.product_key, productName: product.product_name, category: product.category,
-        unit: product.unit, totalQuantity, totalPoints, weeklyTarget: product.weekly_target,
+        productKey: product.product_key,
+        productName: product.product_name,
+        category: product.category,
+        unit: product.unit,
+        totalQuantity,
+        totalPoints,
+        weeklyTarget: product.weekly_target,
         achievementRate: product.weekly_target > 0 ? Math.round((totalQuantity / product.weekly_target) * 100) : 0,
       };
     });
 
+    // Calculate attendance correlation data
+    const attendanceCorrelation = memberRankings
+      .filter(m => m.totalDays > 0)
+      .map(m => ({
+        memberId: m.memberId,
+        memberName: m.memberName,
+        attendanceRate: m.attendanceRate,
+        totalPoints: m.totalPoints,
+        totalQuantity: m.totalQuantity,
+      }))
+      .sort((a, b) => b.attendanceRate - a.attendanceRate);
+
+    // Calculate insights
     const insights = {
       bestPerformer: memberRankings[0] || null,
       topTeam: teamPerformance[0] || null,
       highestAttendance: memberRankings.filter(m => m.attendanceRate > 0).sort((a, b) => b.attendanceRate - a.attendanceRate)[0] || null,
       mostImproved: memberRankings.slice(0, 3),
-      consistencyLeader: memberRankings.filter(m => m.totalPoints > 0 && m.attendanceRate > 50)
-        .sort((a, b) => (a.attendanceRate + (a.totalPoints / 10)) - (b.attendanceRate + (b.totalPoints / 10))).pop() || null,
+      consistencyLeader:
+        memberRankings
+          .filter(m => m.totalPoints > 0 && m.attendanceRate > 50)
+          .sort((a, b) => (a.attendanceRate + a.totalPoints / 10) - (b.attendanceRate + b.totalPoints / 10))
+          .pop() || null,
+    };
+
+    // Calculate summary with attendance breakdown
+    const summary = {
+      totalMembers: members.length,
+      totalTeams: teams.length,
+      totalPoints: memberRankings.reduce((sum, m) => sum + m.totalPoints, 0),
+      totalQuantity: memberRankings.reduce((sum, m) => sum + m.totalQuantity, 0),
+      avgAttendanceRate:
+        memberRankings.length > 0
+          ? Math.round(memberRankings.reduce((sum, m) => sum + m.attendanceRate, 0) / memberRankings.length)
+          : 0,
+      totalPresentDays: memberRankings.reduce((sum, m) => sum + m.presentDays, 0),
+      totalLateDays: memberRankings.reduce(
+        (sum, m) => sum + attendances.filter(a => a.member_id === m.memberId && a.status === 'late').length,
+        0
+      ),
+      totalLeaveDays: memberRankings.reduce(
+        (sum, m) => sum + attendances.filter(a => a.member_id === m.memberId && a.status === 'leave').length,
+        0
+      ),
+      totalAlphaDays: memberRankings.reduce(
+        (sum, m) => sum + attendances.filter(a => a.member_id === m.memberId && a.status === 'alpha').length,
+        0
+      ),
     };
 
     return NextResponse.json({
-      weeklyTrends, teamPerformance, memberRankings, categoryPerformance, insights,
-      summary: {
-        totalMembers: members.length, totalTeams: teams.length,
-        totalPoints: memberRankings.reduce((sum, m) => sum + m.totalPoints, 0),
-        totalQuantity: memberRankings.reduce((sum, m) => sum + m.totalQuantity, 0),
-        avgAttendanceRate: memberRankings.length > 0 ? Math.round(memberRankings.reduce((sum, m) => sum + m.attendanceRate, 0) / memberRankings.length) : 0,
-      },
+      weeklyTrends,
+      teamPerformance,
+      memberRankings,
+      categoryPerformance,
+      insights,
+      summary,
+      attendanceCorrelation,
+      reportType,
+      startDate: reportType === 'custom' ? startDate : null,
+      endDate: reportType === 'custom' ? endDate : null,
+      generatedAt: new Date().toISOString(),
     });
   } catch (error) {
     console.error('Error fetching analytics:', error);

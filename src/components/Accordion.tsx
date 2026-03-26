@@ -5,15 +5,27 @@ import * as AccordionPrimitive from '@radix-ui/react-accordion';
 import { motion, useReducedMotion } from 'motion/react';
 import { ChevronDown } from 'lucide-react';
 
-interface AccordionProps {
-  type?: 'single' | 'multiple';
+interface AccordionSingleProps {
+  type?: 'single';
   collapsible?: boolean;
-  defaultValue?: string | string[];
-  value?: string | string[];
-  onValueChange?: (value: string | string[]) => void;
+  defaultValue?: string;
+  value?: string;
+  onValueChange?: (value: string) => void;
   className?: string;
   children?: React.ReactNode;
 }
+
+interface AccordionMultipleProps {
+  type: 'multiple';
+  collapsible?: boolean;
+  defaultValue?: string[];
+  value?: string[];
+  onValueChange?: (value: string[]) => void;
+  className?: string;
+  children?: React.ReactNode;
+}
+
+type AccordionProps = AccordionSingleProps | AccordionMultipleProps;
 
 interface AccordionItemProps {
   value: string;
@@ -32,15 +44,16 @@ interface AccordionContentProps {
 }
 
 const Accordion = React.forwardRef<HTMLDivElement, AccordionProps>(
-  ({ type = 'single', collapsible = true, defaultValue, value, onValueChange, className = '', children }, ref) => {
+  (props, ref) => {
+    const { type = 'single', collapsible = true, defaultValue, value, onValueChange, className = '', children } = props;
     return (
       <AccordionPrimitive.Root
         ref={ref}
-        type={type}
+        type={type as any}
         collapsible={collapsible}
-        defaultValue={defaultValue}
-        value={value}
-        onValueChange={onValueChange}
+        defaultValue={defaultValue as any}
+        value={value as any}
+        onValueChange={onValueChange as any}
         className={className}
       >
         {children}

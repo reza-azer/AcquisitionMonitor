@@ -16,7 +16,6 @@ import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/
 import AutoSaveIndicator from '@/components/AutoSaveIndicator';
 import { useAutoSave } from '@/hooks/useAutoSave';
 import DashboardAnalytics from '@/components/DashboardAnalytics';
-import PerformanceReport from '@/components/PerformanceReport';
 import DataBackup from '@/components/DataBackup';
 
 // --- KONFIGURASI POIN & TARGET ---
@@ -47,7 +46,7 @@ const MandiriLogo = () => (
   <img
     src="Bank_Mandiri_logo.png"
     alt="mandiri"
-    className="h-7 w-auto object-contain"
+    className="h-6 sm:h-7 w-auto object-contain"
   />
 );
 
@@ -602,38 +601,33 @@ export default function App() {
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-900 pb-20">
       <header className="bg-[#003d79] text-white sticky top-0 z-50 shadow-lg border-b-4 border-[#FDB813]">
-        <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-4">
+        <div className="max-w-[95%] lg:max-w-7xl mx-auto px-3 sm:px-4 md:px-6 h-14 sm:h-16 flex items-center justify-between">
+          <div className="flex items-center gap-2 sm:gap-4">
             <MandiriLogo />
-            <div className="h-8 w-px bg-white/20 mx-1 hidden sm:block"></div>
-            <h1 className="text-lg font-bold tracking-tight">Acquisition Monitor</h1>
+            <div className="h-6 sm:h-8 w-px bg-white/20 mx-1 hidden sm:block"></div>
+            <h1 className="text-base sm:text-lg font-bold tracking-tight">Acquisition Monitor</h1>
           </div>
-          <div className="flex items-center gap-4">
-            <nav className="hidden md:flex bg-blue-900/40 p-1 rounded-xl gap-1 border border-white/5 overflow-x-auto">
-              <button onClick={() => setViewMode('dashboard')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${viewMode === 'dashboard' ? 'bg-white text-blue-900 shadow-md' : 'text-white/70 hover:text-white'}`}><BarChart3 className="w-4 h-4" /> Dashboard</button>
-              <button onClick={() => setViewMode('analytics')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${viewMode === 'analytics' ? 'bg-white text-blue-900 shadow-md' : 'text-white/70 hover:text-white'}`}><Activity className="w-4 h-4" /> Analytics</button>
-              <button onClick={() => setViewMode('report')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${viewMode === 'report' ? 'bg-white text-blue-900 shadow-md' : 'text-white/70 hover:text-white'}`}><FileSpreadsheet className="w-4 h-4" /> Report</button>
-              <button onClick={() => setViewMode('absensi')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${viewMode === 'absensi' ? 'bg-white text-blue-900 shadow-md' : 'text-white/70 hover:text-white'}`}><FileText className="w-4 h-4" /> Absensi</button>
-              <button onClick={() => setViewMode('backup')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${viewMode === 'backup' ? 'bg-white text-blue-900 shadow-md' : 'text-white/70 hover:text-white'}`}><Database className="w-4 h-4" /> Backup</button>
-              <button onClick={() => setViewMode('manage')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${viewMode === 'manage' ? 'bg-white text-blue-900 shadow-md' : 'text-white/70 hover:text-white'}`}><Settings className="w-4 h-4" /> Manage</button>
+          <div className="flex items-center gap-2 sm:gap-4">
+            <nav className="hidden md:flex bg-blue-900/40 p-0.5 sm:p-1 rounded-lg sm:rounded-xl gap-0.5 sm:gap-1 border border-white/5 overflow-x-auto max-w-[50vw]">
+              <button onClick={() => setViewMode('dashboard')} className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-1.5 sm:py-2 rounded-md sm:rounded-lg text-[10px] sm:text-xs font-bold transition-all whitespace-nowrap ${viewMode === 'dashboard' ? 'bg-white text-blue-900 shadow-md' : 'text-white/70 hover:text-white'}`}><BarChart3 className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> Dashboard</button>
+              <button onClick={() => setViewMode('analytics')} className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-1.5 sm:py-2 rounded-md sm:rounded-lg text-[10px] sm:text-xs font-bold transition-all whitespace-nowrap ${viewMode === 'analytics' ? 'bg-white text-blue-900 shadow-md' : 'text-white/70 hover:text-white'}`}><Activity className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> Analytics</button>
+              <button onClick={() => setViewMode('absensi')} className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-1.5 sm:py-2 rounded-md sm:rounded-lg text-[10px] sm:text-xs font-bold transition-all whitespace-nowrap ${viewMode === 'absensi' ? 'bg-white text-blue-900 shadow-md' : 'text-white/70 hover:text-white'}`}><FileText className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> Absensi</button>
+              <button onClick={() => setViewMode('backup')} className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-1.5 sm:py-2 rounded-md sm:rounded-lg text-[10px] sm:text-xs font-bold transition-all whitespace-nowrap ${viewMode === 'backup' ? 'bg-white text-blue-900 shadow-md' : 'text-white/70 hover:text-white'}`}><Database className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> Backup</button>
+              <button onClick={() => setViewMode('manage')} className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-1.5 sm:py-2 rounded-md sm:rounded-lg text-[10px] sm:text-xs font-bold transition-all whitespace-nowrap ${viewMode === 'manage' ? 'bg-white text-blue-900 shadow-md' : 'text-white/70 hover:text-white'}`}><Settings className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> Manage</button>
             </nav>
           </div>
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 py-8">
-        <div className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            {/* <h2 className="text-3xl font-black text-slate-800 tracking-tight flex items-center gap-3"><Calendar className="text-blue-600 w-8 h-8" /> Rekapitulasi Minggu ke-{activeWeek}</h2> */}
-            {/* <p className="text-slate-400 font-bold uppercase text-[10px] tracking-[0.2em] ml-11">Data Terkini Bulan Maret 2026</p> */}
-          </div>
-          <div className="flex items-center gap-3">
+      <main className="max-w-[95%] lg:max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-4 sm:py-6 md:py-8">
+        <div className="mb-4 sm:mb-6 md:mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
+          <div className="flex items-center gap-2">
             <button
               onClick={() => setShowExportModal(true)}
               disabled={!isExcelReady}
-              className={`flex items-center gap-2 px-5 py-2.5 rounded-2xl text-xs font-black shadow-lg transition-all active:scale-95 ${isExcelReady ? 'bg-green-600 hover:bg-green-700 text-white shadow-green-200' : 'bg-slate-300 text-slate-500 cursor-not-allowed'}`}
+              className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl sm:rounded-2xl text-[10px] sm:text-xs font-black shadow-lg transition-all active:scale-95 ${isExcelReady ? 'bg-green-600 hover:bg-green-700 text-white shadow-green-200' : 'bg-slate-300 text-slate-500 cursor-not-allowed'}`}
             >
-              <FileSpreadsheet className="w-4 h-4" /> EXPORT EXCEL
+              <FileSpreadsheet className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> <span className="hidden xs:inline">EXPORT EXCEL</span><span className="xs:hidden">EXPORT</span>
             </button>
           </div>
         </div>
@@ -978,26 +972,27 @@ export default function App() {
         )}
 
         {viewMode === 'dashboard' && (
-          <div className="space-y-8 animate-in fade-in duration-500">
+          <div className="space-y-4 sm:space-y-6 md:space-y-8 animate-in fade-in duration-500">
             {/* Week Selector */}
-            <div className="bg-white rounded-[40px] p-8 border border-slate-200 shadow-sm">
-              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+            <div className="bg-white rounded-[20px] sm:rounded-[30px] md:rounded-[40px] p-4 sm:p-6 md:p-8 border border-slate-200 shadow-sm">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 mb-4 sm:mb-6">
                 <div>
-                  <h2 className="text-2xl font-black text-slate-800 flex items-center gap-3">
-                    <Trophy className="w-7 h-7 text-blue-600" />
-                    Weekly Acquisition Dashboard
+                  <h2 className="text-xl sm:text-2xl font-black text-slate-800 flex items-center gap-2 sm:gap-3">
+                    <Trophy className="w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7 text-blue-600" />
+                    <span className="hidden xs:inline">Weekly Acquisition Dashboard</span>
+                    <span className="xs:hidden">Dashboard</span>
                   </h2>
-                  <p className="text-sm font-bold text-slate-500 mt-1">Track your team's performance for Week {activeWeek}</p>
+                  <p className="text-xs sm:text-sm font-bold text-slate-500 mt-1">Track your team's performance for Week {activeWeek}</p>
                 </div>
-                <div className="flex items-center gap-3">
-                  <div className="hidden md:flex bg-blue-100 rounded-full p-1 border border-blue-200">
+                <div className="flex items-center gap-2 sm:gap-3">
+                  <div className="hidden md:flex bg-blue-100 rounded-full p-0.5 sm:p-1 border border-blue-200">
                     {[1, 2, 3, 4].map(w => (
-                      <button key={w} onClick={() => setActiveWeek(w)} className={`px-5 py-2 rounded-full text-xs font-black transition-all ${activeWeek === w ? 'bg-[#003d79] text-white shadow-md' : 'text-blue-700 hover:bg-blue-200'}`}>Week {w}</button>
+                      <button key={w} onClick={() => setActiveWeek(w)} className={`px-3 sm:px-5 py-1.5 sm:py-2 rounded-full text-[10px] sm:text-xs font-black transition-all ${activeWeek === w ? 'bg-[#003d79] text-white shadow-md' : 'text-blue-700 hover:bg-blue-200'}`}>Week {w}</button>
                     ))}
                   </div>
-                  <div className="md:hidden flex bg-blue-100 p-1 rounded-2xl border border-blue-200 overflow-x-auto">
+                  <div className="md:hidden flex bg-blue-100 p-0.5 sm:p-1 rounded-xl border border-blue-200 overflow-x-auto">
                     {[1, 2, 3, 4].map(w => (
-                      <button key={w} onClick={() => setActiveWeek(w)} className={`flex-shrink-0 px-5 py-2 rounded-xl text-xs font-black transition-all ${activeWeek === w ? 'bg-[#003d79] text-white shadow-md' : 'text-blue-700'}`}>W{w}</button>
+                      <button key={w} onClick={() => setActiveWeek(w)} className={`flex-shrink-0 px-4 sm:px-5 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-black transition-all ${activeWeek === w ? 'bg-[#003d79] text-white shadow-md' : 'text-blue-700'}`}>W{w}</button>
                     ))}
                   </div>
                 </div>
@@ -1005,34 +1000,44 @@ export default function App() {
             </div>
 
             {/* Chart Section */}
-            <div className="bg-white rounded-[40px] p-8 border border-slate-200 shadow-sm relative overflow-hidden">
-              <div className="relative z-10 mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div className="bg-white rounded-[20px] sm:rounded-[30px] md:rounded-[40px] p-4 sm:p-6 md:p-8 border border-slate-200 shadow-sm relative overflow-hidden">
+              <div className="relative z-10 mb-6 sm:mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4">
                 <div>
-                  <h2 className="font-black text-xl flex items-center gap-3 text-slate-800 mb-1"><div className="w-10 h-10 rounded-2xl bg-indigo-100 flex items-center justify-center"><LineChartIcon className="text-indigo-600 w-6 h-6" /></div>Tren Performa Tim</h2>
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-14">Akumulasi skor antar tim setiap minggu</p>
+                  <h2 className="font-black text-base sm:text-xl flex items-center gap-2 sm:gap-3 text-slate-800 mb-1">
+                    <div className="w-8 h-8 sm:w-9 sm:h-9 md:w-10 md:h-10 rounded-xl sm:rounded-2xl bg-indigo-100 flex items-center justify-center">
+                      <LineChartIcon className="text-indigo-600 w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6" />
+                    </div>
+                    <span className="hidden sm:inline">Tren Performa Tim</span>
+                    <span className="sm:hidden">Tren Performa</span>
+                  </h2>
+                  <p className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-12 sm:ml-14">Akumulasi skor antar tim setiap minggu</p>
                 </div>
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => setShowChartControls(!showChartControls)}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all ${showChartControls ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                    className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-black transition-all ${showChartControls ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
                   >
-                    <Settings className="w-4 h-4" /> {showChartControls ? 'TUTUP' : 'CUSTOMIZE'}
+                    <Settings className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> <span className="hidden xs:inline">{showChartControls ? 'TUTUP' : 'CUSTOMIZE'}</span><span className="xs:hidden">{showChartControls ? 'CLOSE' : 'SET'}</span>
                   </button>
-                  <div className="flex items-center gap-2 bg-slate-50 p-2 rounded-xl border border-slate-100"><span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse"></span><span className="text-[10px] font-black text-slate-500 uppercase tracking-wider italic">Real-time Analysis</span></div>
+                  <div className="flex items-center gap-1.5 sm:gap-2 bg-slate-50 p-1.5 sm:p-2 rounded-lg sm:rounded-xl border border-slate-100">
+                    <span className="w-1.5 sm:w-2 h-1.5 sm:h-2 rounded-full bg-blue-600 animate-pulse"></span>
+                    <span className="text-[8px] sm:text-[10px] font-black text-slate-500 uppercase tracking-wider italic hidden xs:inline">Real-time Analysis</span>
+                    <span className="text-[8px] sm:text-[10px] font-black text-slate-500 uppercase tracking-wider italic xs:hidden">Live</span>
+                  </div>
                 </div>
               </div>
 
               {/* Chart Controls Panel */}
               {showChartControls && (
-                <div className="mb-8 p-6 bg-gradient-to-br from-slate-50 to-blue-50 rounded-3xl border border-slate-200">
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+                <div className="mb-6 sm:mb-8 p-4 sm:p-6 bg-gradient-to-br from-slate-50 to-blue-50 rounded-2xl sm:rounded-3xl border border-slate-200">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6 mb-4 sm:mb-6">
                     {/* Filter by Team */}
                     <div>
-                      <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2">Filter Tim</label>
+                      <label className="text-[9px] sm:text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1.5 sm:mb-2">Filter Tim</label>
                       <select
                         value={chartFilters.filterByTeam}
                         onChange={(e) => setChartFilters({ ...chartFilters, filterByTeam: e.target.value, filterByMember: 'all' })}
-                        className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm font-bold outline-none focus:ring-2 focus:ring-blue-200"
+                        className="w-full bg-white border border-slate-200 rounded-lg sm:rounded-xl px-2.5 sm:px-3 py-2 sm:py-2 text-xs sm:text-sm font-bold outline-none focus:ring-2 focus:ring-blue-200"
                       >
                         <option value="all">Semua Tim</option>
                         {teams.map(t => (
@@ -1043,11 +1048,11 @@ export default function App() {
 
                     {/* Filter by Member */}
                     <div>
-                      <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2">Filter Anggota</label>
+                      <label className="text-[9px] sm:text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1.5 sm:mb-2">Filter Anggota</label>
                       <select
                         value={chartFilters.filterByMember}
                         onChange={(e) => setChartFilters({ ...chartFilters, filterByMember: e.target.value })}
-                        className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm font-bold outline-none focus:ring-2 focus:ring-blue-200"
+                        className="w-full bg-white border border-slate-200 rounded-lg sm:rounded-xl px-2.5 sm:px-3 py-2 sm:py-2 text-xs sm:text-sm font-bold outline-none focus:ring-2 focus:ring-blue-200"
                         disabled={chartFilters.filterByTeam === 'all'}
                       >
                         <option value="all">Semua Anggota</option>
@@ -1061,14 +1066,14 @@ export default function App() {
 
                     {/* Metric Type */}
                     <div>
-                      <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2">Metrik</label>
+                      <label className="text-[9px] sm:text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1.5 sm:mb-2">Metrik</label>
                       <select
                         value={chartFilters.metric}
                         onChange={(e) => setChartFilters({ ...chartFilters, metric: e.target.value as 'score' | 'quantity' })}
-                        className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm font-bold outline-none focus:ring-2 focus:ring-blue-200"
+                        className="w-full bg-white border border-slate-200 rounded-lg sm:rounded-xl px-2.5 sm:px-3 py-2 sm:py-2 text-xs sm:text-sm font-bold outline-none focus:ring-2 focus:ring-blue-200"
                       >
                         <option value="score">Skor (Poin)</option>
-                        <option value="quantity">Jumlah Akuisisi</option>
+                        <option value="quantity">Jumlah</option>
                       </select>
                     </div>
 
@@ -1081,17 +1086,17 @@ export default function App() {
                           metric: 'score',
                           selectedProducts: products.map(p => p.product_key)
                         })}
-                        className="w-full bg-slate-200 hover:bg-slate-300 text-slate-700 h-[42px] rounded-xl font-black text-xs transition-all"
+                        className="w-full bg-slate-200 hover:bg-slate-300 text-slate-700 h-[38px] sm:h-[42px] rounded-lg sm:rounded-xl font-black text-[10px] sm:text-xs transition-all"
                       >
-                        RESET FILTER
+                        RESET
                       </button>
                     </div>
                   </div>
 
                   {/* Product Filter */}
-                  <div className="mb-6">
-                    <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-3">Filter Produk</label>
-                    <div className="flex flex-wrap gap-2">
+                  <div className="mb-4 sm:mb-6">
+                    <label className="text-[9px] sm:text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2 sm:mb-3">Filter Produk</label>
+                    <div className="flex flex-wrap gap-1.5 sm:gap-2">
                       {products.filter(p => p.is_active).map(p => {
                         const isSelected = chartFilters.selectedProducts.includes(p.product_key);
                         return (
@@ -1105,7 +1110,7 @@ export default function App() {
                                 setChartFilters({ ...chartFilters, selectedProducts: newProducts });
                               }
                             }}
-                            className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase transition-all ${isSelected ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-500 hover:bg-slate-300'}`}
+                            className={`px-2 sm:px-3 py-1 sm:py-1.5 rounded-md sm:rounded-lg text-[8px] sm:text-[9px] md:text-[10px] font-black uppercase transition-all ${isSelected ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-500 hover:bg-slate-300'}`}
                           >
                             {p.product_key}
                           </button>
@@ -1116,16 +1121,16 @@ export default function App() {
 
                   {/* Team Colors */}
                   <div>
-                    <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-3">Warna Tim</label>
-                    <div className="flex flex-wrap gap-4">
+                    <label className="text-[9px] sm:text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2 sm:mb-3">Warna Tim</label>
+                    <div className="flex flex-wrap gap-2 sm:gap-3 md:gap-4">
                       {teams.map(t => (
-                        <div key={t.id} className="flex items-center gap-2 bg-white px-3 py-2 rounded-xl border border-slate-200 shadow-sm">
-                          <span className="text-[9px] font-bold text-slate-600 truncate max-w-[120px]">{t.name}</span>
+                        <div key={t.id} className="flex items-center gap-1.5 sm:gap-2 bg-white px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg sm:rounded-xl border border-slate-200 shadow-sm">
+                          <span className="text-[9px] sm:text-[10px] font-bold text-slate-600 truncate max-w-[80px] sm:max-w-[120px]">{t.name}</span>
                           <input
                             type="color"
                             value={teamColors[t.id] || t.accent_color}
                             onChange={(e) => setTeamColors({ ...teamColors, [t.id]: e.target.value })}
-                            className="w-8 h-8 rounded-lg border border-slate-200 cursor-pointer"
+                            className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 rounded-md sm:rounded-lg border border-slate-200 cursor-pointer"
                           />
                         </div>
                       ))}
@@ -1134,7 +1139,7 @@ export default function App() {
                 </div>
               )}
 
-              <div className="h-[350px] w-full">
+              <div className="h-[250px] sm:h-[300px] md:h-[350px] w-full">
                 <RechartsContainer width="100%" height="100%">
                   <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
@@ -1498,12 +1503,6 @@ export default function App() {
           </div>
         )}
 
-        {viewMode === 'report' && (
-          <div className="space-y-8 animate-in fade-in duration-500">
-            <PerformanceReport />
-          </div>
-        )}
-
         {viewMode === 'backup' && (
           <div className="space-y-8 animate-in fade-in duration-500">
             <DataBackup />
@@ -1522,13 +1521,12 @@ export default function App() {
         )}
       </main>
 
-      <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-slate-200 px-4 py-3 md:hidden flex justify-around items-center z-50 rounded-t-[40px] shadow-2xl overflow-x-auto">
-        <button onClick={() => setViewMode('dashboard')} className={`flex flex-col items-center gap-1 transition-all flex-shrink-0 ${viewMode === 'dashboard' ? 'text-blue-900 scale-110' : 'text-slate-300'}`}><BarChart3 className="w-5 h-5" /><span className="text-[7px] font-black uppercase">Home</span></button>
-        <button onClick={() => setViewMode('analytics')} className={`flex flex-col items-center gap-1 transition-all flex-shrink-0 ${viewMode === 'analytics' ? 'text-blue-900 scale-110' : 'text-slate-300'}`}><Activity className="w-5 h-5" /><span className="text-[7px] font-black uppercase">Analytics</span></button>
-        <button onClick={() => setViewMode('report')} className={`flex flex-col items-center gap-1 transition-all flex-shrink-0 ${viewMode === 'report' ? 'text-blue-900 scale-110' : 'text-slate-300'}`}><FileSpreadsheet className="w-5 h-5" /><span className="text-[7px] font-black uppercase">Report</span></button>
-        <button onClick={() => setViewMode('absensi')} className={`flex flex-col items-center gap-1 transition-all flex-shrink-0 ${viewMode === 'absensi' ? 'text-blue-900 scale-110' : 'text-slate-300'}`}><FileText className="w-5 h-5" /><span className="text-[7px] font-black uppercase">Absensi</span></button>
-        <button onClick={() => setViewMode('backup')} className={`flex flex-col items-center gap-1 transition-all flex-shrink-0 ${viewMode === 'backup' ? 'text-blue-900 scale-110' : 'text-slate-300'}`}><Database className="w-5 h-5" /><span className="text-[7px] font-black uppercase">Backup</span></button>
-        <button onClick={() => setViewMode('manage')} className={`flex flex-col items-center gap-1 transition-all flex-shrink-0 ${viewMode === 'manage' ? 'text-blue-900 scale-110' : 'text-slate-300'}`}><Settings className="w-5 h-5" /><span className="text-[7px] font-black uppercase">Manage</span></button>
+      <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-slate-200 px-2 sm:px-4 py-2 sm:py-3 md:hidden flex justify-around items-center z-50 rounded-t-[20px] sm:rounded-t-[30px] md:rounded-t-[40px] shadow-2xl overflow-x-auto">
+        <button onClick={() => setViewMode('dashboard')} className={`flex flex-col items-center gap-0.5 sm:gap-1 transition-all flex-shrink-0 px-2 py-1 ${viewMode === 'dashboard' ? 'text-blue-900 scale-110' : 'text-slate-300'}`}><BarChart3 className="w-5 h-5 sm:w-6 sm:h-6" /><span className="text-[6px] sm:text-[7px] font-black uppercase">Home</span></button>
+        <button onClick={() => setViewMode('analytics')} className={`flex flex-col items-center gap-0.5 sm:gap-1 transition-all flex-shrink-0 px-2 py-1 ${viewMode === 'analytics' ? 'text-blue-900 scale-110' : 'text-slate-300'}`}><Activity className="w-5 h-5 sm:w-6 sm:h-6" /><span className="text-[6px] sm:text-[7px] font-black uppercase">Analytics</span></button>
+        <button onClick={() => setViewMode('absensi')} className={`flex flex-col items-center gap-0.5 sm:gap-1 transition-all flex-shrink-0 px-2 py-1 ${viewMode === 'absensi' ? 'text-blue-900 scale-110' : 'text-slate-300'}`}><FileText className="w-5 h-5 sm:w-6 sm:h-6" /><span className="text-[6px] sm:text-[7px] font-black uppercase">Absensi</span></button>
+        <button onClick={() => setViewMode('backup')} className={`flex flex-col items-center gap-0.5 sm:gap-1 transition-all flex-shrink-0 px-2 py-1 ${viewMode === 'backup' ? 'text-blue-900 scale-110' : 'text-slate-300'}`}><Database className="w-5 h-5 sm:w-6 sm:h-6" /><span className="text-[6px] sm:text-[7px] font-black uppercase">Backup</span></button>
+        <button onClick={() => setViewMode('manage')} className={`flex flex-col items-center gap-0.5 sm:gap-1 transition-all flex-shrink-0 px-2 py-1 ${viewMode === 'manage' ? 'text-blue-900 scale-110' : 'text-slate-300'}`}><Settings className="w-5 h-5 sm:w-6 sm:h-6" /><span className="text-[6px] sm:text-[7px] font-black uppercase">Manage</span></button>
       </div>
     </div>
   );

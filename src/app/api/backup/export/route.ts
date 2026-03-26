@@ -23,7 +23,7 @@ export async function GET(request: Request) {
     }
 
     const stats = {
-      totalRecords: Object.values(backup.tables).reduce((sum: number, records) => sum + records.length, 0),
+      totalRecords: Object.values(backup.tables).reduce((sum: number, records) => sum + (records as any[]).length, 0),
       tablesCount: tables.length,
       tablesBreakdown: Object.fromEntries(tables.map(table => [table, backup.tables[table]?.length || 0])),
     };
