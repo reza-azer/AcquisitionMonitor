@@ -26,6 +26,7 @@ import ImageUploader from '@/components/ImageUploader';
 import { deleteImage } from '@/lib/storage';
 import AttendanceManager from '@/components/AttendanceManager';
 import AttendanceSummary from '@/components/AttendanceSummary';
+import ProductManager from '@/components/ProductManager';
 
 // --- KONFIGURASI POIN & TARGET ---
 type TieredProduct = { name: string; unit: string; type: 'tiered'; tiers: {limit: number; p: number}[] };
@@ -85,6 +86,19 @@ interface Acquisition {
   quantity: number;
 }
 
+interface Product {
+  id?: string;
+  product_key: string;
+  product_name: string;
+  category: 'FUNDING' | 'TRANSACTION' | 'CREDIT';
+  unit: string;
+  weekly_target: number;
+  is_tiered: boolean;
+  tier_config?: { limit: number; points: number }[];
+  flat_points?: number;
+  is_active: boolean;
+}
+
 export default function App() {
   const [viewMode, setViewMode] = useState('dashboard');
   const [activeWeek, setActiveWeek] = useState(1);
@@ -96,6 +110,7 @@ export default function App() {
   // Data state
   const [teams, setTeams] = useState<Team[]>([]);
   const [acquisitions, setAcquisitions] = useState<Acquisition[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
 
   // Form states
   const [newTeam, setNewTeam] = useState({ name: '', image_url: '' });
@@ -113,7 +128,7 @@ export default function App() {
     filterByTeam: 'all' as string,
     filterByMember: 'all' as string,
     metric: 'score' as 'score' | 'quantity',
-    selectedProducts: Object.keys(PRODUCT_POINTS) as string[]
+    selectedProducts: [] as string[]
   });
   const [teamColors, setTeamColors] = useState<Record<string, string>>({});
 
@@ -180,15 +195,17 @@ export default function App() {
   const fetchData = useCallback(async () => {
     try {
       setIsLoading(true);
-      const [teamsRes, acquisitionsRes] = await Promise.all([
+      const [teamsRes, acquisitionsRes, productsRes] = await Promise.all([
         fetch('/api/teams'),
-        fetch('/api/acquisitions')
+        fetch('/api/acquisitions'),
+        fetch('/api/products?activeOnly=true')
       ]);
 
-      if (!teamsRes.ok || !acquisitionsRes.ok) throw new Error('Failed to fetch data');
+      if (!teamsRes.ok || !acquisitionsRes.ok || !productsRes.ok) throw new Error('Failed to fetch data');
 
       const teamsData = await teamsRes.json();
       const acquisitionsData = await acquisitionsRes.json();
+      const productsData = await productsRes.json();
 
       // Fetch members for each team
       const membersRes = await fetch('/api/members');
@@ -214,6 +231,7 @@ export default function App() {
 
       setTeams(teamsWithMembers);
       setAcquisitions(acquisitionsData);
+      setProducts(productsData.data || []);
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
@@ -225,22 +243,24 @@ export default function App() {
     fetchData();
   }, [fetchData]);
 
-  const getMemberPoints = (acquisitions: Record<string, number> | undefined) => {
+  const getMemberPoints = useCallback((acquisitions: Record<string, number> | undefined) => {
     let total = 0;
-    if (!acquisitions) return 0;
+    if (!acquisitions || products.length === 0) return 0;
+    
     Object.keys(acquisitions).forEach(key => {
       const qty = acquisitions[key];
-      const product = PRODUCT_POINTS[key];
-      if (!product) return;
-      if ('type' in product && product.type === 'tiered') {
-        const tier = product.tiers.find(t => qty <= t.limit) || product.tiers[product.tiers.length - 1];
-        total += qty * tier.p;
+      const product = products.find(p => p.product_key === key);
+      if (!product || !product.is_active) return;
+      
+      if (product.is_tiered && product.tier_config) {
+        const tier = product.tier_config.find(t => qty <= t.limit) || product.tier_config[product.tier_config.length - 1];
+        total += qty * tier.points;
       } else {
-        total += qty * (product as SimpleProduct).p;
+        total += qty * (product.flat_points || 0);
       }
     });
     return total;
-  };
+  }, [products]);
 
   const teamStats = useMemo(() => {
     return teams.map(team => {
@@ -279,13 +299,13 @@ export default function App() {
             Object.keys(memberAcq).forEach(productKey => {
               if (!chartFilters.selectedProducts.includes(productKey)) return;
               const qty = memberAcq[productKey];
-              const product = PRODUCT_POINTS[productKey];
+              const product = products.find(p => p.product_key === productKey);
               if (!product) return;
-              if ('type' in product && product.type === 'tiered') {
-                const tier = product.tiers.find(tier => qty <= tier.limit) || product.tiers[product.tiers.length - 1];
-                metricValue += qty * tier.p;
+              if (product.is_tiered && product.tier_config) {
+                const tier = product.tier_config.find(tier => qty <= tier.limit) || product.tier_config[product.tier_config.length - 1];
+                metricValue += qty * tier.points;
               } else {
-                metricValue += qty * (product as SimpleProduct).p;
+                metricValue += qty * (product.flat_points || 0);
               }
             });
           } else {
@@ -531,7 +551,7 @@ export default function App() {
       return;
     }
 
-    const products = Object.keys(PRODUCT_POINTS);
+    const activeProducts = products.filter(p => p.is_active);
     let finalData: Record<string, string | number>[] = [];
 
     selectedWeeks.sort().forEach(weekNum => {
@@ -545,8 +565,8 @@ export default function App() {
             "Jabatan": m.position,
             "Total Poin": getMemberPoints(acq)
           };
-          products.forEach(p => {
-            row[p] = acq[p] || 0;
+          activeProducts.forEach(p => {
+            row[p.product_key] = acq[p.product_key] || 0;
           });
           finalData.push(row);
         });
@@ -784,14 +804,14 @@ export default function App() {
                             {Object.entries(weekAcq)
                               .filter(([_, qty]) => qty > 0)
                               .map(([product, qty]) => {
-                                const productConfig = PRODUCT_POINTS[product];
+                                const productConfig = products.find(p => p.product_key === product);
                                 let pointsEarned = 0;
                                 if (productConfig) {
-                                  if ('type' in productConfig && productConfig.type === 'tiered') {
-                                    const tier = productConfig.tiers.find(t => qty <= t.limit) || productConfig.tiers[productConfig.tiers.length - 1];
-                                    pointsEarned = qty * tier.p;
+                                  if (productConfig.is_tiered && productConfig.tier_config) {
+                                    const tier = productConfig.tier_config.find(t => qty <= t.limit) || productConfig.tier_config[productConfig.tier_config.length - 1];
+                                    pointsEarned = qty * tier.points;
                                   } else {
-                                    pointsEarned = qty * (productConfig as SimpleProduct).p;
+                                    pointsEarned = qty * (productConfig.flat_points || 0);
                                   }
                                 }
                                 return (
@@ -1051,7 +1071,7 @@ export default function App() {
                            filterByTeam: 'all',
                            filterByMember: 'all',
                            metric: 'score',
-                           selectedProducts: Object.keys(PRODUCT_POINTS)
+                           selectedProducts: products.map(p => p.product_key)
                          })}
                          className="w-full bg-slate-200 hover:bg-slate-300 text-slate-700 h-[42px] rounded-xl font-black text-xs transition-all"
                        >
@@ -1064,22 +1084,22 @@ export default function App() {
                    <div className="mb-6">
                      <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-3">Filter Produk</label>
                      <div className="flex flex-wrap gap-2">
-                       {Object.keys(PRODUCT_POINTS).map(p => {
-                         const isSelected = chartFilters.selectedProducts.includes(p);
+                       {products.filter(p => p.is_active).map(p => {
+                         const isSelected = chartFilters.selectedProducts.includes(p.product_key);
                          return (
                            <button
-                             key={p}
+                             key={p.product_key}
                              onClick={() => {
                                const newProducts = isSelected
-                                 ? chartFilters.selectedProducts.filter(prod => prod !== p)
-                                 : [...chartFilters.selectedProducts, p];
+                                 ? chartFilters.selectedProducts.filter(prod => prod !== p.product_key)
+                                 : [...chartFilters.selectedProducts, p.product_key];
                                if (newProducts.length > 0) {
                                  setChartFilters({ ...chartFilters, selectedProducts: newProducts });
                                }
                              }}
                              className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase transition-all ${isSelected ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-500 hover:bg-slate-300'}`}
                            >
-                             {p}
+                             {p.product_key}
                            </button>
                          );
                        })}
@@ -1249,6 +1269,11 @@ export default function App() {
 
         {viewMode === 'manage' && (
           <div className="space-y-8 animate-in slide-in-from-bottom-4 duration-500">
+            {/* Product Management */}
+            <div className="bg-white rounded-[40px] p-8 border border-slate-200 shadow-sm">
+              <ProductManager products={products} onSaveProducts={setProducts} />
+            </div>
+
             {/* Control Center */}
             <div className="bg-[#003d79] p-10 rounded-[40px] text-white shadow-2xl flex flex-col items-center gap-8 border-b-[12px] border-[#FDB813] relative overflow-hidden">
               <div className="flex-1 text-center w-full relative z-10">
@@ -1401,22 +1426,22 @@ export default function App() {
                             </div>
                           </div>
                           <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-4 ml-0 md:ml-20">
-                            {Object.keys(PRODUCT_POINTS).map(pKey => {
-                              const savedValue = ((member.weeklyAcquisitions || {})[activeWeek] || {})[pKey] || 0;
+                            {products.filter(p => p.is_active).map(pKey => {
+                              const savedValue = ((member.weeklyAcquisitions || {})[activeWeek] || {})[pKey.product_key] || 0;
                               const pendingKey = `${member.id}|${activeWeek}`;
-                              const pendingValue = pendingAcquisitions[pendingKey]?.[pKey];
+                              const pendingValue = pendingAcquisitions[pendingKey]?.[pKey.product_key];
                               const hasPending = pendingValue !== undefined;
                               const displayValue = hasPending ? pendingValue : savedValue;
                               const isChanged = hasPending && pendingValue !== savedValue;
 
                               return (
-                                <div key={pKey} className="group/input">
-                                  <label className={`text-[9px] font-black uppercase block tracking-tighter text-center mb-1 ${isChanged ? 'text-yellow-600' : 'text-slate-300'}`}>{pKey}</label>
+                                <div key={pKey.product_key} className="group/input">
+                                  <label className={`text-[9px] font-black uppercase block tracking-tighter text-center mb-1 ${isChanged ? 'text-yellow-600' : 'text-slate-300'}`}>{pKey.product_key}</label>
                                   <input
                                     type="number"
                                     min="0"
                                     value={displayValue}
-                                    onChange={(e) => updateAcquisition(member.id, pKey, e.target.value)}
+                                    onChange={(e) => updateAcquisition(member.id, pKey.product_key, e.target.value)}
                                     className={`w-full bg-slate-50 border rounded-2xl p-3 text-sm font-black text-center outline-none transition-all shadow-sm ${isChanged ? 'border-yellow-400 bg-yellow-50 ring-2 ring-yellow-200' : 'border-slate-200 focus:ring-4 focus:ring-[#FDB813]/20 focus:bg-white focus:border-[#FDB813]'}`}
                                   />
                                   {isChanged && (
