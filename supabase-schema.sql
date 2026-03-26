@@ -23,22 +23,34 @@ CREATE TABLE members (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW())
 );
 
--- Acquisitions table (stores weekly acquisition data)
+-- Acquisitions table (stores acquisition data by date)
 CREATE TABLE acquisitions (
   id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
   member_id UUID REFERENCES members(id) ON DELETE CASCADE NOT NULL,
-  week INTEGER NOT NULL CHECK (week >= 1 AND week <= 4),
+  week INTEGER,  -- nullable, week of month (1-4) for reference
+  date DATE NOT NULL DEFAULT CURRENT_DATE,  -- actual input date
   product_key TEXT NOT NULL,
   quantity INTEGER NOT NULL DEFAULT 0,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW()),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW()),
-  UNIQUE(member_id, week, product_key)
+  UNIQUE(member_id, date, product_key)
 );
 
 -- Create index for faster queries
+CREATE INDEX idx_acquisitions_member_date ON acquisitions(member_id, date);
+CREATE INDEX idx_acquisitions_date ON acquisitions(date);
 CREATE INDEX idx_acquisitions_member_week ON acquisitions(member_id, week);
-CREATE INDEX idx_acquisitions_week ON acquisitions(week);
 CREATE INDEX idx_members_team ON members(team_id);
+
+-- Migration: Populate date column for existing week-based records
+-- This assumes week 1 starts from a reference date (adjust as needed)
+-- Example: week 1 = first week of current month
+-- Run this after table alteration if you have existing data:
+/*
+UPDATE acquisitions
+SET date = DATE_TRUNC('month', CURRENT_DATE) + ((week - 1) * 7) * INTERVAL '1 day'
+WHERE date IS NULL;
+*/
 
 -- Attendances table (daily attendance records)
 CREATE TABLE attendances (
