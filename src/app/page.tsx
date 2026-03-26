@@ -49,9 +49,8 @@ const PRODUCT_POINTS: Record<string, ProductConfig> = {
   GMM: { name: 'GMM', unit: 'Rekening', p: 1 },
 };
 
-const WEEKLY_TARGETS: Record<string, number> = {
-  MTB: 4, GIRO: 2, MTR: 28, KOPRA: 1, EDC: 2, GMM: 84, CC: 2, KUM: 130, KUR: 174, KSM: 36, KPR: 80, LVMUREG: 17, LVMUSAC: 45
-};
+// WEEKLY_TARGETS is now fetched dynamically from the products table
+// const WEEKLY_TARGETS: Record<string, number> = {...};
 
 const MandiriLogo = () => (
   <img
@@ -1195,16 +1194,29 @@ export default function App() {
                       </div>
 
                       <div className="mb-6 bg-white/40 backdrop-blur-sm p-4 rounded-2xl border border-white/60 shadow-inner">
-                        <div className="flex items-center justify-between mb-4"><span className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1"><TrendingUp className="w-3 h-3 text-blue-600"/> Dashboard Target</span><span className="text-[10px] font-bold text-blue-700 px-2 py-1 bg-blue-100 rounded-md">{Object.keys(WEEKLY_TARGETS).filter(k => (team.stats[k] || 0) >= WEEKLY_TARGETS[k]).length} Goal</span></div>
+                        <div className="flex items-center justify-between mb-4">
+                          <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1">
+                            <TrendingUp className="w-3 h-3 text-blue-600"/> Dashboard Target
+                          </span>
+                          <span className="text-[10px] font-bold text-blue-700 px-2 py-1 bg-blue-100 rounded-md">
+                            {products.filter(p => p.is_active && (team.stats[p.product_key] || 0) >= p.weekly_target).length} Goal
+                          </span>
+                        </div>
                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                          {Object.keys(WEEKLY_TARGETS).map(k => {
-                            const current = team.stats[k] || 0;
-                            const target = WEEKLY_TARGETS[k];
+                          {products.filter(p => p.is_active).map(p => {
+                            const current = team.stats[p.product_key] || 0;
+                            const target = p.weekly_target;
                             const isDone = current >= target;
                             return (
-                              <div key={k} className={`p-2 rounded-xl border transition-all ${isDone ? 'bg-green-50/80 border-green-100' : current > 0 ? 'bg-white/80 border-blue-100' : 'bg-white/40 border-slate-100/50'}`}>
-                                <div className="flex justify-between items-start mb-1"><span className={`text-[9px] font-black ${isDone ? 'text-green-700' : 'text-slate-400'}`}>{k}</span>{isDone && <Check className="w-2.5 h-2.5 text-green-600" />}</div>
-                                <div className="flex items-end gap-1"><span className={`text-sm font-black leading-none ${isDone ? 'text-green-700' : current > 0 ? 'text-blue-900' : 'text-slate-300'}`}>{current}</span><span className="text-[8px] font-bold text-slate-300 mb-0.5">/ {target}</span></div>
+                              <div key={p.product_key} className={`p-2 rounded-xl border transition-all ${isDone ? 'bg-green-50/80 border-green-100' : current > 0 ? 'bg-white/80 border-blue-100' : 'bg-white/40 border-slate-100/50'}`}>
+                                <div className="flex justify-between items-start mb-1">
+                                  <span className={`text-[9px] font-black ${isDone ? 'text-green-700' : 'text-slate-400'}`}>{p.product_key}</span>
+                                  {isDone && <Check className="w-2.5 h-2.5 text-green-600" />}
+                                </div>
+                                <div className="flex items-end gap-1">
+                                  <span className={`text-sm font-black leading-none ${isDone ? 'text-green-700' : current > 0 ? 'text-blue-900' : 'text-slate-300'}`}>{current}</span>
+                                  <span className="text-[8px] font-bold text-slate-300 mb-0.5">/ {target}</span>
+                                </div>
                               </div>
                             );
                           })}
@@ -1244,21 +1256,29 @@ export default function App() {
 
             {/* Global Progress */}
             <div className="bg-white rounded-[40px] p-8 border border-slate-200 shadow-sm relative overflow-hidden">
-               <div className="relative z-10 mb-10"><h2 className="font-black text-xl flex items-center gap-3 text-slate-800 mb-1"><div className="w-10 h-10 rounded-2xl bg-blue-100 flex items-center justify-center"><Target className="text-blue-600 w-6 h-6"/></div>Total Capaian Mingguan Seluruh Tim</h2><p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-14">Akumulasi seluruh tim periode Week {activeWeek}</p></div>
+               <div className="relative z-10 mb-10">
+                 <h2 className="font-black text-xl flex items-center gap-3 text-slate-800 mb-1">
+                   <div className="w-10 h-10 rounded-2xl bg-blue-100 flex items-center justify-center">
+                     <Target className="text-blue-600 w-6 h-6"/>
+                   </div>
+                   Total Capaian Mingguan Seluruh Tim
+                 </h2>
+                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-14">Akumulasi seluruh tim periode Week {activeWeek}</p>
+               </div>
                <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-8 relative z-10">
-                  {Object.keys(WEEKLY_TARGETS).map(key => {
-                    const totalAchieved = teamStats.reduce((acc, t) => acc + (t.stats[key] || 0), 0);
-                    const dynamicTarget = WEEKLY_TARGETS[key] * (teams.length || 1);
+                  {products.filter(p => p.is_active).map(p => {
+                    const totalAchieved = teamStats.reduce((acc, t) => acc + (t.stats[p.product_key] || 0), 0);
+                    const dynamicTarget = p.weekly_target * (teams.length || 1);
                     const progress = Math.min((totalAchieved/dynamicTarget)*100, 100);
                     return (
-                      <div key={key} className="flex flex-col items-center">
+                      <div key={p.product_key} className="flex flex-col items-center">
                         <div className="w-16 h-16 rounded-full border-4 border-slate-50 flex flex-col items-center justify-center relative mb-3 bg-white shadow-sm overflow-hidden">
                            <div className={`absolute bottom-0 w-full transition-all duration-1000 ${totalAchieved >= dynamicTarget ? 'bg-green-100' : 'bg-blue-50'}`} style={{height: `${progress}%`}}></div>
                            <span className={`relative text-[10px] font-black ${totalAchieved >= dynamicTarget ? 'text-green-600' : 'text-blue-900'}`}>{totalAchieved}</span>
                            <div className="relative h-px w-6 bg-slate-200 my-1"></div>
                            <span className="relative text-[9px] font-bold text-slate-400">{dynamicTarget}</span>
                         </div>
-                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">{key}</span>
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">{p.product_key}</span>
                       </div>
                     );
                   })}
