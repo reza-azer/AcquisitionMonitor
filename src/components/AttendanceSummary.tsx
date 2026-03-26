@@ -202,7 +202,7 @@ export default function AttendanceSummary({ members }: AttendanceSummaryProps) {
       {/* Summary Table */}
       {isLoading ? (
         <div className="flex items-center justify-center py-12">
-          <GridLoader pattern="ripple-out" size="lg" color="blue" mode="pulse" />
+          <GridLoader pattern="edge-cw" size="lg" color="#FDB813" mode="stagger" />
         </div>
       ) : (
         <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">

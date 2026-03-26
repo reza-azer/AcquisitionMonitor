@@ -506,7 +506,7 @@ export default function ProductManager({ products, onSaveProducts }: ProductMana
                 className="flex-1 py-3 bg-blue-600 text-white rounded-xl text-sm font-black hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-2 transition-colors"
               >
                 {isSaving ? (
-                  <GridLoader pattern="breathing" size="sm" color="white" />
+                  <GridLoader pattern="edge-cw" size="sm" color="#FDB813" mode="stagger" />
                 ) : (
                   <Save className="w-4 h-4" />
                 )}

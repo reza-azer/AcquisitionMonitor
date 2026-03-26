@@ -205,7 +205,7 @@ export default function AttendanceManager({ members }: AttendanceManagerProps) {
             className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-black hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             {isSaving ? (
-              <GridLoader pattern="breathing" size="sm" color="white" />
+              <GridLoader pattern="edge-cw" size="sm" color="#FDB813" mode="stagger" />
             ) : (
               <Save className="w-4 h-4" />
             )}
@@ -265,7 +265,7 @@ export default function AttendanceManager({ members }: AttendanceManagerProps) {
       {/* Attendance Table */}
       {isLoading ? (
         <div className="flex items-center justify-center py-12">
-          <GridLoader pattern="wave-tb" size="lg" color="blue" mode="stagger" />
+          <GridLoader pattern="edge-cw" size="lg" color="#FDB813" mode="stagger" />
         </div>
       ) : (
         <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">

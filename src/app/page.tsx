@@ -602,7 +602,7 @@ export default function App() {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <div className="text-center">
-          <GridLoader pattern="plus-hollow" size="lg" color="blue" mode="pulse" />
+          <GridLoader pattern="edge-cw" size="lg" color="#FDB813" mode="stagger" />
           <p className="text-slate-500 font-bold mt-4">Loading data...</p>
         </div>
       </div>
@@ -983,7 +983,7 @@ export default function App() {
                     className={`flex-1 py-4 rounded-2xl font-black text-sm shadow-lg transition-all flex items-center justify-center gap-2 ${isMigrating ? 'bg-slate-400 cursor-not-allowed' : migrateWithData ? 'bg-green-600 hover:bg-green-700 text-white shadow-green-200' : 'bg-orange-600 hover:bg-orange-700 text-white shadow-orange-200'}`}
                   >
                     {isMigrating ? (
-                      <><GridLoader pattern="breathing" size="sm" color="white" /> MEMINDAHKAN...</>
+                      <><GridLoader pattern="edge-cw" size="sm" color="#FDB813" mode="stagger" /> MEMINDAHKAN...</>
                     ) : (
                       <><UserPlus className="w-5 h-5" /> {migrateWithData ? 'PINDAHKAN DENGAN DATA' : 'PINDAHKAN SAJA'}</>
                     )}
@@ -1332,7 +1332,7 @@ export default function App() {
                     disabled={isSaving}
                     className={`flex items-center gap-2 px-8 py-4 rounded-full font-black text-sm shadow-lg transition-all ${isSaving ? 'bg-slate-400 cursor-not-allowed' : 'bg-green-500 hover:bg-green-400 hover:scale-105 text-white shadow-green-900/20'}`}
                   >
-                    {isSaving ? <GridLoader pattern="breathing" size="sm" color="white" /> : <Save className="w-5 h-5" />}
+                    {isSaving ? <GridLoader pattern="edge-cw" size="sm" color="#FDB813" mode="stagger" /> : <Save className="w-5 h-5" />}
                     {isSaving ? 'SAVING...' : 'SAVE'}
                   </button>
                 </div>
