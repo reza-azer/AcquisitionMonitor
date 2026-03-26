@@ -2,10 +2,6 @@
 import {
   BarChart3,
   Check,
-  ChevronDown,
-  ChevronUp,
-  Clock,
-  Database,
   Download,
   Edit2,
   FileSpreadsheet,
@@ -22,8 +18,7 @@ import {
   Trash2,
   TrendingUp,
   Trophy,
-  UserPlus, X,
-  Activity
+  UserPlus, X
 } from 'lucide-react';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer as RechartsContainer, Tooltip, XAxis, YAxis } from 'recharts';
@@ -33,21 +28,15 @@ import AttendanceManager from '@/components/AttendanceManager';
 import AttendanceSummary from '@/components/AttendanceSummary';
 import ProductManager from '@/components/ProductManager';
 import GridLoader from '@/components/GridLoader';
-import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/Accordion';
-import AutoSaveIndicator from '@/components/AutoSaveIndicator';
-import { useAutoSave } from '@/hooks/useAutoSave';
-import DashboardAnalytics from '@/components/DashboardAnalytics';
-import PerformanceReport from '@/components/PerformanceReport';
-import DataBackup from '@/components/DataBackup';
 
 // --- KONFIGURASI POIN & TARGET ---
-type TieredProduct = { name: string; unit: string; type: 'tiered'; tiers: {limit: number; p: number}[] };
+type TieredProduct = { name: string; unit: string; type: 'tiered'; tiers: { limit: number; p: number }[] };
 type SimpleProduct = { name: string; unit: string; p: number };
 type ProductConfig = TieredProduct | SimpleProduct;
 
 const PRODUCT_POINTS: Record<string, ProductConfig> = {
-  MTB: { name: 'Mandiri Tabungan Bisnis', unit: 'Rekening', type: 'tiered' as const, tiers: [{limit: 10, p: 3}, {limit: 30, p: 6}, {limit: 999, p: 9}] },
-  GIRO: { name: 'Tabungan Giro', unit: 'Rekening', type: 'tiered' as const, tiers: [{limit: 5, p: 3}, {limit: 999, p: 6}] },
+  MTB: { name: 'Mandiri Tabungan Bisnis', unit: 'Rekening', type: 'tiered' as const, tiers: [{ limit: 10, p: 3 }, { limit: 30, p: 6 }, { limit: 999, p: 9 }] },
+  GIRO: { name: 'Tabungan Giro', unit: 'Rekening', type: 'tiered' as const, tiers: [{ limit: 5, p: 3 }, { limit: 999, p: 6 }] },
   EDC: { name: 'EDC', unit: 'Aplikasi', p: 3 },
   KOPRA: { name: 'Kopra', unit: 'Aplikasi', p: 2 },
   MTR: { name: 'Mandiri Tabungan Rencana', unit: 'Rekening', p: 2 },
@@ -127,67 +116,11 @@ export default function App() {
   const [newTeam, setNewTeam] = useState({ name: '', image_url: '' });
   const [tempMember, setTempMember] = useState({ name: '', position: '', avatar_url: '' });
   const [editingTeam, setEditingTeam] = useState<Team | null>(null);
-  const [editingMember, setEditingMember] = useState<{teamId: string, memberId: string, name: string, position: string, avatar_url: string | null} | null>(null);
+  const [editingMember, setEditingMember] = useState<{ teamId: string, memberId: string, name: string, position: string, avatar_url: string | null } | null>(null);
 
   // Pending acquisitions state (local cache before save)
   const [pendingAcquisitions, setPendingAcquisitions] = useState<Record<string, Record<string, number>>>({});
   const [isSaving, setIsSaving] = useState(false);
-
-  // Auto-save for acquisitions
-  const saveAcquisitionsBatch = async (data: Record<string, Record<string, number>>) => {
-    const entries = Object.entries(data);
-    if (entries.length === 0) return;
-
-    const savePromises = entries.flatMap(([key, products]) => {
-      const [memberId, weekStr] = key.split('|');
-      const week = parseInt(weekStr);
-      return Object.entries(products).map(([productKey, quantity]) => {
-        return fetch('/api/acquisitions', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            member_id: memberId,
-            week: week,
-            product_key: productKey,
-            quantity
-          })
-        });
-      });
-    });
-
-    const results = await Promise.all(savePromises);
-    const failed = results.some(r => !r.ok);
-    if (failed) throw new Error('Some requests failed');
-
-    // Clear pending and refresh data
-    setPendingAcquisitions({});
-    await fetchData();
-  };
-
-  const {
-    data: autoSaveData,
-    setData: setAutoSaveData,
-    isSaving: autoSaving,
-    isDirty: autoSaveDirty,
-    lastSaved,
-    saveNow,
-    error: autoSaveError,
-  } = useAutoSave<Record<string, Record<string, number>>>(pendingAcquisitions, saveAcquisitionsBatch, {
-    debounceMs: 2000,
-    onSave: () => {
-      console.log('Auto-save completed successfully');
-    },
-    onError: (error) => {
-      console.error('Auto-save failed:', error);
-    },
-  });
-
-  // Sync pendingAcquisitions to auto-save
-  useEffect(() => {
-    if (Object.keys(pendingAcquisitions).length > 0) {
-      setAutoSaveData(pendingAcquisitions);
-    }
-  }, [pendingAcquisitions, setAutoSaveData]);
 
   // Chart customization state
   const [showChartControls, setShowChartControls] = useState(false);
@@ -200,25 +133,10 @@ export default function App() {
   const [teamColors, setTeamColors] = useState<Record<string, string>>({});
 
   // Member detail modal state
-  const [selectedMember, setSelectedMember] = useState<{member: Member, team: Team} | null>(null);
-
-  // Member attendance state
-  const [memberAttendance, setMemberAttendance] = useState<{
-    present: number;
-    late: number;
-    leave: number;
-    alpha: number;
-    totalLateMinutes: number;
-    leaveReasons: Record<string, number>;
-    totalDays: number;
-    attendanceRate: number;
-  } | null>(null);
-  const [attendanceLoading, setAttendanceLoading] = useState(false);
-  const [attendanceDetails, setAttendanceDetails] = useState<any[]>([]);
-  const [accordionValue, setAccordionValue] = React.useState<string>('');
+  const [selectedMember, setSelectedMember] = useState<{ member: Member, team: Team } | null>(null);
 
   // Migration modal state
-  const [migratingMember, setMigratingMember] = useState<{member: Member, team: Team} | null>(null);
+  const [migratingMember, setMigratingMember] = useState<{ member: Member, team: Team } | null>(null);
   const [migrationTargetTeam, setMigrationTargetTeam] = useState<string>('');
   const [migrateWithData, setMigrateWithData] = useState<boolean | null>(null);
   const [isMigrating, setIsMigrating] = useState(false);
@@ -252,14 +170,12 @@ export default function App() {
     localStorage.setItem('chartFilters', JSON.stringify(chartFilters));
   }, [chartFilters]);
 
-  // Lock body scroll when modal is open and fetch attendance
+  // Lock body scroll when modal is open
   useEffect(() => {
     if (selectedMember) {
       document.body.style.overflow = 'hidden';
-      fetchMemberAttendance(selectedMember.member.id);
     } else {
       document.body.style.overflow = '';
-      setMemberAttendance(null);
     }
     return () => {
       document.body.style.overflow = '';
@@ -330,12 +246,12 @@ export default function App() {
   const getMemberPoints = useCallback((acquisitions: Record<string, number> | undefined) => {
     let total = 0;
     if (!acquisitions || products.length === 0) return 0;
-    
+
     Object.keys(acquisitions).forEach(key => {
       const qty = acquisitions[key];
       const product = products.find(p => p.product_key === key);
       if (!product || !product.is_active) return;
-      
+
       if (product.is_tiered && product.tier_config) {
         const tier = product.tier_config.find(t => qty <= t.limit) || product.tier_config[product.tier_config.length - 1];
         total += qty * tier.points;
@@ -345,126 +261,6 @@ export default function App() {
     });
     return total;
   }, [products]);
-
-  const fetchMemberAttendance = async (memberId: string) => {
-    setAttendanceLoading(true);
-    try {
-      const today = new Date();
-      const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-      const response = await fetch(
-        `/api/attendances?memberId=${memberId}&startDate=${startOfMonth.toISOString().split('T')[0]}&endDate=${today.toISOString().split('T')[0]}`
-      );
-      const result = await response.json();
-
-      if (result.data && result.data.length > 0) {
-        // Store detailed records
-        setAttendanceDetails(result.data.sort((a: any, b: any) => 
-          new Date(b.date).getTime() - new Date(a.date).getTime()
-        ));
-
-        const attendance = result.data.reduce((acc: any, record: any) => {
-          acc.present += record.status === 'present' ? 1 : 0;
-          acc.late += record.status === 'late' ? 1 : 0;
-          acc.leave += record.status === 'leave' ? 1 : 0;
-          acc.alpha += record.status === 'alpha' ? 1 : 0;
-          acc.totalLateMinutes += record.late_minutes || 0;
-          if (record.leave_reason) {
-            acc.leaveReasons[record.leave_reason] = (acc.leaveReasons[record.leave_reason] || 0) + 1;
-          }
-          return acc;
-        }, { present: 0, late: 0, leave: 0, alpha: 0, totalLateMinutes: 0, leaveReasons: {} as Record<string, number> });
-
-        attendance.totalDays = attendance.present + attendance.late + attendance.leave + attendance.alpha;
-        attendance.attendanceRate = attendance.totalDays > 0
-          ? Math.round(((attendance.present + attendance.late) / attendance.totalDays) * 100)
-          : 0;
-
-        setMemberAttendance(attendance);
-      } else {
-        setAttendanceDetails([]);
-        setMemberAttendance({
-          present: 0,
-          late: 0,
-          leave: 0,
-          alpha: 0,
-          totalLateMinutes: 0,
-          leaveReasons: {},
-          totalDays: 0,
-          attendanceRate: 0
-        });
-      }
-    } catch (error) {
-      console.error('Error fetching attendance:', error);
-      setAttendanceDetails([]);
-      setMemberAttendance({
-        present: 0,
-        late: 0,
-        leave: 0,
-        alpha: 0,
-        totalLateMinutes: 0,
-        leaveReasons: {},
-        totalDays: 0,
-        attendanceRate: 0
-      });
-    } finally {
-      setAttendanceLoading(false);
-    }
-  };
-
-  // Get calendar days for current month
-  const getCalendarDays = () => {
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = today.getMonth();
-    const firstDay = new Date(year, month, 1);
-    const lastDay = new Date(year, month + 1, 0);
-    const daysInMonth = lastDay.getDate();
-    const startingDay = firstDay.getDay();
-
-    const days = [];
-    
-    // Add empty cells for days before the first day of the month
-    for (let i = 0; i < startingDay; i++) {
-      days.push({ day: null, date: null });
-    }
-    
-    // Add days of the month
-    for (let day = 1; day <= daysInMonth; day++) {
-      const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-      const attendanceRecord = attendanceDetails.find((a: any) => a.date === dateStr);
-      days.push({
-        day,
-        date: dateStr,
-        status: attendanceRecord?.status || null,
-        lateMinutes: attendanceRecord?.late_minutes || 0,
-        leaveReason: attendanceRecord?.leave_reason || null,
-        notes: attendanceRecord?.notes || null,
-        isToday: day === today.getDate(),
-      });
-    }
-    
-    return days;
-  };
-
-  const getStatusColor = (status: string | null) => {
-    switch (status) {
-      case 'present': return 'bg-green-500';
-      case 'late': return 'bg-amber-500';
-      case 'leave': return 'bg-blue-500';
-      case 'alpha': return 'bg-red-500';
-      default: return 'bg-slate-100';
-    }
-  };
-
-  const getStatusLabel = (status: string | null) => {
-    switch (status) {
-      case 'present': return 'Present';
-      case 'late': return 'Late';
-      case 'leave': return 'Izin';
-      case 'alpha': return 'Alpha';
-      default: return '-';
-    }
-  };
 
   const teamStats = useMemo(() => {
     return teams.map(team => {
@@ -565,7 +361,7 @@ export default function App() {
         if (team?.image_url && team.image_url.includes('supabase.co/storage')) {
           await deleteImage(team.image_url);
         }
-        
+
         const res = await fetch(`/api/teams?id=${id}`, { method: 'DELETE' });
         if (res.ok) fetchData();
       } catch (error) {
@@ -597,11 +393,11 @@ export default function App() {
       const res = await fetch('/api/members', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          team_id: teamId, 
-          name: tempMember.name, 
-          position: tempMember.position, 
-          avatar_url: tempMember.avatar_url || null 
+        body: JSON.stringify({
+          team_id: teamId,
+          name: tempMember.name,
+          position: tempMember.position,
+          avatar_url: tempMember.avatar_url || null
         })
       });
       if (res.ok) {
@@ -620,11 +416,11 @@ export default function App() {
         const member = teams
           .flatMap(t => t.members || [])
           .find(m => m.id === memberId);
-        
+
         if (member?.avatar_url && member.avatar_url.includes('supabase.co/storage')) {
           await deleteImage(member.avatar_url);
         }
-        
+
         const res = await fetch(`/api/members?id=${memberId}`, { method: 'DELETE' });
         if (res.ok) fetchData();
       } catch (error) {
@@ -657,7 +453,7 @@ export default function App() {
 
   const migrateMember = async () => {
     if (!migratingMember || !migrationTargetTeam || migrateWithData === null) return;
-    
+
     setIsMigrating(true);
     try {
       const res = await fetch('/api/members/migrate', {
@@ -669,7 +465,7 @@ export default function App() {
           migrate_data: migrateWithData
         })
       });
-      
+
       if (res.ok) {
         await fetchData();
         setMigratingMember(null);
@@ -704,12 +500,44 @@ export default function App() {
   };
 
   const saveAllAcquisitions = async () => {
-    console.log('Manual save - acquisitions:', pendingAcquisitions);
-    const success = await saveNow();
-    if (success) {
+    console.log('Saving acquisitions:', pendingAcquisitions);
+    setIsSaving(true);
+    try {
+      const savePromises = Object.entries(pendingAcquisitions).flatMap(([key, products]) => {
+        const [memberId, weekStr] = key.split('|');
+        const week = parseInt(weekStr);
+        return Object.entries(products).map(([productKey, quantity]) => {
+          console.log(`Saving: member=${memberId}, week=${week}, product=${productKey}, qty=${quantity}`);
+          return fetch('/api/acquisitions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              member_id: memberId,
+              week: week,
+              product_key: productKey,
+              quantity
+            })
+          });
+        });
+      });
+
+      const results = await Promise.all(savePromises);
+      console.log('Save results:', results);
+
+      // Check for failed requests
+      const failed = results.some(r => !r.ok);
+      if (failed) {
+        throw new Error('Some requests failed');
+      }
+
+      setPendingAcquisitions({});
+      await fetchData();
       alert('Data berhasil disimpan!');
-    } else {
+    } catch (error) {
+      console.error('Error saving acquisitions:', error);
       alert('Gagal menyimpan data. Silakan coba lagi.');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -774,7 +602,7 @@ export default function App() {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <div className="text-center">
-          <GridLoader pattern="edge-cw" size="lg" color="#FDB813" mode="stagger" />
+          <GridLoader pattern="frame" size="lg" color="#FDB813" mode="stagger" />
           <p className="text-slate-500 font-bold mt-4">Loading data...</p>
         </div>
       </div>
@@ -796,13 +624,10 @@ export default function App() {
                 <button key={w} onClick={() => setActiveWeek(w)} className={`px-4 py-1.5 rounded-full text-[10px] font-black transition-all ${activeWeek === w ? 'bg-[#FDB813] text-blue-900 shadow-sm' : 'text-white/60 hover:text-white'}`}>WEEK {w}</button>
               ))}
             </div>
-            <nav className="hidden md:flex bg-blue-900/40 p-1 rounded-xl gap-1 border border-white/5 overflow-x-auto">
-              <button onClick={() => setViewMode('dashboard')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${viewMode === 'dashboard' ? 'bg-white text-blue-900 shadow-md' : 'text-white/70 hover:text-white'}`}><BarChart3 className="w-4 h-4" /> Dashboard</button>
-              <button onClick={() => setViewMode('analytics')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${viewMode === 'analytics' ? 'bg-white text-blue-900 shadow-md' : 'text-white/70 hover:text-white'}`}><Activity className="w-4 h-4" /> Analytics</button>
-              <button onClick={() => setViewMode('report')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${viewMode === 'report' ? 'bg-white text-blue-900 shadow-md' : 'text-white/70 hover:text-white'}`}><FileSpreadsheet className="w-4 h-4" /> Report</button>
-              <button onClick={() => setViewMode('absensi')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${viewMode === 'absensi' ? 'bg-white text-blue-900 shadow-md' : 'text-white/70 hover:text-white'}`}><FileText className="w-4 h-4" /> Absensi</button>
-              <button onClick={() => setViewMode('backup')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${viewMode === 'backup' ? 'bg-white text-blue-900 shadow-md' : 'text-white/70 hover:text-white'}`}><Database className="w-4 h-4" /> Backup</button>
-              <button onClick={() => setViewMode('manage')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${viewMode === 'manage' ? 'bg-white text-blue-900 shadow-md' : 'text-white/70 hover:text-white'}`}><Settings className="w-4 h-4" /> Manage</button>
+            <nav className="hidden md:flex bg-blue-900/40 p-1 rounded-xl gap-1 border border-white/5">
+              <button onClick={() => setViewMode('dashboard')} className={`flex items-center gap-2 px-5 py-2 rounded-lg text-xs font-bold transition-all ${viewMode === 'dashboard' ? 'bg-white text-blue-900 shadow-md' : 'text-white/70 hover:text-white'}`}><BarChart3 className="w-4 h-4" /> Dashboard</button>
+              <button onClick={() => setViewMode('absensi')} className={`flex items-center gap-2 px-5 py-2 rounded-lg text-xs font-bold transition-all ${viewMode === 'absensi' ? 'bg-white text-blue-900 shadow-md' : 'text-white/70 hover:text-white'}`}><FileText className="w-4 h-4" /> Absensi</button>
+              <button onClick={() => setViewMode('manage')} className={`flex items-center gap-2 px-5 py-2 rounded-lg text-xs font-bold transition-all ${viewMode === 'manage' ? 'bg-white text-blue-900 shadow-md' : 'text-white/70 hover:text-white'}`}><Settings className="w-4 h-4" /> Manage</button>
             </nav>
           </div>
         </div>
@@ -815,17 +640,17 @@ export default function App() {
             {/* <p className="text-slate-400 font-bold uppercase text-[10px] tracking-[0.2em] ml-11">Data Terkini Bulan Maret 2026</p> */}
           </div>
           <div className="flex items-center gap-3">
-             <button
-               onClick={() => setShowExportModal(true)}
-               disabled={!isExcelReady}
-               className={`flex items-center gap-2 px-5 py-2.5 rounded-2xl text-xs font-black shadow-lg transition-all active:scale-95 ${isExcelReady ? 'bg-green-600 hover:bg-green-700 text-white shadow-green-200' : 'bg-slate-300 text-slate-500 cursor-not-allowed'}`}
-             >
-               <FileSpreadsheet className="w-4 h-4" /> EXPORT EXCEL
-             </button>
-             <div className="md:hidden flex bg-white p-2 rounded-2xl border border-slate-200 shadow-sm overflow-x-auto gap-2">
-                {[1, 2, 3, 4].map(w => (
-                  <button key={w} onClick={() => setActiveWeek(w)} className={`flex-shrink-0 px-6 py-2 rounded-xl text-xs font-black transition-all ${activeWeek === w ? 'bg-[#003d79] text-white shadow-lg' : 'bg-slate-50 text-slate-400'}`}>W{w}</button>
-                ))}
+            <button
+              onClick={() => setShowExportModal(true)}
+              disabled={!isExcelReady}
+              className={`flex items-center gap-2 px-5 py-2.5 rounded-2xl text-xs font-black shadow-lg transition-all active:scale-95 ${isExcelReady ? 'bg-green-600 hover:bg-green-700 text-white shadow-green-200' : 'bg-slate-300 text-slate-500 cursor-not-allowed'}`}
+            >
+              <FileSpreadsheet className="w-4 h-4" /> EXPORT EXCEL
+            </button>
+            <div className="md:hidden flex bg-white p-2 rounded-2xl border border-slate-200 shadow-sm overflow-x-auto gap-2">
+              {[1, 2, 3, 4].map(w => (
+                <button key={w} onClick={() => setActiveWeek(w)} className={`flex-shrink-0 px-6 py-2 rounded-xl text-xs font-black transition-all ${activeWeek === w ? 'bg-[#003d79] text-white shadow-lg' : 'bg-slate-50 text-slate-400'}`}>W{w}</button>
+              ))}
             </div>
           </div>
         </div>
@@ -835,42 +660,42 @@ export default function App() {
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
             <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setShowExportModal(false)}></div>
             <div className="bg-white w-full max-w-md rounded-[40px] p-8 shadow-2xl relative z-10 animate-in zoom-in-95 duration-200 border border-slate-200">
-               <div className="flex justify-between items-start mb-6">
-                  <div>
-                    <h3 className="font-black text-xl text-slate-800">Opsi Ekspor Excel</h3>
-                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Pilih periode data</p>
-                  </div>
-                  <button onClick={() => setShowExportModal(false)} className="p-2 bg-slate-100 rounded-2xl text-slate-400 hover:text-slate-600"><X className="w-5 h-5"/></button>
-               </div>
+              <div className="flex justify-between items-start mb-6">
+                <div>
+                  <h3 className="font-black text-xl text-slate-800">Opsi Ekspor Excel</h3>
+                  <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Pilih periode data</p>
+                </div>
+                <button onClick={() => setShowExportModal(false)} className="p-2 bg-slate-100 rounded-2xl text-slate-400 hover:text-slate-600"><X className="w-5 h-5" /></button>
+              </div>
 
-               <div className="space-y-3 mb-8">
-                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">Minggu Tersedia</p>
-                  <div className="grid grid-cols-2 gap-3">
-                    {[1, 2, 3, 4].map(w => (
-                      <button
-                        key={w}
-                        onClick={() => toggleWeekSelection(w)}
-                        className={`py-4 rounded-3xl border-2 font-black text-sm transition-all flex items-center justify-center gap-3 ${selectedWeeks.includes(w) ? 'bg-blue-50 border-blue-600 text-blue-900' : 'bg-white border-slate-100 text-slate-300'}`}
-                      >
-                        {selectedWeeks.includes(w) ? <Check className="w-4 h-4" /> : <div className="w-4 h-4 rounded-full border border-slate-200"/>}
-                        Minggu {w}
-                      </button>
-                    ))}
-                  </div>
-                  <button
-                    onClick={() => setSelectedWeeks(selectedWeeks.length === 4 ? [] : [1, 2, 3, 4])}
-                    className="w-full py-2 text-[10px] font-black text-blue-600 uppercase tracking-widest hover:underline"
-                  >
-                    {selectedWeeks.length === 4 ? "Batalkan Semua" : "Pilih Semua Minggu"}
-                  </button>
-               </div>
+              <div className="space-y-3 mb-8">
+                <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">Minggu Tersedia</p>
+                <div className="grid grid-cols-2 gap-3">
+                  {[1, 2, 3, 4].map(w => (
+                    <button
+                      key={w}
+                      onClick={() => toggleWeekSelection(w)}
+                      className={`py-4 rounded-3xl border-2 font-black text-sm transition-all flex items-center justify-center gap-3 ${selectedWeeks.includes(w) ? 'bg-blue-50 border-blue-600 text-blue-900' : 'bg-white border-slate-100 text-slate-300'}`}
+                    >
+                      {selectedWeeks.includes(w) ? <Check className="w-4 h-4" /> : <div className="w-4 h-4 rounded-full border border-slate-200" />}
+                      Minggu {w}
+                    </button>
+                  ))}
+                </div>
+                <button
+                  onClick={() => setSelectedWeeks(selectedWeeks.length === 4 ? [] : [1, 2, 3, 4])}
+                  className="w-full py-2 text-[10px] font-black text-blue-600 uppercase tracking-widest hover:underline"
+                >
+                  {selectedWeeks.length === 4 ? "Batalkan Semua" : "Pilih Semua Minggu"}
+                </button>
+              </div>
 
-               <button
+              <button
                 onClick={handleExportAction}
                 className="w-full bg-[#003d79] text-white py-5 rounded-[24px] font-black tracking-tight shadow-xl shadow-blue-100 hover:bg-blue-800 active:scale-95 transition-all flex items-center justify-center gap-3"
-               >
-                 <Download className="w-5 h-5"/> UNDUH LAPORAN .XLSX
-               </button>
+              >
+                <Download className="w-5 h-5" /> UNDUH LAPORAN .XLSX
+              </button>
             </div>
           </div>
         )}
@@ -883,9 +708,9 @@ export default function App() {
               {/* Cover Image with Gradient Fade */}
               <div className="relative h-48 w-full overflow-hidden rounded-t-[40px]">
                 {selectedMember.member.avatar_url ? (
-                  <img 
-                    src={selectedMember.member.avatar_url} 
-                    alt={selectedMember.member.name} 
+                  <img
+                    src={selectedMember.member.avatar_url}
+                    alt={selectedMember.member.name}
                     className="w-full h-full object-cover"
                   />
                 ) : (
@@ -898,8 +723,8 @@ export default function App() {
                 {/* Gradient Fade Overlay */}
                 <div className="absolute inset-0 bg-gradient-to-b from-transparent via-white/10 to-white"></div>
                 {/* Close Button */}
-                <button 
-                  onClick={() => setSelectedMember(null)} 
+                <button
+                  onClick={() => setSelectedMember(null)}
                   className="absolute top-4 right-4 p-2.5 bg-white/90 backdrop-blur-sm rounded-2xl text-slate-600 hover:text-slate-800 hover:bg-white transition-all shadow-lg"
                 >
                   <X className="w-5 h-5" />
@@ -916,343 +741,113 @@ export default function App() {
                 </div>
 
                 {/* Score Summary Cards */}
-              <div className="grid grid-cols-2 gap-4 mb-6">
-                <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-3xl p-5 border border-blue-200">
-                  <div className="text-[9px] font-black text-blue-600 uppercase tracking-widest mb-1">Total Akuisisi</div>
-                  <div className="text-3xl font-black text-blue-900">
-                    {(() => {
-                      const total = Object.values(selectedMember.member.weeklyAcquisitions || {})
-                        .flatMap(week => Object.values(week))
-                        .reduce((sum, qty) => sum + qty, 0);
-                      return total;
-                    })()}
-                  </div>
-                </div>
-                <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-3xl p-5 border border-green-200">
-                  <div className="text-[9px] font-black text-green-600 uppercase tracking-widest mb-1">Total Skor</div>
-                  <div className="text-3xl font-black text-green-900">
-                    {(() => {
-                      let totalScore = 0;
-                      Object.values(selectedMember.member.weeklyAcquisitions || {}).forEach(weekAcq => {
-                        totalScore += getMemberPoints(weekAcq);
-                      });
-                      return totalScore;
-                    })()}
-                  </div>
-                </div>
-              </div>
-
-              {/* Weekly Breakdown */}
-              <div className="mb-6">
-                <h4 className="font-black text-sm text-slate-700 mb-3 flex items-center gap-2">
-                  <BarChart3 className="w-4 h-4 text-blue-600" />
-                  BREAKDOWN PER MINGGU
-                </h4>
-                <div className="space-y-3">
-                  {[1, 2, 3, 4].map(week => {
-                    const weekAcq = (selectedMember.member.weeklyAcquisitions || {})[week] || {};
-                    const weekScore = getMemberPoints(weekAcq);
-                    const weekTotal = Object.values(weekAcq).reduce((sum: number, qty: number) => sum + qty, 0);
-                    const hasData = weekTotal > 0;
-
-                    return (
-                      <div
-                        key={week}
-                        className={`rounded-2xl border p-4 transition-all ${hasData ? 'bg-white border-slate-200 shadow-sm' : 'bg-slate-50 border-slate-100 opacity-50'}`}
-                      >
-                        <div className="flex justify-between items-center mb-3">
-                          <div className="flex items-center gap-2">
-                            <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-black text-xs ${hasData ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-400'}`}>
-                              W{week}
-                            </div>
-                            <span className="text-xs font-bold text-slate-500 uppercase tracking-wide">
-                              {hasData ? `${weekTotal} Akuisisi` : 'Tidak ada data'}
-                            </span>
-                          </div>
-                          <div className={`text-lg font-black ${hasData ? 'text-green-600' : 'text-slate-300'}`}>
-                            +{weekScore} Poin
-                          </div>
-                        </div>
-
-                        {hasData && (
-                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                            {Object.entries(weekAcq)
-                              .filter(([_, qty]) => qty > 0)
-                              .map(([product, qty]) => {
-                                const productConfig = products.find(p => p.product_key === product);
-                                let pointsEarned = 0;
-                                if (productConfig) {
-                                  if (productConfig.is_tiered && productConfig.tier_config) {
-                                    const tier = productConfig.tier_config.find(t => qty <= t.limit) || productConfig.tier_config[productConfig.tier_config.length - 1];
-                                    pointsEarned = qty * tier.points;
-                                  } else {
-                                    pointsEarned = qty * (productConfig.flat_points || 0);
-                                  }
-                                }
-                                return (
-                                  <div key={product} className="bg-slate-50 rounded-xl p-2.5 border border-slate-100">
-                                    <div className="text-[9px] font-black text-slate-400 uppercase">{product}</div>
-                                    <div className="flex justify-between items-center mt-1">
-                                      <span className="text-sm font-bold text-slate-700">{qty} {productConfig?.unit}</span>
-                                      <span className="text-xs font-black text-green-600">+{pointsEarned}</span>
-                                    </div>
-                                  </div>
-                                );
-                              })}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Score Calculation Info */}
-              <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200">
-                <div className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-2">Ringkasan Skor</div>
-                <div className="flex items-center gap-2 text-xs text-slate-600">
-                  <Trophy className="w-3.5 h-3.5 text-yellow-600" />
-                  <span className="font-bold">
-                    {(() => {
-                      let totalScore = 0;
-                      Object.values(selectedMember.member.weeklyAcquisitions || {}).forEach(weekAcq => {
-                        totalScore += getMemberPoints(weekAcq);
-                      });
-                      return `Total kumulatif: ${totalScore} poin dari semua minggu`;
-                    })()}
-                  </span>
-                </div>
-              </div>
-
-              {/* Attendance Report */}
-              <div className="mt-6">
-                <h4 className="font-black text-sm text-slate-700 mb-3 flex items-center gap-2">
-                  <FileText className="w-4 h-4 text-blue-600" />
-                  ATTENDANCE REPORT
-                </h4>
-
-                {attendanceLoading ? (
-                  <div className="flex justify-center py-8">
-                    <GridLoader pattern="edge-cw" size="md" color="#FDB813" mode="stagger" />
-                  </div>
-                ) : memberAttendance ? (
-                  <>
-                    {/* Attendance Summary Cards - Always Visible */}
-                    <div className="grid grid-cols-2 gap-3 mb-4">
-                      <div className="bg-green-50 rounded-2xl p-4 border border-green-200">
-                        <div className="text-[9px] font-black text-green-600 uppercase">Present</div>
-                        <div className="text-2xl font-black text-green-800">{memberAttendance.present}</div>
-                      </div>
-                      <div className="bg-amber-50 rounded-2xl p-4 border border-amber-200">
-                        <div className="text-[9px] font-black text-amber-600 uppercase">Late</div>
-                        <div className="text-2xl font-black text-amber-800">{memberAttendance.late}</div>
-                      </div>
-                      <div className="bg-blue-50 rounded-2xl p-4 border border-blue-200">
-                        <div className="text-[9px] font-black text-blue-600 uppercase">Izin</div>
-                        <div className="text-2xl font-black text-blue-800">{memberAttendance.leave}</div>
-                      </div>
-                      <div className="bg-red-50 rounded-2xl p-4 border border-red-200">
-                        <div className="text-[9px] font-black text-red-600 uppercase">Alpha</div>
-                        <div className="text-2xl font-black text-red-800">{memberAttendance.alpha}</div>
-                      </div>
+                <div className="grid grid-cols-2 gap-4 mb-6">
+                  <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-3xl p-5 border border-blue-200">
+                    <div className="text-[9px] font-black text-blue-600 uppercase tracking-widest mb-1">Total Akuisisi</div>
+                    <div className="text-3xl font-black text-blue-900">
+                      {(() => {
+                        const total = Object.values(selectedMember.member.weeklyAcquisitions || {})
+                          .flatMap(week => Object.values(week))
+                          .reduce((sum, qty) => sum + qty, 0);
+                        return total;
+                      })()}
                     </div>
+                  </div>
+                  <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-3xl p-5 border border-green-200">
+                    <div className="text-[9px] font-black text-green-600 uppercase tracking-widest mb-1">Total Skor</div>
+                    <div className="text-3xl font-black text-green-900">
+                      {(() => {
+                        let totalScore = 0;
+                        Object.values(selectedMember.member.weeklyAcquisitions || {}).forEach(weekAcq => {
+                          totalScore += getMemberPoints(weekAcq);
+                        });
+                        return totalScore;
+                      })()}
+                    </div>
+                  </div>
+                </div>
 
-                    {/* Accordion for Details */}
-                    <Accordion
-                      type="single"
-                      collapsible
-                      value={accordionValue}
-                      onValueChange={setAccordionValue}
-                      className="w-full"
-                    >
-                      {/* Attendance Rate & Stats */}
-                      <AccordionItem value="rate" className="border-none">
-                        <AccordionTrigger className="py-3 px-4 bg-white rounded-xl border border-slate-200 hover:bg-slate-50 text-sm font-black text-slate-700">
-                          Attendance Rate & Statistics
-                        </AccordionTrigger>
-                        <AccordionContent>
-                          <div className="bg-white rounded-2xl p-4 border border-slate-200 mt-2">
-                            <div className="flex justify-between items-center mb-2">
-                              <span className="text-xs font-bold text-slate-600">Attendance Rate</span>
-                              <span className="text-sm font-black text-slate-800">{memberAttendance.attendanceRate}%</span>
+                {/* Weekly Breakdown */}
+                <div className="mb-6">
+                  <h4 className="font-black text-sm text-slate-700 mb-3 flex items-center gap-2">
+                    <BarChart3 className="w-4 h-4 text-blue-600" />
+                    BREAKDOWN PER MINGGU
+                  </h4>
+                  <div className="space-y-3">
+                    {[1, 2, 3, 4].map(week => {
+                      const weekAcq = (selectedMember.member.weeklyAcquisitions || {})[week] || {};
+                      const weekScore = getMemberPoints(weekAcq);
+                      const weekTotal = Object.values(weekAcq).reduce((sum: number, qty: number) => sum + qty, 0);
+                      const hasData = weekTotal > 0;
+
+                      return (
+                        <div
+                          key={week}
+                          className={`rounded-2xl border p-4 transition-all ${hasData ? 'bg-white border-slate-200 shadow-sm' : 'bg-slate-50 border-slate-100 opacity-50'}`}
+                        >
+                          <div className="flex justify-between items-center mb-3">
+                            <div className="flex items-center gap-2">
+                              <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-black text-xs ${hasData ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-400'}`}>
+                                W{week}
+                              </div>
+                              <span className="text-xs font-bold text-slate-500 uppercase tracking-wide">
+                                {hasData ? `${weekTotal} Akuisisi` : 'Tidak ada data'}
+                              </span>
                             </div>
-                            <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
-                              <div
-                                className="h-full bg-green-500 transition-all"
-                                style={{ width: `${memberAttendance.attendanceRate}%` }}
-                              />
-                            </div>
-                            <div className="text-[9px] font-bold text-slate-400 mt-2">
-                              {memberAttendance.totalDays} days recorded this month
+                            <div className={`text-lg font-black ${hasData ? 'text-green-600' : 'text-slate-300'}`}>
+                              +{weekScore} Poin
                             </div>
                           </div>
 
-                          {memberAttendance.totalLateMinutes > 0 && (
-                            <div className="bg-amber-50 rounded-2xl p-4 border border-amber-200 mt-3">
-                              <div className="flex items-center gap-2 mb-1">
-                                <Clock className="w-3.5 h-3.5 text-amber-600" />
-                                <span className="text-[9px] font-black text-amber-600 uppercase">Total Late Time</span>
-                              </div>
-                              <div className="text-xl font-black text-amber-800">{memberAttendance.totalLateMinutes} minutes</div>
-                            </div>
-                          )}
-                        </AccordionContent>
-                      </AccordionItem>
-
-                      {/* Leave Breakdown */}
-                      {Object.keys(memberAttendance.leaveReasons).length > 0 && (
-                        <AccordionItem value="leave" className="border-none">
-                          <AccordionTrigger className="py-3 px-4 bg-white rounded-xl border border-slate-200 hover:bg-slate-50 text-sm font-black text-slate-700">
-                            Leave Breakdown
-                          </AccordionTrigger>
-                          <AccordionContent>
-                            <div className="bg-white rounded-2xl p-4 border border-slate-200 mt-2 space-y-2">
-                              {Object.entries(memberAttendance.leaveReasons).map(([reason, count]) => (
-                                <div key={reason} className="flex justify-between items-center py-2 px-3 bg-slate-50 rounded-xl">
-                                  <span className="text-xs text-slate-600 capitalize">{reason.replace(/_/g, ' ')}</span>
-                                  <span className="text-xs font-bold text-slate-800 bg-slate-200 px-2 py-1 rounded-full">{count}</span>
-                                </div>
-                              ))}
-                            </div>
-                          </AccordionContent>
-                        </AccordionItem>
-                      )}
-
-                      {/* Calendar */}
-                      <AccordionItem value="calendar" className="border-none">
-                        <AccordionTrigger className="py-3 px-4 bg-white rounded-xl border border-slate-200 hover:bg-slate-50 text-sm font-black text-slate-700">
-                          Monthly Calendar
-                        </AccordionTrigger>
-                        <AccordionContent>
-                          <div className="bg-white rounded-2xl p-4 border border-slate-200 mt-2">
-                            <div className="text-[9px] font-black text-slate-500 uppercase mb-3">
-                              {new Date().toLocaleString('default', { month: 'long', year: 'numeric' })} Calendar
-                            </div>
-                            
-                            {/* Legend */}
-                            <div className="flex flex-wrap gap-2 mb-3">
-                              <div className="flex items-center gap-1">
-                                <div className="w-3 h-3 rounded-sm bg-green-500"></div>
-                                <span className="text-[8px] font-bold text-slate-500">Present</span>
-                              </div>
-                              <div className="flex items-center gap-1">
-                                <div className="w-3 h-3 rounded-sm bg-amber-500"></div>
-                                <span className="text-[8px] font-bold text-slate-500">Late</span>
-                              </div>
-                              <div className="flex items-center gap-1">
-                                <div className="w-3 h-3 rounded-sm bg-blue-500"></div>
-                                <span className="text-[8px] font-bold text-slate-500">Izin</span>
-                              </div>
-                              <div className="flex items-center gap-1">
-                                <div className="w-3 h-3 rounded-sm bg-red-500"></div>
-                                <span className="text-[8px] font-bold text-slate-500">Alpha</span>
-                              </div>
-                            </div>
-
-                            {/* Calendar Grid */}
-                            <div className="grid grid-cols-7 gap-1">
-                              {/* Day Headers */}
-                              {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-                                <div key={day} className="text-center text-[8px] font-bold text-slate-400 py-1">
-                                  {day}
-                                </div>
-                              ))}
-                              
-                              {/* Calendar Days */}
-                              {getCalendarDays().map((dayInfo, index) => (
-                                <div
-                                  key={index}
-                                  className={`
-                                    aspect-square rounded-lg flex flex-col items-center justify-center relative
-                                    ${dayInfo.day ? 'cursor-pointer hover:scale-105 transition-transform' : ''}
-                                    ${!dayInfo.day ? 'bg-transparent' : ''}
-                                    ${dayInfo.isToday ? 'ring-2 ring-blue-500 ring-offset-1' : ''}
-                                  `}
-                                >
-                                  {dayInfo.day && (
-                                    <>
-                                      <span className={`text-[9px] font-bold ${dayInfo.status ? 'text-white' : 'text-slate-600'}`}>
-                                        {dayInfo.day}
-                                      </span>
-                                      {dayInfo.status && (
-                                        <div className={`absolute inset-0 rounded-lg ${getStatusColor(dayInfo.status)} opacity-80`}></div>
-                                      )}
-                                      {dayInfo.status && (
-                                        <span className="text-[6px] font-black text-white relative z-10 mt-0.5">
-                                          {dayInfo.status === 'late' && `${dayInfo.lateMinutes}m`}
-                                          {dayInfo.status === 'leave' && 'L'}
-                                          {dayInfo.status === 'present' && '✓'}
-                                          {dayInfo.status === 'alpha' && '×'}
-                                        </span>
-                                      )}
-                                    </>
-                                  )}
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        </AccordionContent>
-                      </AccordionItem>
-
-                      {/* Attendance History */}
-                      {attendanceDetails.length > 0 && (
-                        <AccordionItem value="history" className="border-none">
-                          <AccordionTrigger className="py-3 px-4 bg-white rounded-xl border border-slate-200 hover:bg-slate-50 text-sm font-black text-slate-700">
-                            Attendance History ({attendanceDetails.length})
-                          </AccordionTrigger>
-                          <AccordionContent>
-                            <div className="bg-white rounded-2xl p-4 border border-slate-200 mt-2">
-                              <div className="space-y-2 max-h-64 overflow-y-auto">
-                                {attendanceDetails.map((record: any, index: number) => (
-                                  <div
-                                    key={index}
-                                    className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100"
-                                  >
-                                    <div className="flex items-center gap-3">
-                                      <div className={`w-2 h-2 rounded-full ${getStatusColor(record.status)}`}></div>
-                                      <div>
-                                        <div className="text-xs font-bold text-slate-700">
-                                          {new Date(record.date).toLocaleDateString('en-US', { 
-                                            weekday: 'short', 
-                                            month: 'short', 
-                                            day: 'numeric' 
-                                          })}
-                                        </div>
-                                        <div className="text-[9px] text-slate-500">
-                                          {record.status === 'late' && `${record.late_minutes || 0} min late`}
-                                          {record.status === 'leave' && record.leave_reason && 
-                                            record.leave_reason.replace(/_/g, ' ')}
-                                          {record.notes && `• ${record.notes}`}
-                                        </div>
+                          {hasData && (
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                              {Object.entries(weekAcq)
+                                .filter(([_, qty]) => qty > 0)
+                                .map(([product, qty]) => {
+                                  const productConfig = products.find(p => p.product_key === product);
+                                  let pointsEarned = 0;
+                                  if (productConfig) {
+                                    if (productConfig.is_tiered && productConfig.tier_config) {
+                                      const tier = productConfig.tier_config.find(t => qty <= t.limit) || productConfig.tier_config[productConfig.tier_config.length - 1];
+                                      pointsEarned = qty * tier.points;
+                                    } else {
+                                      pointsEarned = qty * (productConfig.flat_points || 0);
+                                    }
+                                  }
+                                  return (
+                                    <div key={product} className="bg-slate-50 rounded-xl p-2.5 border border-slate-100">
+                                      <div className="text-[9px] font-black text-slate-400 uppercase">{product}</div>
+                                      <div className="flex justify-between items-center mt-1">
+                                        <span className="text-sm font-bold text-slate-700">{qty} {productConfig?.unit}</span>
+                                        <span className="text-xs font-black text-green-600">+{pointsEarned}</span>
                                       </div>
                                     </div>
-                                    <span className={`text-[10px] font-black px-2 py-1 rounded-full ${
-                                      record.status === 'present' ? 'bg-green-100 text-green-700' :
-                                      record.status === 'late' ? 'bg-amber-100 text-amber-700' :
-                                      record.status === 'leave' ? 'bg-blue-100 text-blue-700' :
-                                      'bg-red-100 text-red-700'
-                                    }`}>
-                                      {getStatusLabel(record.status)}
-                                    </span>
-                                  </div>
-                                ))}
-                              </div>
+                                  );
+                                })}
                             </div>
-                          </AccordionContent>
-                        </AccordionItem>
-                      )}
-                    </Accordion>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
 
-                    {/* No Attendance Data */}
-                    {memberAttendance.totalDays === 0 && (
-                      <div className="bg-slate-50 rounded-2xl p-6 border border-slate-200 text-center">
-                        <FileText className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-                        <p className="text-sm font-bold text-slate-400">No attendance records this month</p>
-                      </div>
-                    )}
-                  </>
-                ) : null}
-              </div>
+                {/* Score Calculation Info */}
+                <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200">
+                  <div className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-2">Ringkasan Skor</div>
+                  <div className="flex items-center gap-2 text-xs text-slate-600">
+                    <Trophy className="w-3.5 h-3.5 text-yellow-600" />
+                    <span className="font-bold">
+                      {(() => {
+                        let totalScore = 0;
+                        Object.values(selectedMember.member.weeklyAcquisitions || {}).forEach(weekAcq => {
+                          totalScore += getMemberPoints(weekAcq);
+                        });
+                        return `Total kumulatif: ${totalScore} poin dari semua minggu`;
+                      })()}
+                    </span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -1403,148 +998,148 @@ export default function App() {
           <div className="space-y-8 animate-in fade-in duration-500">
             {/* Chart Section */}
             <div className="bg-white rounded-[40px] p-8 border border-slate-200 shadow-sm relative overflow-hidden">
-               <div className="relative z-10 mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                 <div>
-                   <h2 className="font-black text-xl flex items-center gap-3 text-slate-800 mb-1"><div className="w-10 h-10 rounded-2xl bg-indigo-100 flex items-center justify-center"><LineChartIcon className="text-indigo-600 w-6 h-6"/></div>Tren Performa Tim</h2>
-                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-14">Akumulasi skor antar tim setiap minggu</p>
-                 </div>
-                 <div className="flex items-center gap-2">
-                   <button
-                     onClick={() => setShowChartControls(!showChartControls)}
-                     className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all ${showChartControls ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
-                   >
-                     <Settings className="w-4 h-4" /> {showChartControls ? 'TUTUP' : 'CUSTOMIZE'}
-                   </button>
-                   <div className="flex items-center gap-2 bg-slate-50 p-2 rounded-xl border border-slate-100"><span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse"></span><span className="text-[10px] font-black text-slate-500 uppercase tracking-wider italic">Real-time Analysis</span></div>
-                 </div>
-               </div>
+              <div className="relative z-10 mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                  <h2 className="font-black text-xl flex items-center gap-3 text-slate-800 mb-1"><div className="w-10 h-10 rounded-2xl bg-indigo-100 flex items-center justify-center"><LineChartIcon className="text-indigo-600 w-6 h-6" /></div>Tren Performa Tim</h2>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-14">Akumulasi skor antar tim setiap minggu</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setShowChartControls(!showChartControls)}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all ${showChartControls ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                  >
+                    <Settings className="w-4 h-4" /> {showChartControls ? 'TUTUP' : 'CUSTOMIZE'}
+                  </button>
+                  <div className="flex items-center gap-2 bg-slate-50 p-2 rounded-xl border border-slate-100"><span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse"></span><span className="text-[10px] font-black text-slate-500 uppercase tracking-wider italic">Real-time Analysis</span></div>
+                </div>
+              </div>
 
-               {/* Chart Controls Panel */}
-               {showChartControls && (
-                 <div className="mb-8 p-6 bg-gradient-to-br from-slate-50 to-blue-50 rounded-3xl border border-slate-200">
-                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-                     {/* Filter by Team */}
-                     <div>
-                       <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2">Filter Tim</label>
-                       <select
-                         value={chartFilters.filterByTeam}
-                         onChange={(e) => setChartFilters({ ...chartFilters, filterByTeam: e.target.value, filterByMember: 'all' })}
-                         className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm font-bold outline-none focus:ring-2 focus:ring-blue-200"
-                       >
-                         <option value="all">Semua Tim</option>
-                         {teams.map(t => (
-                           <option key={t.id} value={t.id}>{t.name}</option>
-                         ))}
-                       </select>
-                     </div>
+              {/* Chart Controls Panel */}
+              {showChartControls && (
+                <div className="mb-8 p-6 bg-gradient-to-br from-slate-50 to-blue-50 rounded-3xl border border-slate-200">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+                    {/* Filter by Team */}
+                    <div>
+                      <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2">Filter Tim</label>
+                      <select
+                        value={chartFilters.filterByTeam}
+                        onChange={(e) => setChartFilters({ ...chartFilters, filterByTeam: e.target.value, filterByMember: 'all' })}
+                        className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm font-bold outline-none focus:ring-2 focus:ring-blue-200"
+                      >
+                        <option value="all">Semua Tim</option>
+                        {teams.map(t => (
+                          <option key={t.id} value={t.id}>{t.name}</option>
+                        ))}
+                      </select>
+                    </div>
 
-                     {/* Filter by Member */}
-                     <div>
-                       <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2">Filter Anggota</label>
-                       <select
-                         value={chartFilters.filterByMember}
-                         onChange={(e) => setChartFilters({ ...chartFilters, filterByMember: e.target.value })}
-                         className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm font-bold outline-none focus:ring-2 focus:ring-blue-200"
-                         disabled={chartFilters.filterByTeam === 'all'}
-                       >
-                         <option value="all">Semua Anggota</option>
-                         {teams.filter(t => chartFilters.filterByTeam === 'all' || t.id === chartFilters.filterByTeam)
-                           .flatMap(t => t.members || [])
-                           .map(m => (
-                             <option key={m.id} value={m.id}>{m.name}</option>
-                           ))}
-                       </select>
-                     </div>
+                    {/* Filter by Member */}
+                    <div>
+                      <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2">Filter Anggota</label>
+                      <select
+                        value={chartFilters.filterByMember}
+                        onChange={(e) => setChartFilters({ ...chartFilters, filterByMember: e.target.value })}
+                        className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm font-bold outline-none focus:ring-2 focus:ring-blue-200"
+                        disabled={chartFilters.filterByTeam === 'all'}
+                      >
+                        <option value="all">Semua Anggota</option>
+                        {teams.filter(t => chartFilters.filterByTeam === 'all' || t.id === chartFilters.filterByTeam)
+                          .flatMap(t => t.members || [])
+                          .map(m => (
+                            <option key={m.id} value={m.id}>{m.name}</option>
+                          ))}
+                      </select>
+                    </div>
 
-                     {/* Metric Type */}
-                     <div>
-                       <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2">Metrik</label>
-                       <select
-                         value={chartFilters.metric}
-                         onChange={(e) => setChartFilters({ ...chartFilters, metric: e.target.value as 'score' | 'quantity' })}
-                         className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm font-bold outline-none focus:ring-2 focus:ring-blue-200"
-                       >
-                         <option value="score">Skor (Poin)</option>
-                         <option value="quantity">Jumlah Akuisisi</option>
-                       </select>
-                     </div>
+                    {/* Metric Type */}
+                    <div>
+                      <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2">Metrik</label>
+                      <select
+                        value={chartFilters.metric}
+                        onChange={(e) => setChartFilters({ ...chartFilters, metric: e.target.value as 'score' | 'quantity' })}
+                        className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm font-bold outline-none focus:ring-2 focus:ring-blue-200"
+                      >
+                        <option value="score">Skor (Poin)</option>
+                        <option value="quantity">Jumlah Akuisisi</option>
+                      </select>
+                    </div>
 
-                     {/* Reset Filters */}
-                     <div className="flex items-end">
-                       <button
-                         onClick={() => setChartFilters({
-                           filterByTeam: 'all',
-                           filterByMember: 'all',
-                           metric: 'score',
-                           selectedProducts: products.map(p => p.product_key)
-                         })}
-                         className="w-full bg-slate-200 hover:bg-slate-300 text-slate-700 h-[42px] rounded-xl font-black text-xs transition-all"
-                       >
-                         RESET FILTER
-                       </button>
-                     </div>
-                   </div>
+                    {/* Reset Filters */}
+                    <div className="flex items-end">
+                      <button
+                        onClick={() => setChartFilters({
+                          filterByTeam: 'all',
+                          filterByMember: 'all',
+                          metric: 'score',
+                          selectedProducts: products.map(p => p.product_key)
+                        })}
+                        className="w-full bg-slate-200 hover:bg-slate-300 text-slate-700 h-[42px] rounded-xl font-black text-xs transition-all"
+                      >
+                        RESET FILTER
+                      </button>
+                    </div>
+                  </div>
 
-                   {/* Product Filter */}
-                   <div className="mb-6">
-                     <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-3">Filter Produk</label>
-                     <div className="flex flex-wrap gap-2">
-                       {products.filter(p => p.is_active).map(p => {
-                         const isSelected = chartFilters.selectedProducts.includes(p.product_key);
-                         return (
-                           <button
-                             key={p.product_key}
-                             onClick={() => {
-                               const newProducts = isSelected
-                                 ? chartFilters.selectedProducts.filter(prod => prod !== p.product_key)
-                                 : [...chartFilters.selectedProducts, p.product_key];
-                               if (newProducts.length > 0) {
-                                 setChartFilters({ ...chartFilters, selectedProducts: newProducts });
-                               }
-                             }}
-                             className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase transition-all ${isSelected ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-500 hover:bg-slate-300'}`}
-                           >
-                             {p.product_key}
-                           </button>
-                         );
-                       })}
-                     </div>
-                   </div>
+                  {/* Product Filter */}
+                  <div className="mb-6">
+                    <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-3">Filter Produk</label>
+                    <div className="flex flex-wrap gap-2">
+                      {products.filter(p => p.is_active).map(p => {
+                        const isSelected = chartFilters.selectedProducts.includes(p.product_key);
+                        return (
+                          <button
+                            key={p.product_key}
+                            onClick={() => {
+                              const newProducts = isSelected
+                                ? chartFilters.selectedProducts.filter(prod => prod !== p.product_key)
+                                : [...chartFilters.selectedProducts, p.product_key];
+                              if (newProducts.length > 0) {
+                                setChartFilters({ ...chartFilters, selectedProducts: newProducts });
+                              }
+                            }}
+                            className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase transition-all ${isSelected ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-500 hover:bg-slate-300'}`}
+                          >
+                            {p.product_key}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
 
-                   {/* Team Colors */}
-                   <div>
-                     <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-3">Warna Tim</label>
-                     <div className="flex flex-wrap gap-4">
-                       {teams.map(t => (
-                         <div key={t.id} className="flex items-center gap-2 bg-white px-3 py-2 rounded-xl border border-slate-200 shadow-sm">
-                           <span className="text-[9px] font-bold text-slate-600 truncate max-w-[120px]">{t.name}</span>
-                           <input
-                             type="color"
-                             value={teamColors[t.id] || t.accent_color}
-                             onChange={(e) => setTeamColors({ ...teamColors, [t.id]: e.target.value })}
-                             className="w-8 h-8 rounded-lg border border-slate-200 cursor-pointer"
-                           />
-                         </div>
-                       ))}
-                     </div>
-                   </div>
-                 </div>
-               )}
-
-               <div className="h-[350px] w-full">
-                 <RechartsContainer width="100%" height="100%">
-                    <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                      <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fontSize: 10, fontWeight: 800, fill: '#94a3b8'}} dy={10} />
-                      <YAxis axisLine={false} tickLine={false} tick={{fontSize: 10, fontWeight: 800, fill: '#94a3b8'}} />
-                      <Tooltip contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', padding: '12px' }} itemStyle={{ fontSize: '11px', fontWeight: 900 }} labelStyle={{ fontSize: '10px', fontWeight: 900, marginBottom: '8px', color: '#64748b' }} />
-                      <Legend verticalAlign="top" align="right" iconType="circle" wrapperStyle={{ fontSize: '10px', fontWeight: 900, textTransform: 'uppercase', paddingBottom: '20px' }} />
-                      {teams.map((t, i) => (
-                        <Line key={t.id} type="monotone" dataKey={t.name} stroke={teamColors[t.id] || t.accent_color || colors[i % colors.length]} strokeWidth={4} dot={{ r: 6, strokeWidth: 2, fill: 'white' }} activeDot={{ r: 8, strokeWidth: 0 }} animationDuration={1500} />
+                  {/* Team Colors */}
+                  <div>
+                    <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-3">Warna Tim</label>
+                    <div className="flex flex-wrap gap-4">
+                      {teams.map(t => (
+                        <div key={t.id} className="flex items-center gap-2 bg-white px-3 py-2 rounded-xl border border-slate-200 shadow-sm">
+                          <span className="text-[9px] font-bold text-slate-600 truncate max-w-[120px]">{t.name}</span>
+                          <input
+                            type="color"
+                            value={teamColors[t.id] || t.accent_color}
+                            onChange={(e) => setTeamColors({ ...teamColors, [t.id]: e.target.value })}
+                            className="w-8 h-8 rounded-lg border border-slate-200 cursor-pointer"
+                          />
+                        </div>
                       ))}
-                    </LineChart>
-                 </RechartsContainer>
-               </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="h-[350px] w-full">
+                <RechartsContainer width="100%" height="100%">
+                  <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 800, fill: '#94a3b8' }} dy={10} />
+                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 800, fill: '#94a3b8' }} />
+                    <Tooltip contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', padding: '12px' }} itemStyle={{ fontSize: '11px', fontWeight: 900 }} labelStyle={{ fontSize: '10px', fontWeight: 900, marginBottom: '8px', color: '#64748b' }} />
+                    <Legend verticalAlign="top" align="right" iconType="circle" wrapperStyle={{ fontSize: '10px', fontWeight: 900, textTransform: 'uppercase', paddingBottom: '20px' }} />
+                    {teams.map((t, i) => (
+                      <Line key={t.id} type="monotone" dataKey={t.name} stroke={teamColors[t.id] || t.accent_color || colors[i % colors.length]} strokeWidth={4} dot={{ r: 6, strokeWidth: 2, fill: 'white' }} activeDot={{ r: 8, strokeWidth: 0 }} animationDuration={1500} />
+                    ))}
+                  </LineChart>
+                </RechartsContainer>
+              </div>
             </div>
 
             {/* Tim Card Grid */}
@@ -1552,9 +1147,9 @@ export default function App() {
               {teamStats.map((team, idx) => {
                 const cardStyle: React.CSSProperties = team.image_url
                   ? {
-                      background: `linear-gradient(to bottom, rgba(255, 255, 255, 0.7) 0%, rgba(255, 255, 255, 0.95) 40%, #ffffff 100%)`,
-                      position: 'relative'
-                    }
+                    background: `linear-gradient(to bottom, rgba(255, 255, 255, 0.7) 0%, rgba(255, 255, 255, 0.95) 40%, #ffffff 100%)`,
+                    position: 'relative'
+                  }
                   : { background: 'white' };
 
                 return (
@@ -1589,7 +1184,7 @@ export default function App() {
                         </div>
                       )}
                       <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent"></div>
-                      {idx === 0 && team.totalPoints > 0 && <div className="absolute top-4 left-4 bg-[#FDB813] text-[#003d79] text-[10px] font-black px-3 py-1 rounded-full flex items-center gap-1 shadow-lg animate-bounce z-20"><Trophy className="w-3 h-3"/> TIM TERBAIK</div>}
+                      {idx === 0 && team.totalPoints > 0 && <div className="absolute top-4 left-4 bg-[#FDB813] text-[#003d79] text-[10px] font-black px-3 py-1 rounded-full flex items-center gap-1 shadow-lg animate-bounce z-20"><Trophy className="w-3 h-3" /> TIM TERBAIK</div>}
                       <div className="absolute bottom-4 left-6 right-6 z-20"><h3 className="font-black text-white text-lg leading-tight drop-shadow-md">{team.name}</h3></div>
                     </div>
 
@@ -1602,7 +1197,7 @@ export default function App() {
                       <div className="mb-6 bg-white/40 backdrop-blur-sm p-4 rounded-2xl border border-white/60 shadow-inner">
                         <div className="flex items-center justify-between mb-4">
                           <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1">
-                            <TrendingUp className="w-3 h-3 text-blue-600"/> Dashboard Target
+                            <TrendingUp className="w-3 h-3 text-blue-600" /> Dashboard Target
                           </span>
                           <span className="text-[10px] font-bold text-blue-700 px-2 py-1 bg-blue-100 rounded-md">
                             {products.filter(p => p.is_active && (team.stats[p.product_key] || 0) >= p.weekly_target).length} Goal
@@ -1630,7 +1225,7 @@ export default function App() {
                       </div>
 
                       <div className="space-y-3">
-                        {[...(team.members || [])].sort((a,b) => getMemberPoints((b.weeklyAcquisitions || {})[activeWeek] || {}) - getMemberPoints((a.weeklyAcquisitions || {})[activeWeek] || {})).map(m => {
+                        {[...(team.members || [])].sort((a, b) => getMemberPoints((b.weeklyAcquisitions || {})[activeWeek] || {}) - getMemberPoints((a.weeklyAcquisitions || {})[activeWeek] || {})).map(m => {
                           const pts = getMemberPoints((m.weeklyAcquisitions || {})[activeWeek] || {});
                           const tier = getTierByRank(m.id);
                           return (
@@ -1662,33 +1257,33 @@ export default function App() {
 
             {/* Global Progress */}
             <div className="bg-white rounded-[40px] p-8 border border-slate-200 shadow-sm relative overflow-hidden">
-               <div className="relative z-10 mb-10">
-                 <h2 className="font-black text-xl flex items-center gap-3 text-slate-800 mb-1">
-                   <div className="w-10 h-10 rounded-2xl bg-blue-100 flex items-center justify-center">
-                     <Target className="text-blue-600 w-6 h-6"/>
-                   </div>
-                   Total Capaian Mingguan Seluruh Tim
-                 </h2>
-                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-14">Akumulasi seluruh tim periode Week {activeWeek}</p>
-               </div>
-               <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-8 relative z-10">
-                  {products.filter(p => p.is_active).map(p => {
-                    const totalAchieved = teamStats.reduce((acc, t) => acc + (t.stats[p.product_key] || 0), 0);
-                    const dynamicTarget = p.weekly_target * (teams.length || 1);
-                    const progress = Math.min((totalAchieved/dynamicTarget)*100, 100);
-                    return (
-                      <div key={p.product_key} className="flex flex-col items-center">
-                        <div className="w-16 h-16 rounded-full border-4 border-slate-50 flex flex-col items-center justify-center relative mb-3 bg-white shadow-sm overflow-hidden">
-                           <div className={`absolute bottom-0 w-full transition-all duration-1000 ${totalAchieved >= dynamicTarget ? 'bg-green-100' : 'bg-blue-50'}`} style={{height: `${progress}%`}}></div>
-                           <span className={`relative text-[10px] font-black ${totalAchieved >= dynamicTarget ? 'text-green-600' : 'text-blue-900'}`}>{totalAchieved}</span>
-                           <div className="relative h-px w-6 bg-slate-200 my-1"></div>
-                           <span className="relative text-[9px] font-bold text-slate-400">{dynamicTarget}</span>
-                        </div>
-                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">{p.product_key}</span>
+              <div className="relative z-10 mb-10">
+                <h2 className="font-black text-xl flex items-center gap-3 text-slate-800 mb-1">
+                  <div className="w-10 h-10 rounded-2xl bg-blue-100 flex items-center justify-center">
+                    <Target className="text-blue-600 w-6 h-6" />
+                  </div>
+                  Total Capaian Mingguan Seluruh Tim
+                </h2>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-14">Akumulasi seluruh tim periode Week {activeWeek}</p>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-8 relative z-10">
+                {products.filter(p => p.is_active).map(p => {
+                  const totalAchieved = teamStats.reduce((acc, t) => acc + (t.stats[p.product_key] || 0), 0);
+                  const dynamicTarget = p.weekly_target * (teams.length || 1);
+                  const progress = Math.min((totalAchieved / dynamicTarget) * 100, 100);
+                  return (
+                    <div key={p.product_key} className="flex flex-col items-center">
+                      <div className="w-16 h-16 rounded-full border-4 border-slate-50 flex flex-col items-center justify-center relative mb-3 bg-white shadow-sm overflow-hidden">
+                        <div className={`absolute bottom-0 w-full transition-all duration-1000 ${totalAchieved >= dynamicTarget ? 'bg-green-100' : 'bg-blue-50'}`} style={{ height: `${progress}%` }}></div>
+                        <span className={`relative text-[10px] font-black ${totalAchieved >= dynamicTarget ? 'text-green-600' : 'text-blue-900'}`}>{totalAchieved}</span>
+                        <div className="relative h-px w-6 bg-slate-200 my-1"></div>
+                        <span className="relative text-[9px] font-bold text-slate-400">{dynamicTarget}</span>
                       </div>
-                    );
-                  })}
-               </div>
+                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">{p.product_key}</span>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </div>
         )}
@@ -1707,12 +1302,12 @@ export default function App() {
                 <p className="text-blue-200 text-sm font-medium">Input data akuisisi untuk <span className="text-[#FDB813] font-black underline underline-offset-4">Minggu ke-{activeWeek}</span></p>
               </div>
               <div className="w-full grid grid-cols-1 md:grid-cols-3 gap-4 relative z-10">
-                <div className="md:col-span-2 space-y-1"><label className="text-[10px] font-black text-blue-300 ml-4 uppercase tracking-widest">Nama Tim Baru</label><input type="text" value={newTeam.name} onChange={(e) => setNewTeam({...newTeam, name: e.target.value})} placeholder="Contoh: Tim Rajawali" className="w-full bg-white/10 border border-white/20 rounded-full px-6 py-4 text-sm outline-none focus:bg-white/20 focus:ring-2 focus:ring-[#FDB813]" /></div>
+                <div className="md:col-span-2 space-y-1"><label className="text-[10px] font-black text-blue-300 ml-4 uppercase tracking-widest">Nama Tim Baru</label><input type="text" value={newTeam.name} onChange={(e) => setNewTeam({ ...newTeam, name: e.target.value })} placeholder="Contoh: Tim Rajawali" className="w-full bg-white/10 border border-white/20 rounded-full px-6 py-4 text-sm outline-none focus:bg-white/20 focus:ring-2 focus:ring-[#FDB813]" /></div>
                 <div className="space-y-1">
                   <label className="text-[10px] font-black text-blue-300 ml-4 uppercase tracking-widest block mb-2">Sampul Tim</label>
                   <ImageUploader
                     value={newTeam.image_url}
-                    onChange={(url) => setNewTeam({...newTeam, image_url: url || ''})}
+                    onChange={(url) => setNewTeam({ ...newTeam, image_url: url || '' })}
                     label="Team Cover"
                     folder="teams"
                     aspectRatio="16/10"
@@ -1727,24 +1322,18 @@ export default function App() {
                     <div className="w-10 h-10 rounded-full bg-yellow-400 flex items-center justify-center animate-pulse">
                       <Edit2 className="w-5 h-5 text-blue-900" />
                     </div>
-                    <div className="flex-1">
+                    <div>
                       <p className="text-sm font-bold text-yellow-100">Ada perubahan yang belum disimpan</p>
                       <p className="text-xs text-yellow-200/70">{Object.keys(pendingAcquisitions).length} anggota tim dengan data baru</p>
                     </div>
-                    <AutoSaveIndicator
-                      isSaving={autoSaving}
-                      isDirty={autoSaveDirty}
-                      lastSaved={lastSaved}
-                      error={autoSaveError}
-                    />
                   </div>
                   <button
                     onClick={saveAllAcquisitions}
-                    disabled={autoSaving}
-                    className={`flex items-center gap-2 px-8 py-4 rounded-full font-black text-sm shadow-lg transition-all ${autoSaving ? 'bg-slate-400 cursor-not-allowed' : 'bg-green-500 hover:bg-green-400 hover:scale-105 text-white shadow-green-900/20'}`}
+                    disabled={isSaving}
+                    className={`flex items-center gap-2 px-8 py-4 rounded-full font-black text-sm shadow-lg transition-all ${isSaving ? 'bg-slate-400 cursor-not-allowed' : 'bg-green-500 hover:bg-green-400 hover:scale-105 text-white shadow-green-900/20'}`}
                   >
-                    {autoSaving ? <GridLoader pattern="edge-cw" size="sm" color="#FDB813" mode="stagger" /> : <Save className="w-5 h-5" />}
-                    {autoSaving ? 'SAVING...' : 'SAVE'}
+                    {isSaving ? <GridLoader pattern="edge-cw" size="sm" color="#FDB813" mode="stagger" /> : <Save className="w-5 h-5" />}
+                    {isSaving ? 'SAVING...' : 'SAVE'}
                   </button>
                 </div>
               )}
@@ -1757,28 +1346,28 @@ export default function App() {
                   <div className="bg-slate-50 px-8 py-6 border-b border-slate-100 flex justify-between items-center">
                     <div className="flex items-center gap-4 flex-1">
                       <div className="w-12 h-10 rounded-xl bg-blue-100 border border-blue-200 overflow-hidden flex-shrink-0 shadow-inner">
-                        {team.image_url ? <img src={team.image_url} className="w-full h-full object-cover"/> : <div className="w-full h-full flex items-center justify-center"><ImageIcon className="w-4 h-4 text-blue-300"/></div>}
+                        {team.image_url ? <img src={team.image_url} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center"><ImageIcon className="w-4 h-4 text-blue-300" /></div>}
                       </div>
                       {editingTeam?.id === team.id ? (
                         <div className="flex flex-col md:flex-row items-center gap-3 w-full max-w-2xl bg-white p-3 rounded-2xl shadow-md border border-blue-100">
-                          <input className="flex-1 w-full bg-slate-50 border border-slate-100 rounded-lg px-3 py-2 text-sm font-black outline-none" value={editingTeam.name} onChange={(e) => setEditingTeam({...editingTeam, name: e.target.value})} placeholder="Nama tim..."/>
+                          <input className="flex-1 w-full bg-slate-50 border border-slate-100 rounded-lg px-3 py-2 text-sm font-black outline-none" value={editingTeam.name} onChange={(e) => setEditingTeam({ ...editingTeam, name: e.target.value })} placeholder="Nama tim..." />
                           <div className="flex-1">
                             <ImageUploader
                               value={editingTeam.image_url}
-                              onChange={(url) => setEditingTeam({...editingTeam, image_url: url})}
+                              onChange={(url) => setEditingTeam({ ...editingTeam, image_url: url })}
                               label="Team Cover"
                               folder="teams"
                               entityId={editingTeam.id}
                               aspectRatio="16/10"
                             />
                           </div>
-                          <div className="flex gap-2"><button onClick={updateTeam} className="p-3 bg-green-500 text-white rounded-xl"><Check className="w-5 h-5"/></button><button onClick={() => setEditingTeam(null)} className="p-3 bg-slate-100 text-slate-500 rounded-xl"><X className="w-5 h-5"/></button></div>
+                          <div className="flex gap-2"><button onClick={updateTeam} className="p-3 bg-green-500 text-white rounded-xl"><Check className="w-5 h-5" /></button><button onClick={() => setEditingTeam(null)} className="p-3 bg-slate-100 text-slate-500 rounded-xl"><X className="w-5 h-5" /></button></div>
                         </div>
                       ) : (
-                        <div className="flex items-center gap-3"><h3 className="font-black text-[#003d79] text-xl uppercase tracking-tight">{team.name}</h3><button onClick={() => setEditingTeam({id: team.id, name: team.name, image_url: team.image_url, accent_color: team.accent_color})} className="p-1.5 text-slate-300 hover:text-blue-600 transition-all"><Edit2 className="w-4 h-4"/></button></div>
+                        <div className="flex items-center gap-3"><h3 className="font-black text-[#003d79] text-xl uppercase tracking-tight">{team.name}</h3><button onClick={() => setEditingTeam({ id: team.id, name: team.name, image_url: team.image_url, accent_color: team.accent_color })} className="p-1.5 text-slate-300 hover:text-blue-600 transition-all"><Edit2 className="w-4 h-4" /></button></div>
                       )}
                     </div>
-                    <button onClick={() => deleteTeam(team.id)} className="p-2 text-slate-300 hover:text-red-500 transition-all"><Trash2 className="w-5 h-5"/></button>
+                    <button onClick={() => deleteTeam(team.id)} className="p-2 text-slate-300 hover:text-red-500 transition-all"><Trash2 className="w-5 h-5" /></button>
                   </div>
 
                   <div className="p-10 space-y-16">
@@ -1786,15 +1375,15 @@ export default function App() {
                       <h4 className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-6 flex items-center gap-2"><UserPlus className="w-4 h-4" /> Tambah Anggota Tim</h4>
                       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                         <div className="md:col-span-2">
-                          <input type="text" value={tempMember.name} onChange={(e) => setTempMember({...tempMember, name: e.target.value})} placeholder="Nama Lengkap" className="w-full bg-white border border-slate-200 rounded-full px-5 py-3 text-sm outline-none focus:ring-2 focus:ring-blue-200" />
+                          <input type="text" value={tempMember.name} onChange={(e) => setTempMember({ ...tempMember, name: e.target.value })} placeholder="Nama Lengkap" className="w-full bg-white border border-slate-200 rounded-full px-5 py-3 text-sm outline-none focus:ring-2 focus:ring-blue-200" />
                         </div>
                         <div>
-                          <input type="text" value={tempMember.position} onChange={(e) => setTempMember({...tempMember, position: e.target.value})} placeholder="Jabatan" className="w-full bg-white border border-slate-200 rounded-full px-5 py-3 text-sm outline-none focus:ring-2 focus:ring-blue-200" />
+                          <input type="text" value={tempMember.position} onChange={(e) => setTempMember({ ...tempMember, position: e.target.value })} placeholder="Jabatan" className="w-full bg-white border border-slate-200 rounded-full px-5 py-3 text-sm outline-none focus:ring-2 focus:ring-blue-200" />
                         </div>
                         <div>
                           <ImageUploader
                             value={tempMember.avatar_url}
-                            onChange={(url) => setTempMember({...tempMember, avatar_url: url || ''})}
+                            onChange={(url) => setTempMember({ ...tempMember, avatar_url: url || '' })}
                             label="Member Avatar"
                             folder="members"
                             aspectRatio="1/1"
@@ -1812,39 +1401,39 @@ export default function App() {
                           <div className="flex flex-col md:flex-row md:items-start gap-6 mb-8">
                             <div className="flex items-center gap-5 flex-1 min-w-0">
                               <div className="w-16 h-16 rounded-full overflow-hidden bg-[#003d79] text-[#FDB813] flex items-center justify-center font-black text-lg shadow-lg border-4 border-white flex-shrink-0">
-                                {member.avatar_url ? <img src={member.avatar_url} className="w-full h-full object-cover" onError={(e) => e.currentTarget.src="https://via.placeholder.com/150"}/> : member.name?.[0]}
+                                {member.avatar_url ? <img src={member.avatar_url} className="w-full h-full object-cover" onError={(e) => e.currentTarget.src = "https://via.placeholder.com/150"} /> : member.name?.[0]}
                               </div>
                               <div className="truncate flex-1">
                                 {editingMember?.memberId === member.id ? (
                                   <div className="flex flex-col gap-3 p-4 bg-blue-50 rounded-2xl border border-blue-100 w-full max-w-xl">
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                                      <div className="flex flex-col"><label className="text-[8px] font-black text-blue-400 uppercase tracking-widest ml-1 mb-1">Nama</label><input className="text-sm font-black p-2 rounded-lg border border-blue-200 outline-none" value={editingMember.name} onChange={(e) => setEditingMember({...editingMember, name: e.target.value})} /></div>
-                                      <div className="flex flex-col"><label className="text-[8px] font-black text-blue-400 uppercase tracking-widest ml-1 mb-1">Jabatan</label><input className="text-sm font-black p-2 rounded-lg border border-blue-200 outline-none" value={editingMember.position} onChange={(e) => setEditingMember({...editingMember, position: e.target.value})} /></div>
+                                      <div className="flex flex-col"><label className="text-[8px] font-black text-blue-400 uppercase tracking-widest ml-1 mb-1">Nama</label><input className="text-sm font-black p-2 rounded-lg border border-blue-200 outline-none" value={editingMember.name} onChange={(e) => setEditingMember({ ...editingMember, name: e.target.value })} /></div>
+                                      <div className="flex flex-col"><label className="text-[8px] font-black text-blue-400 uppercase tracking-widest ml-1 mb-1">Jabatan</label><input className="text-sm font-black p-2 rounded-lg border border-blue-200 outline-none" value={editingMember.position} onChange={(e) => setEditingMember({ ...editingMember, position: e.target.value })} /></div>
                                     </div>
                                     <div className="flex flex-col"><label className="text-[8px] font-black text-blue-400 uppercase tracking-widest ml-1 mb-1">Avatar</label>
                                       <ImageUploader
                                         value={editingMember.avatar_url}
-                                        onChange={(url) => setEditingMember({...editingMember, avatar_url: url})}
+                                        onChange={(url) => setEditingMember({ ...editingMember, avatar_url: url })}
                                         label="Member Avatar"
                                         folder="members"
                                         entityId={editingMember.memberId}
                                         aspectRatio="1/1"
                                       />
                                     </div>
-                                    <div className="flex gap-2"><button onClick={updateMember} className="flex-1 py-2 bg-green-500 text-white rounded-lg text-[10px] font-black uppercase flex items-center justify-center gap-2"><Check className="w-3 h-3"/> Simpan</button><button onClick={() => setEditingMember(null)} className="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg text-[10px] font-black uppercase">Batal</button></div>
+                                    <div className="flex gap-2"><button onClick={updateMember} className="flex-1 py-2 bg-green-500 text-white rounded-lg text-[10px] font-black uppercase flex items-center justify-center gap-2"><Check className="w-3 h-3" /> Simpan</button><button onClick={() => setEditingMember(null)} className="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg text-[10px] font-black uppercase">Batal</button></div>
                                   </div>
                                 ) : (
                                   <>
                                     <div className="flex items-center gap-2">
                                       <h5 className="font-black text-slate-800 text-lg leading-none truncate">{member.name}</h5>
-                                      <button onClick={() => setEditingMember({teamId: team.id, memberId: member.id, name: member.name, position: member.position, avatar_url: member.avatar_url})} className="p-1 text-slate-300 hover:text-blue-500 transition-colors"><Edit2 className="w-3.5 h-3.5"/></button>
-                                      <button onClick={() => deleteMember(team.id, member.id)} className="p-1 text-slate-300 hover:text-red-500 transition-colors"><Trash2 className="w-3.5 h-3.5"/></button>
-                                      <button 
-                                        onClick={() => setMigratingMember({ member, team })} 
+                                      <button onClick={() => setEditingMember({ teamId: team.id, memberId: member.id, name: member.name, position: member.position, avatar_url: member.avatar_url })} className="p-1 text-slate-300 hover:text-blue-500 transition-colors"><Edit2 className="w-3.5 h-3.5" /></button>
+                                      <button onClick={() => deleteMember(team.id, member.id)} className="p-1 text-slate-300 hover:text-red-500 transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
+                                      <button
+                                        onClick={() => setMigratingMember({ member, team })}
                                         className="p-1 text-slate-300 hover:text-purple-500 transition-colors"
                                         title="Pindahkan ke tim lain"
                                       >
-                                        <UserPlus className="w-3.5 h-3.5"/>
+                                        <UserPlus className="w-3.5 h-3.5" />
                                       </button>
                                     </div>
                                     <p className="text-[10px] text-slate-400 font-bold uppercase mt-2 tracking-widest">{member.position}</p>
@@ -1853,8 +1442,8 @@ export default function App() {
                               </div>
                             </div>
                             <div className="bg-yellow-50 px-6 py-3 rounded-2xl border border-yellow-100 flex-shrink-0 self-start text-center shadow-sm">
-                               <p className="text-[9px] font-black text-yellow-700 uppercase tracking-widest mb-1">Poin Minggu {activeWeek}</p>
-                               <p className="text-2xl font-black text-yellow-800 leading-none">{getMemberPoints((member.weeklyAcquisitions || {})[activeWeek])}</p>
+                              <p className="text-[9px] font-black text-yellow-700 uppercase tracking-widest mb-1">Poin Minggu {activeWeek}</p>
+                              <p className="text-2xl font-black text-yellow-800 leading-none">{getMemberPoints((member.weeklyAcquisitions || {})[activeWeek])}</p>
                             </div>
                           </div>
                           <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-4 ml-0 md:ml-20">
@@ -1895,24 +1484,6 @@ export default function App() {
           </div>
         )}
 
-        {viewMode === 'analytics' && (
-          <div className="space-y-8 animate-in fade-in duration-500">
-            <DashboardAnalytics />
-          </div>
-        )}
-
-        {viewMode === 'report' && (
-          <div className="space-y-8 animate-in fade-in duration-500">
-            <PerformanceReport />
-          </div>
-        )}
-
-        {viewMode === 'backup' && (
-          <div className="space-y-8 animate-in fade-in duration-500">
-            <DataBackup />
-          </div>
-        )}
-
         {viewMode === 'absensi' && (
           <div className="space-y-8 animate-in fade-in duration-500">
             <div className="bg-white rounded-[40px] p-8 border border-slate-200 shadow-sm">
@@ -1925,12 +1496,10 @@ export default function App() {
         )}
       </main>
 
-      <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-slate-200 px-6 py-3 md:hidden flex justify-around items-center z-50 rounded-t-[40px] shadow-2xl overflow-x-auto">
-         <button onClick={() => setViewMode('dashboard')} className={`flex flex-col items-center gap-1 transition-all flex-shrink-0 ${viewMode === 'dashboard' ? 'text-blue-900 scale-110' : 'text-slate-300'}`}><BarChart3 className="w-5 h-5"/><span className="text-[7px] font-black uppercase">Home</span></button>
-         <button onClick={() => setViewMode('analytics')} className={`flex flex-col items-center gap-1 transition-all flex-shrink-0 ${viewMode === 'analytics' ? 'text-blue-900 scale-110' : 'text-slate-300'}`}><Activity className="w-5 h-5"/><span className="text-[7px] font-black uppercase">Analytics</span></button>
-         <button onClick={() => setViewMode('report')} className={`flex flex-col items-center gap-1 transition-all flex-shrink-0 ${viewMode === 'report' ? 'text-blue-900 scale-110' : 'text-slate-300'}`}><FileSpreadsheet className="w-5 h-5"/><span className="text-[7px] font-black uppercase">Report</span></button>
-         <button onClick={() => setViewMode('absensi')} className={`flex flex-col items-center gap-1 transition-all flex-shrink-0 ${viewMode === 'absensi' ? 'text-blue-900 scale-110' : 'text-slate-300'}`}><FileText className="w-5 h-5"/><span className="text-[7px] font-black uppercase">Absensi</span></button>
-         <button onClick={() => setViewMode('backup')} className={`flex flex-col items-center gap-1 transition-all flex-shrink-0 ${viewMode === 'backup' ? 'text-blue-900 scale-110' : 'text-slate-300'}`}><Database className="w-5 h-5"/><span className="text-[7px] font-black uppercase">Backup</span></button>
+      <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-slate-200 px-8 py-4 md:hidden flex justify-around items-center z-50 rounded-t-[40px] shadow-2xl">
+        <button onClick={() => setViewMode('dashboard')} className={`flex flex-col items-center gap-1 transition-all ${viewMode === 'dashboard' ? 'text-blue-900 scale-110' : 'text-slate-300'}`}><BarChart3 className="w-6 h-6" /><span className="text-[8px] font-black uppercase">Dashboard</span></button>
+        <button onClick={() => setViewMode('absensi')} className={`flex flex-col items-center gap-1 transition-all ${viewMode === 'absensi' ? 'text-blue-900 scale-110' : 'text-slate-300'}`}><FileText className="w-6 h-6" /><span className="text-[8px] font-black uppercase">Absensi</span></button>
+        <button onClick={() => setViewMode('manage')} className={`flex flex-col items-center gap-1 transition-all ${viewMode === 'manage' ? 'text-blue-900 scale-110' : 'text-slate-300'}`}><Settings className="w-6 h-6" /><span className="text-[8px] font-black uppercase">Manage</span></button>
       </div>
     </div>
   );
