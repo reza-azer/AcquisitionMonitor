@@ -5,6 +5,7 @@ import {
   ChevronDown,
   ChevronUp,
   Clock,
+  Database,
   Download,
   Edit2,
   FileSpreadsheet,
@@ -21,7 +22,8 @@ import {
   Trash2,
   TrendingUp,
   Trophy,
-  UserPlus, X
+  UserPlus, X,
+  Activity
 } from 'lucide-react';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer as RechartsContainer, Tooltip, XAxis, YAxis } from 'recharts';
@@ -32,6 +34,11 @@ import AttendanceSummary from '@/components/AttendanceSummary';
 import ProductManager from '@/components/ProductManager';
 import GridLoader from '@/components/GridLoader';
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/Accordion';
+import AutoSaveIndicator from '@/components/AutoSaveIndicator';
+import { useAutoSave } from '@/hooks/useAutoSave';
+import DashboardAnalytics from '@/components/DashboardAnalytics';
+import PerformanceReport from '@/components/PerformanceReport';
+import DataBackup from '@/components/DataBackup';
 
 // --- KONFIGURASI POIN & TARGET ---
 type TieredProduct = { name: string; unit: string; type: 'tiered'; tiers: {limit: number; p: number}[] };
@@ -125,6 +132,62 @@ export default function App() {
   // Pending acquisitions state (local cache before save)
   const [pendingAcquisitions, setPendingAcquisitions] = useState<Record<string, Record<string, number>>>({});
   const [isSaving, setIsSaving] = useState(false);
+
+  // Auto-save for acquisitions
+  const saveAcquisitionsBatch = async (data: Record<string, Record<string, number>>) => {
+    const entries = Object.entries(data);
+    if (entries.length === 0) return;
+
+    const savePromises = entries.flatMap(([key, products]) => {
+      const [memberId, weekStr] = key.split('|');
+      const week = parseInt(weekStr);
+      return Object.entries(products).map(([productKey, quantity]) => {
+        return fetch('/api/acquisitions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            member_id: memberId,
+            week: week,
+            product_key: productKey,
+            quantity
+          })
+        });
+      });
+    });
+
+    const results = await Promise.all(savePromises);
+    const failed = results.some(r => !r.ok);
+    if (failed) throw new Error('Some requests failed');
+
+    // Clear pending and refresh data
+    setPendingAcquisitions({});
+    await fetchData();
+  };
+
+  const {
+    data: autoSaveData,
+    setData: setAutoSaveData,
+    isSaving: autoSaving,
+    isDirty: autoSaveDirty,
+    lastSaved,
+    saveNow,
+    error: autoSaveError,
+  } = useAutoSave<Record<string, Record<string, number>>>(pendingAcquisitions, saveAcquisitionsBatch, {
+    debounceMs: 2000,
+    onSave: () => {
+      console.log('Auto-save completed successfully');
+    },
+    onError: (error) => {
+      console.error('Auto-save failed:', error);
+    },
+  });
+
+  // Sync pendingAcquisitions to auto-save
+  useEffect(() => {
+    if (Object.keys(pendingAcquisitions).length > 0) {
+      setAutoSaveData(pendingAcquisitions);
+    }
+  }, [pendingAcquisitions, setAutoSaveData]);
 
   // Chart customization state
   const [showChartControls, setShowChartControls] = useState(false);
@@ -641,44 +704,12 @@ export default function App() {
   };
 
   const saveAllAcquisitions = async () => {
-    console.log('Saving acquisitions:', pendingAcquisitions);
-    setIsSaving(true);
-    try {
-      const savePromises = Object.entries(pendingAcquisitions).flatMap(([key, products]) => {
-        const [memberId, weekStr] = key.split('|');
-        const week = parseInt(weekStr);
-        return Object.entries(products).map(([productKey, quantity]) => {
-          console.log(`Saving: member=${memberId}, week=${week}, product=${productKey}, qty=${quantity}`);
-          return fetch('/api/acquisitions', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              member_id: memberId,
-              week: week,
-              product_key: productKey,
-              quantity
-            })
-          });
-        });
-      });
-
-      const results = await Promise.all(savePromises);
-      console.log('Save results:', results);
-
-      // Check for failed requests
-      const failed = results.some(r => !r.ok);
-      if (failed) {
-        throw new Error('Some requests failed');
-      }
-
-      setPendingAcquisitions({});
-      await fetchData();
+    console.log('Manual save - acquisitions:', pendingAcquisitions);
+    const success = await saveNow();
+    if (success) {
       alert('Data berhasil disimpan!');
-    } catch (error) {
-      console.error('Error saving acquisitions:', error);
+    } else {
       alert('Gagal menyimpan data. Silakan coba lagi.');
-    } finally {
-      setIsSaving(false);
     }
   };
 
@@ -765,10 +796,13 @@ export default function App() {
                 <button key={w} onClick={() => setActiveWeek(w)} className={`px-4 py-1.5 rounded-full text-[10px] font-black transition-all ${activeWeek === w ? 'bg-[#FDB813] text-blue-900 shadow-sm' : 'text-white/60 hover:text-white'}`}>WEEK {w}</button>
               ))}
             </div>
-            <nav className="hidden md:flex bg-blue-900/40 p-1 rounded-xl gap-1 border border-white/5">
-              <button onClick={() => setViewMode('dashboard')} className={`flex items-center gap-2 px-5 py-2 rounded-lg text-xs font-bold transition-all ${viewMode === 'dashboard' ? 'bg-white text-blue-900 shadow-md' : 'text-white/70 hover:text-white'}`}><BarChart3 className="w-4 h-4" /> Dashboard</button>
-              <button onClick={() => setViewMode('absensi')} className={`flex items-center gap-2 px-5 py-2 rounded-lg text-xs font-bold transition-all ${viewMode === 'absensi' ? 'bg-white text-blue-900 shadow-md' : 'text-white/70 hover:text-white'}`}><FileText className="w-4 h-4" /> Absensi</button>
-              <button onClick={() => setViewMode('manage')} className={`flex items-center gap-2 px-5 py-2 rounded-lg text-xs font-bold transition-all ${viewMode === 'manage' ? 'bg-white text-blue-900 shadow-md' : 'text-white/70 hover:text-white'}`}><Settings className="w-4 h-4" /> Manage</button>
+            <nav className="hidden md:flex bg-blue-900/40 p-1 rounded-xl gap-1 border border-white/5 overflow-x-auto">
+              <button onClick={() => setViewMode('dashboard')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${viewMode === 'dashboard' ? 'bg-white text-blue-900 shadow-md' : 'text-white/70 hover:text-white'}`}><BarChart3 className="w-4 h-4" /> Dashboard</button>
+              <button onClick={() => setViewMode('analytics')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${viewMode === 'analytics' ? 'bg-white text-blue-900 shadow-md' : 'text-white/70 hover:text-white'}`}><Activity className="w-4 h-4" /> Analytics</button>
+              <button onClick={() => setViewMode('report')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${viewMode === 'report' ? 'bg-white text-blue-900 shadow-md' : 'text-white/70 hover:text-white'}`}><FileSpreadsheet className="w-4 h-4" /> Report</button>
+              <button onClick={() => setViewMode('absensi')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${viewMode === 'absensi' ? 'bg-white text-blue-900 shadow-md' : 'text-white/70 hover:text-white'}`}><FileText className="w-4 h-4" /> Absensi</button>
+              <button onClick={() => setViewMode('backup')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${viewMode === 'backup' ? 'bg-white text-blue-900 shadow-md' : 'text-white/70 hover:text-white'}`}><Database className="w-4 h-4" /> Backup</button>
+              <button onClick={() => setViewMode('manage')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${viewMode === 'manage' ? 'bg-white text-blue-900 shadow-md' : 'text-white/70 hover:text-white'}`}><Settings className="w-4 h-4" /> Manage</button>
             </nav>
           </div>
         </div>
@@ -1693,18 +1727,24 @@ export default function App() {
                     <div className="w-10 h-10 rounded-full bg-yellow-400 flex items-center justify-center animate-pulse">
                       <Edit2 className="w-5 h-5 text-blue-900" />
                     </div>
-                    <div>
+                    <div className="flex-1">
                       <p className="text-sm font-bold text-yellow-100">Ada perubahan yang belum disimpan</p>
                       <p className="text-xs text-yellow-200/70">{Object.keys(pendingAcquisitions).length} anggota tim dengan data baru</p>
                     </div>
+                    <AutoSaveIndicator
+                      isSaving={autoSaving}
+                      isDirty={autoSaveDirty}
+                      lastSaved={lastSaved}
+                      error={autoSaveError}
+                    />
                   </div>
                   <button
                     onClick={saveAllAcquisitions}
-                    disabled={isSaving}
-                    className={`flex items-center gap-2 px-8 py-4 rounded-full font-black text-sm shadow-lg transition-all ${isSaving ? 'bg-slate-400 cursor-not-allowed' : 'bg-green-500 hover:bg-green-400 hover:scale-105 text-white shadow-green-900/20'}`}
+                    disabled={autoSaving}
+                    className={`flex items-center gap-2 px-8 py-4 rounded-full font-black text-sm shadow-lg transition-all ${autoSaving ? 'bg-slate-400 cursor-not-allowed' : 'bg-green-500 hover:bg-green-400 hover:scale-105 text-white shadow-green-900/20'}`}
                   >
-                    {isSaving ? <GridLoader pattern="edge-cw" size="sm" color="#FDB813" mode="stagger" /> : <Save className="w-5 h-5" />}
-                    {isSaving ? 'SAVING...' : 'SAVE'}
+                    {autoSaving ? <GridLoader pattern="edge-cw" size="sm" color="#FDB813" mode="stagger" /> : <Save className="w-5 h-5" />}
+                    {autoSaving ? 'SAVING...' : 'SAVE'}
                   </button>
                 </div>
               )}
@@ -1855,6 +1895,24 @@ export default function App() {
           </div>
         )}
 
+        {viewMode === 'analytics' && (
+          <div className="space-y-8 animate-in fade-in duration-500">
+            <DashboardAnalytics />
+          </div>
+        )}
+
+        {viewMode === 'report' && (
+          <div className="space-y-8 animate-in fade-in duration-500">
+            <PerformanceReport />
+          </div>
+        )}
+
+        {viewMode === 'backup' && (
+          <div className="space-y-8 animate-in fade-in duration-500">
+            <DataBackup />
+          </div>
+        )}
+
         {viewMode === 'absensi' && (
           <div className="space-y-8 animate-in fade-in duration-500">
             <div className="bg-white rounded-[40px] p-8 border border-slate-200 shadow-sm">
@@ -1867,10 +1925,12 @@ export default function App() {
         )}
       </main>
 
-      <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-slate-200 px-8 py-4 md:hidden flex justify-around items-center z-50 rounded-t-[40px] shadow-2xl">
-         <button onClick={() => setViewMode('dashboard')} className={`flex flex-col items-center gap-1 transition-all ${viewMode === 'dashboard' ? 'text-blue-900 scale-110' : 'text-slate-300'}`}><BarChart3 className="w-6 h-6"/><span className="text-[8px] font-black uppercase">Dashboard</span></button>
-         <button onClick={() => setViewMode('absensi')} className={`flex flex-col items-center gap-1 transition-all ${viewMode === 'absensi' ? 'text-blue-900 scale-110' : 'text-slate-300'}`}><FileText className="w-6 h-6"/><span className="text-[8px] font-black uppercase">Absensi</span></button>
-         <button onClick={() => setViewMode('manage')} className={`flex flex-col items-center gap-1 transition-all ${viewMode === 'manage' ? 'text-blue-900 scale-110' : 'text-slate-300'}`}><Settings className="w-6 h-6"/><span className="text-[8px] font-black uppercase">Manage</span></button>
+      <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-slate-200 px-6 py-3 md:hidden flex justify-around items-center z-50 rounded-t-[40px] shadow-2xl overflow-x-auto">
+         <button onClick={() => setViewMode('dashboard')} className={`flex flex-col items-center gap-1 transition-all flex-shrink-0 ${viewMode === 'dashboard' ? 'text-blue-900 scale-110' : 'text-slate-300'}`}><BarChart3 className="w-5 h-5"/><span className="text-[7px] font-black uppercase">Home</span></button>
+         <button onClick={() => setViewMode('analytics')} className={`flex flex-col items-center gap-1 transition-all flex-shrink-0 ${viewMode === 'analytics' ? 'text-blue-900 scale-110' : 'text-slate-300'}`}><Activity className="w-5 h-5"/><span className="text-[7px] font-black uppercase">Analytics</span></button>
+         <button onClick={() => setViewMode('report')} className={`flex flex-col items-center gap-1 transition-all flex-shrink-0 ${viewMode === 'report' ? 'text-blue-900 scale-110' : 'text-slate-300'}`}><FileSpreadsheet className="w-5 h-5"/><span className="text-[7px] font-black uppercase">Report</span></button>
+         <button onClick={() => setViewMode('absensi')} className={`flex flex-col items-center gap-1 transition-all flex-shrink-0 ${viewMode === 'absensi' ? 'text-blue-900 scale-110' : 'text-slate-300'}`}><FileText className="w-5 h-5"/><span className="text-[7px] font-black uppercase">Absensi</span></button>
+         <button onClick={() => setViewMode('backup')} className={`flex flex-col items-center gap-1 transition-all flex-shrink-0 ${viewMode === 'backup' ? 'text-blue-900 scale-110' : 'text-slate-300'}`}><Database className="w-5 h-5"/><span className="text-[7px] font-black uppercase">Backup</span></button>
       </div>
     </div>
   );
