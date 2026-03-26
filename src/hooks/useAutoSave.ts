@@ -18,9 +18,6 @@ interface UseAutoSaveReturn<T> {
 
 /**
  * Custom hook for auto-saving data with debouncing
- * @param initialValue - Initial data value
- * @param saveFn - Async function to save data
- * @param options - Configuration options
  */
 export function useAutoSave<T>(
   initialValue: T,
@@ -38,7 +35,6 @@ export function useAutoSave<T>(
   const dataRef = useRef(data);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Keep ref in sync with data
   useEffect(() => {
     dataRef.current = data;
   }, [data]);
@@ -65,19 +61,16 @@ export function useAutoSave<T>(
     }
   }, [isDirty, saveFn, onSave, onError]);
 
-  // Auto-save effect with debouncing
   useEffect(() => {
     if (!isDirty) {
       setIsDirty(true);
       return;
     }
 
-    // Clear existing timeout
     if (saveTimeoutRef.current) {
       clearTimeout(saveTimeoutRef.current);
     }
 
-    // Set new timeout for auto-save
     saveTimeoutRef.current = setTimeout(() => {
       saveNow();
     }, debounceMs);
@@ -89,7 +82,6 @@ export function useAutoSave<T>(
     };
   }, [data, isDirty, debounceMs, saveNow]);
 
-  // Cleanup on unmount
   useEffect(() => {
     return () => {
       if (saveTimeoutRef.current) {

@@ -2,23 +2,11 @@
 
 import React, { useState, useEffect } from 'react';
 import { 
-  TrendingUp, 
-  Trophy, 
-  Users, 
-  Target, 
-  Medal, 
-  Star,
-  ArrowUpRight,
-  ArrowDownRight,
-  Calendar,
-  CheckCircle2,
-  BarChart3,
-  PieChart as PieChartIcon,
-  Activity,
-  Crown,
-  Clock
+  TrendingUp, Trophy, Users, Target, Medal, Star,
+  CheckCircle2, BarChart3, PieChart as PieChartIcon,
+  Activity, Crown, Clock
 } from 'lucide-react';
-import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import GridLoader from './GridLoader';
 
 interface WeeklyTrend {
@@ -134,7 +122,6 @@ export default function DashboardAnalytics() {
   if (!data) return null;
 
   const { weeklyTrends, teamPerformance, memberRankings, categoryPerformance, insights, summary } = data;
-
   const COLORS = ['#003d79', '#FDB813', '#10b981', '#ef4444', '#8b5cf6', '#f59e0b', '#06b6d4', '#ec4899'];
 
   return (
@@ -214,7 +201,6 @@ export default function DashboardAnalytics() {
 
       {/* Key Insights */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Best Performer */}
         <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm">
           <div className="flex items-center gap-2 mb-4">
             <div className="w-10 h-10 rounded-2xl bg-yellow-50 flex items-center justify-center">
@@ -241,7 +227,6 @@ export default function DashboardAnalytics() {
           )}
         </div>
 
-        {/* Top Team */}
         <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm">
           <div className="flex items-center gap-2 mb-4">
             <div className="w-10 h-10 rounded-2xl bg-blue-50 flex items-center justify-center">
@@ -268,7 +253,6 @@ export default function DashboardAnalytics() {
           )}
         </div>
 
-        {/* Attendance Leader */}
         <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm">
           <div className="flex items-center gap-2 mb-4">
             <div className="w-10 h-10 rounded-2xl bg-green-50 flex items-center justify-center">
@@ -313,10 +297,7 @@ export default function DashboardAnalytics() {
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
               <XAxis dataKey="week" tickFormatter={(v) => `W${v}`} stroke="#64748b" fontSize={12} />
               <YAxis stroke="#64748b" fontSize={12} />
-              <Tooltip 
-                contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                labelFormatter={(v) => `Week ${v}`}
-              />
+              <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} labelFormatter={(v) => `Week ${v}`} />
               <Legend />
               <Line type="monotone" dataKey="totalPoints" name="Total Points" stroke="#003d79" strokeWidth={3} dot={{ fill: '#003d79', strokeWidth: 2, r: 6 }} activeDot={{ r: 8 }} />
               <Line type="monotone" dataKey="totalQuantity" name="Total Quantity" stroke="#FDB813" strokeWidth={3} dot={{ fill: '#FDB813', strokeWidth: 2, r: 6 }} />
@@ -342,9 +323,7 @@ export default function DashboardAnalytics() {
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
               <XAxis dataKey="teamName" stroke="#64748b" fontSize={12} angle={-15} textAnchor="end" height={60} />
               <YAxis stroke="#64748b" fontSize={12} />
-              <Tooltip 
-                contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-              />
+              <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
               <Bar dataKey="totalPoints" name="Total Points" fill="#003d79" radius={[8, 8, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
@@ -371,11 +350,7 @@ export default function DashboardAnalytics() {
                   <div className="font-black text-slate-800">{product.productName}</div>
                 </div>
                 <div className={`px-2 py-1 rounded-lg text-xs font-black ${
-                  product.achievementRate >= 100 
-                    ? 'bg-green-100 text-green-700' 
-                    : product.achievementRate >= 50 
-                    ? 'bg-amber-100 text-amber-700'
-                    : 'bg-red-100 text-red-700'
+                  product.achievementRate >= 100 ? 'bg-green-100 text-green-700' : product.achievementRate >= 50 ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'
                 }`}>
                   {product.achievementRate}%
                 </div>
@@ -385,13 +360,7 @@ export default function DashboardAnalytics() {
                   <span>{product.totalQuantity} / {product.weeklyTarget} {product.unit}</span>
                 </div>
                 <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
-                  <div 
-                    className="h-full rounded-full transition-all" 
-                    style={{ 
-                      width: `${Math.min(product.achievementRate, 100)}%`,
-                      backgroundColor: COLORS[index % COLORS.length]
-                    }}
-                  />
+                  <div className="h-full rounded-full transition-all" style={{ width: `${Math.min(product.achievementRate, 100)}%`, backgroundColor: COLORS[index % COLORS.length] }} />
                 </div>
               </div>
               <div className="text-xs font-bold text-slate-400">{product.totalPoints} points earned</div>
@@ -428,21 +397,13 @@ export default function DashboardAnalytics() {
                 <tr key={member.memberId} className="border-b border-slate-50 hover:bg-slate-50">
                   <td className="py-4 px-4">
                     {index === 0 ? (
-                      <div className="w-8 h-8 rounded-full bg-yellow-100 flex items-center justify-center">
-                        <Trophy className="w-4 h-4 text-yellow-600" />
-                      </div>
+                      <div className="w-8 h-8 rounded-full bg-yellow-100 flex items-center justify-center"><Trophy className="w-4 h-4 text-yellow-600" /></div>
                     ) : index === 1 ? (
-                      <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center">
-                        <Medal className="w-4 h-4 text-slate-600" />
-                      </div>
+                      <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center"><Medal className="w-4 h-4 text-slate-600" /></div>
                     ) : index === 2 ? (
-                      <div className="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center">
-                        <Star className="w-4 h-4 text-orange-600" />
-                      </div>
+                      <div className="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center"><Star className="w-4 h-4 text-orange-600" /></div>
                     ) : (
-                      <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-sm font-black text-slate-600">
-                        {index + 1}
-                      </div>
+                      <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-sm font-black text-slate-600">{index + 1}</div>
                     )}
                   </td>
                   <td className="py-4 px-4">
@@ -460,11 +421,7 @@ export default function DashboardAnalytics() {
                   </td>
                   <td className="py-4 px-4 text-right">
                     <div className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-black ${
-                      member.attendanceRate >= 90 
-                        ? 'bg-green-100 text-green-700' 
-                        : member.attendanceRate >= 70 
-                        ? 'bg-amber-100 text-amber-700'
-                        : 'bg-red-100 text-red-700'
+                      member.attendanceRate >= 90 ? 'bg-green-100 text-green-700' : member.attendanceRate >= 70 ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'
                     }`}>
                       {member.attendanceRate}%
                     </div>

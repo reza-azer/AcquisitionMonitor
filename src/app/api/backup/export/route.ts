@@ -12,10 +12,8 @@ export async function GET(request: Request) {
       tables: {} as Record<string, any[]>,
     };
 
-    // Export data from each table
     for (const table of tables) {
       const { data, error } = await supabase.from(table).select('*');
-      
       if (error) {
         console.error(`Error exporting ${table}:`, error);
         backup.tables[table] = [];
@@ -24,17 +22,13 @@ export async function GET(request: Request) {
       }
     }
 
-    // Calculate stats
     const stats = {
-      totalRecords: Object.values(backup.tables).reduce((sum, records) => sum + records.length, 0),
+      totalRecords: Object.values(backup.tables).reduce((sum: number, records) => sum + records.length, 0),
       tablesCount: tables.length,
-      tablesBreakdown: Object.fromEntries(
-        tables.map(table => [table, backup.tables[table]?.length || 0])
-      ),
+      tablesBreakdown: Object.fromEntries(tables.map(table => [table, backup.tables[table]?.length || 0])),
     };
 
     backup.stats = stats;
-
     return NextResponse.json(backup);
   } catch (error) {
     console.error('Error exporting backup:', error);
