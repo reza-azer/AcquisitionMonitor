@@ -182,7 +182,9 @@ export default function GridLoader({
 
   const getDelay = (row: number, col: number) => {
     if (mode === 'stagger') {
-      return (row * 3 + col) * 0.1;
+      // Diagonal stagger: cells animate from top-left to bottom-right
+      // Cells on the same diagonal have the same delay
+      return (row + col) * 0.15;
     }
     return 0;
   };

@@ -2,6 +2,9 @@
 import {
   BarChart3,
   Check,
+  ChevronDown,
+  ChevronUp,
+  Clock,
   Download,
   Edit2,
   FileSpreadsheet,
@@ -28,6 +31,7 @@ import AttendanceManager from '@/components/AttendanceManager';
 import AttendanceSummary from '@/components/AttendanceSummary';
 import ProductManager from '@/components/ProductManager';
 import GridLoader from '@/components/GridLoader';
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/Accordion';
 
 // --- KONFIGURASI POIN & TARGET ---
 type TieredProduct = { name: string; unit: string; type: 'tiered'; tiers: {limit: number; p: number}[] };
@@ -135,6 +139,21 @@ export default function App() {
   // Member detail modal state
   const [selectedMember, setSelectedMember] = useState<{member: Member, team: Team} | null>(null);
 
+  // Member attendance state
+  const [memberAttendance, setMemberAttendance] = useState<{
+    present: number;
+    late: number;
+    leave: number;
+    alpha: number;
+    totalLateMinutes: number;
+    leaveReasons: Record<string, number>;
+    totalDays: number;
+    attendanceRate: number;
+  } | null>(null);
+  const [attendanceLoading, setAttendanceLoading] = useState(false);
+  const [attendanceDetails, setAttendanceDetails] = useState<any[]>([]);
+  const [accordionValue, setAccordionValue] = React.useState<string>('');
+
   // Migration modal state
   const [migratingMember, setMigratingMember] = useState<{member: Member, team: Team} | null>(null);
   const [migrationTargetTeam, setMigrationTargetTeam] = useState<string>('');
@@ -170,12 +189,14 @@ export default function App() {
     localStorage.setItem('chartFilters', JSON.stringify(chartFilters));
   }, [chartFilters]);
 
-  // Lock body scroll when modal is open
+  // Lock body scroll when modal is open and fetch attendance
   useEffect(() => {
     if (selectedMember) {
       document.body.style.overflow = 'hidden';
+      fetchMemberAttendance(selectedMember.member.id);
     } else {
       document.body.style.overflow = '';
+      setMemberAttendance(null);
     }
     return () => {
       document.body.style.overflow = '';
@@ -261,6 +282,126 @@ export default function App() {
     });
     return total;
   }, [products]);
+
+  const fetchMemberAttendance = async (memberId: string) => {
+    setAttendanceLoading(true);
+    try {
+      const today = new Date();
+      const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+      const response = await fetch(
+        `/api/attendances?memberId=${memberId}&startDate=${startOfMonth.toISOString().split('T')[0]}&endDate=${today.toISOString().split('T')[0]}`
+      );
+      const result = await response.json();
+
+      if (result.data && result.data.length > 0) {
+        // Store detailed records
+        setAttendanceDetails(result.data.sort((a: any, b: any) => 
+          new Date(b.date).getTime() - new Date(a.date).getTime()
+        ));
+
+        const attendance = result.data.reduce((acc: any, record: any) => {
+          acc.present += record.status === 'present' ? 1 : 0;
+          acc.late += record.status === 'late' ? 1 : 0;
+          acc.leave += record.status === 'leave' ? 1 : 0;
+          acc.alpha += record.status === 'alpha' ? 1 : 0;
+          acc.totalLateMinutes += record.late_minutes || 0;
+          if (record.leave_reason) {
+            acc.leaveReasons[record.leave_reason] = (acc.leaveReasons[record.leave_reason] || 0) + 1;
+          }
+          return acc;
+        }, { present: 0, late: 0, leave: 0, alpha: 0, totalLateMinutes: 0, leaveReasons: {} as Record<string, number> });
+
+        attendance.totalDays = attendance.present + attendance.late + attendance.leave + attendance.alpha;
+        attendance.attendanceRate = attendance.totalDays > 0
+          ? Math.round(((attendance.present + attendance.late) / attendance.totalDays) * 100)
+          : 0;
+
+        setMemberAttendance(attendance);
+      } else {
+        setAttendanceDetails([]);
+        setMemberAttendance({
+          present: 0,
+          late: 0,
+          leave: 0,
+          alpha: 0,
+          totalLateMinutes: 0,
+          leaveReasons: {},
+          totalDays: 0,
+          attendanceRate: 0
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching attendance:', error);
+      setAttendanceDetails([]);
+      setMemberAttendance({
+        present: 0,
+        late: 0,
+        leave: 0,
+        alpha: 0,
+        totalLateMinutes: 0,
+        leaveReasons: {},
+        totalDays: 0,
+        attendanceRate: 0
+      });
+    } finally {
+      setAttendanceLoading(false);
+    }
+  };
+
+  // Get calendar days for current month
+  const getCalendarDays = () => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = today.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const daysInMonth = lastDay.getDate();
+    const startingDay = firstDay.getDay();
+
+    const days = [];
+    
+    // Add empty cells for days before the first day of the month
+    for (let i = 0; i < startingDay; i++) {
+      days.push({ day: null, date: null });
+    }
+    
+    // Add days of the month
+    for (let day = 1; day <= daysInMonth; day++) {
+      const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      const attendanceRecord = attendanceDetails.find((a: any) => a.date === dateStr);
+      days.push({
+        day,
+        date: dateStr,
+        status: attendanceRecord?.status || null,
+        lateMinutes: attendanceRecord?.late_minutes || 0,
+        leaveReason: attendanceRecord?.leave_reason || null,
+        notes: attendanceRecord?.notes || null,
+        isToday: day === today.getDate(),
+      });
+    }
+    
+    return days;
+  };
+
+  const getStatusColor = (status: string | null) => {
+    switch (status) {
+      case 'present': return 'bg-green-500';
+      case 'late': return 'bg-amber-500';
+      case 'leave': return 'bg-blue-500';
+      case 'alpha': return 'bg-red-500';
+      default: return 'bg-slate-100';
+    }
+  };
+
+  const getStatusLabel = (status: string | null) => {
+    switch (status) {
+      case 'present': return 'Present';
+      case 'late': return 'Late';
+      case 'leave': return 'Izin';
+      case 'alpha': return 'Alpha';
+      default: return '-';
+    }
+  };
 
   const teamStats = useMemo(() => {
     return teams.map(team => {
@@ -847,6 +988,236 @@ export default function App() {
                     })()}
                   </span>
                 </div>
+              </div>
+
+              {/* Attendance Report */}
+              <div className="mt-6">
+                <h4 className="font-black text-sm text-slate-700 mb-3 flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-blue-600" />
+                  ATTENDANCE REPORT
+                </h4>
+
+                {attendanceLoading ? (
+                  <div className="flex justify-center py-8">
+                    <GridLoader pattern="edge-cw" size="md" color="#FDB813" mode="stagger" />
+                  </div>
+                ) : memberAttendance ? (
+                  <>
+                    {/* Attendance Summary Cards - Always Visible */}
+                    <div className="grid grid-cols-2 gap-3 mb-4">
+                      <div className="bg-green-50 rounded-2xl p-4 border border-green-200">
+                        <div className="text-[9px] font-black text-green-600 uppercase">Present</div>
+                        <div className="text-2xl font-black text-green-800">{memberAttendance.present}</div>
+                      </div>
+                      <div className="bg-amber-50 rounded-2xl p-4 border border-amber-200">
+                        <div className="text-[9px] font-black text-amber-600 uppercase">Late</div>
+                        <div className="text-2xl font-black text-amber-800">{memberAttendance.late}</div>
+                      </div>
+                      <div className="bg-blue-50 rounded-2xl p-4 border border-blue-200">
+                        <div className="text-[9px] font-black text-blue-600 uppercase">Izin</div>
+                        <div className="text-2xl font-black text-blue-800">{memberAttendance.leave}</div>
+                      </div>
+                      <div className="bg-red-50 rounded-2xl p-4 border border-red-200">
+                        <div className="text-[9px] font-black text-red-600 uppercase">Alpha</div>
+                        <div className="text-2xl font-black text-red-800">{memberAttendance.alpha}</div>
+                      </div>
+                    </div>
+
+                    {/* Accordion for Details */}
+                    <Accordion
+                      type="single"
+                      collapsible
+                      value={accordionValue}
+                      onValueChange={setAccordionValue}
+                      className="w-full"
+                    >
+                      {/* Attendance Rate & Stats */}
+                      <AccordionItem value="rate" className="border-none">
+                        <AccordionTrigger className="py-3 px-4 bg-white rounded-xl border border-slate-200 hover:bg-slate-50 text-sm font-black text-slate-700">
+                          Attendance Rate & Statistics
+                        </AccordionTrigger>
+                        <AccordionContent>
+                          <div className="bg-white rounded-2xl p-4 border border-slate-200 mt-2">
+                            <div className="flex justify-between items-center mb-2">
+                              <span className="text-xs font-bold text-slate-600">Attendance Rate</span>
+                              <span className="text-sm font-black text-slate-800">{memberAttendance.attendanceRate}%</span>
+                            </div>
+                            <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
+                              <div
+                                className="h-full bg-green-500 transition-all"
+                                style={{ width: `${memberAttendance.attendanceRate}%` }}
+                              />
+                            </div>
+                            <div className="text-[9px] font-bold text-slate-400 mt-2">
+                              {memberAttendance.totalDays} days recorded this month
+                            </div>
+                          </div>
+
+                          {memberAttendance.totalLateMinutes > 0 && (
+                            <div className="bg-amber-50 rounded-2xl p-4 border border-amber-200 mt-3">
+                              <div className="flex items-center gap-2 mb-1">
+                                <Clock className="w-3.5 h-3.5 text-amber-600" />
+                                <span className="text-[9px] font-black text-amber-600 uppercase">Total Late Time</span>
+                              </div>
+                              <div className="text-xl font-black text-amber-800">{memberAttendance.totalLateMinutes} minutes</div>
+                            </div>
+                          )}
+                        </AccordionContent>
+                      </AccordionItem>
+
+                      {/* Leave Breakdown */}
+                      {Object.keys(memberAttendance.leaveReasons).length > 0 && (
+                        <AccordionItem value="leave" className="border-none">
+                          <AccordionTrigger className="py-3 px-4 bg-white rounded-xl border border-slate-200 hover:bg-slate-50 text-sm font-black text-slate-700">
+                            Leave Breakdown
+                          </AccordionTrigger>
+                          <AccordionContent>
+                            <div className="bg-white rounded-2xl p-4 border border-slate-200 mt-2 space-y-2">
+                              {Object.entries(memberAttendance.leaveReasons).map(([reason, count]) => (
+                                <div key={reason} className="flex justify-between items-center py-2 px-3 bg-slate-50 rounded-xl">
+                                  <span className="text-xs text-slate-600 capitalize">{reason.replace(/_/g, ' ')}</span>
+                                  <span className="text-xs font-bold text-slate-800 bg-slate-200 px-2 py-1 rounded-full">{count}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </AccordionContent>
+                        </AccordionItem>
+                      )}
+
+                      {/* Calendar */}
+                      <AccordionItem value="calendar" className="border-none">
+                        <AccordionTrigger className="py-3 px-4 bg-white rounded-xl border border-slate-200 hover:bg-slate-50 text-sm font-black text-slate-700">
+                          Monthly Calendar
+                        </AccordionTrigger>
+                        <AccordionContent>
+                          <div className="bg-white rounded-2xl p-4 border border-slate-200 mt-2">
+                            <div className="text-[9px] font-black text-slate-500 uppercase mb-3">
+                              {new Date().toLocaleString('default', { month: 'long', year: 'numeric' })} Calendar
+                            </div>
+                            
+                            {/* Legend */}
+                            <div className="flex flex-wrap gap-2 mb-3">
+                              <div className="flex items-center gap-1">
+                                <div className="w-3 h-3 rounded-sm bg-green-500"></div>
+                                <span className="text-[8px] font-bold text-slate-500">Present</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <div className="w-3 h-3 rounded-sm bg-amber-500"></div>
+                                <span className="text-[8px] font-bold text-slate-500">Late</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <div className="w-3 h-3 rounded-sm bg-blue-500"></div>
+                                <span className="text-[8px] font-bold text-slate-500">Izin</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <div className="w-3 h-3 rounded-sm bg-red-500"></div>
+                                <span className="text-[8px] font-bold text-slate-500">Alpha</span>
+                              </div>
+                            </div>
+
+                            {/* Calendar Grid */}
+                            <div className="grid grid-cols-7 gap-1">
+                              {/* Day Headers */}
+                              {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+                                <div key={day} className="text-center text-[8px] font-bold text-slate-400 py-1">
+                                  {day}
+                                </div>
+                              ))}
+                              
+                              {/* Calendar Days */}
+                              {getCalendarDays().map((dayInfo, index) => (
+                                <div
+                                  key={index}
+                                  className={`
+                                    aspect-square rounded-lg flex flex-col items-center justify-center relative
+                                    ${dayInfo.day ? 'cursor-pointer hover:scale-105 transition-transform' : ''}
+                                    ${!dayInfo.day ? 'bg-transparent' : ''}
+                                    ${dayInfo.isToday ? 'ring-2 ring-blue-500 ring-offset-1' : ''}
+                                  `}
+                                >
+                                  {dayInfo.day && (
+                                    <>
+                                      <span className={`text-[9px] font-bold ${dayInfo.status ? 'text-white' : 'text-slate-600'}`}>
+                                        {dayInfo.day}
+                                      </span>
+                                      {dayInfo.status && (
+                                        <div className={`absolute inset-0 rounded-lg ${getStatusColor(dayInfo.status)} opacity-80`}></div>
+                                      )}
+                                      {dayInfo.status && (
+                                        <span className="text-[6px] font-black text-white relative z-10 mt-0.5">
+                                          {dayInfo.status === 'late' && `${dayInfo.lateMinutes}m`}
+                                          {dayInfo.status === 'leave' && 'L'}
+                                          {dayInfo.status === 'present' && '✓'}
+                                          {dayInfo.status === 'alpha' && '×'}
+                                        </span>
+                                      )}
+                                    </>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </AccordionContent>
+                      </AccordionItem>
+
+                      {/* Attendance History */}
+                      {attendanceDetails.length > 0 && (
+                        <AccordionItem value="history" className="border-none">
+                          <AccordionTrigger className="py-3 px-4 bg-white rounded-xl border border-slate-200 hover:bg-slate-50 text-sm font-black text-slate-700">
+                            Attendance History ({attendanceDetails.length})
+                          </AccordionTrigger>
+                          <AccordionContent>
+                            <div className="bg-white rounded-2xl p-4 border border-slate-200 mt-2">
+                              <div className="space-y-2 max-h-64 overflow-y-auto">
+                                {attendanceDetails.map((record: any, index: number) => (
+                                  <div
+                                    key={index}
+                                    className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100"
+                                  >
+                                    <div className="flex items-center gap-3">
+                                      <div className={`w-2 h-2 rounded-full ${getStatusColor(record.status)}`}></div>
+                                      <div>
+                                        <div className="text-xs font-bold text-slate-700">
+                                          {new Date(record.date).toLocaleDateString('en-US', { 
+                                            weekday: 'short', 
+                                            month: 'short', 
+                                            day: 'numeric' 
+                                          })}
+                                        </div>
+                                        <div className="text-[9px] text-slate-500">
+                                          {record.status === 'late' && `${record.late_minutes || 0} min late`}
+                                          {record.status === 'leave' && record.leave_reason && 
+                                            record.leave_reason.replace(/_/g, ' ')}
+                                          {record.notes && `• ${record.notes}`}
+                                        </div>
+                                      </div>
+                                    </div>
+                                    <span className={`text-[10px] font-black px-2 py-1 rounded-full ${
+                                      record.status === 'present' ? 'bg-green-100 text-green-700' :
+                                      record.status === 'late' ? 'bg-amber-100 text-amber-700' :
+                                      record.status === 'leave' ? 'bg-blue-100 text-blue-700' :
+                                      'bg-red-100 text-red-700'
+                                    }`}>
+                                      {getStatusLabel(record.status)}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          </AccordionContent>
+                        </AccordionItem>
+                      )}
+                    </Accordion>
+
+                    {/* No Attendance Data */}
+                    {memberAttendance.totalDays === 0 && (
+                      <div className="bg-slate-50 rounded-2xl p-6 border border-slate-200 text-center">
+                        <FileText className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                        <p className="text-sm font-bold text-slate-400">No attendance records this month</p>
+                      </div>
+                    )}
+                  </>
+                ) : null}
               </div>
               </div>
             </div>
