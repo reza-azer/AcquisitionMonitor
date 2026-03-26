@@ -11,11 +11,11 @@ export async function GET(request: Request) {
     const endDate = searchParams.get('endDate');
 
     let query = supabase.from('acquisitions').select('*');
-    
+
     if (memberId) query = query.eq('member_id', memberId);
     if (week) query = query.eq('week', parseInt(week));
     if (date) query = query.eq('date', date);
-    
+
     if (startDate && endDate) {
       query = query.gte('date', startDate).lte('date', endDate);
     } else if (startDate) {
@@ -24,12 +24,15 @@ export async function GET(request: Request) {
       query = query.lte('date', endDate);
     }
 
-    const { data, error } = await query.order('date', { ascending: false });
+    // Always order by updated_at DESC to show most recently saved/updated entries first
+    const { data, error } = await query.order('updated_at', { ascending: false });
 
     if (error) throw error;
+    
+    console.log('[Acquisitions API] GET success:', data?.length || 0, 'entries');
     return NextResponse.json(data || []);
   } catch (error) {
-    console.error('Error fetching acquisitions:', error);
+    console.error('[Acquisitions API] Error fetching acquisitions:', error);
     return NextResponse.json({ error: 'Failed to fetch acquisitions' }, { status: 500 });
   }
 }
@@ -39,32 +42,43 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { member_id, week, date, product_key, quantity } = body;
 
+    console.log('[Acquisitions API] POST received:', { member_id, week, date, product_key, quantity });
+
     // Use today's date if not provided
     const inputDate = date || new Date().toISOString().split('T')[0];
 
     // Calculate week number within the month (1-4) if not provided
     const inputWeek = week || getWeekOfMonth(new Date(inputDate));
 
+    const upsertData = {
+      member_id,
+      week: inputWeek,
+      date: inputDate,
+      product_key,
+      quantity,
+      updated_at: new Date().toISOString()
+    };
+
+    console.log('[Acquisitions API] Upserting:', upsertData);
+
     // Upsert: insert or update on conflict (member_id, date, product_key)
     const { data, error } = await supabase
       .from('acquisitions')
-      .upsert([{
-        member_id,
-        week: inputWeek,
-        date: inputDate,
-        product_key,
-        quantity,
-        updated_at: new Date().toISOString()
-      }], {
+      .upsert([upsertData], {
         onConflict: 'member_id,date,product_key'
       })
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error('[Acquisitions API] Upsert error:', error);
+      throw error;
+    }
+    
+    console.log('[Acquisitions API] Upsert success:', data);
     return NextResponse.json(data, { status: 201 });
   } catch (error) {
-    console.error('Error saving acquisition:', error);
+    console.error('[Acquisitions API] Error saving acquisition:', error);
     return NextResponse.json({ error: 'Failed to save acquisition' }, { status: 500 });
   }
 }

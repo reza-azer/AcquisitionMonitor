@@ -70,7 +70,7 @@ export default function InputAcquisition({ products, teams, members }: InputAcqu
   const [saveStatus, setSaveStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [error, setError] = useState<string | null>(null);
   const [recentInputs, setRecentInputs] = useState<Acquisition[]>([]);
-  const [isLoadingRecent, setIsLoadingRecent] = useState(false);
+  const [isLoadingExistingData, setIsLoadingExistingData] = useState(false);
 
   // Filter members by search term
   const filteredMembers = members.filter(member =>
@@ -86,7 +86,7 @@ export default function InputAcquisition({ products, teams, members }: InputAcqu
   const loadExistingData = useCallback(async () => {
     if (!selectedMemberId || !selectedDate) return;
 
-    setIsLoadingRecent(true);
+    setIsLoadingExistingData(true);
     try {
       const res = await fetch(
         `/api/acquisitions?member_id=${selectedMemberId}&date=${selectedDate}`
@@ -102,35 +102,13 @@ export default function InputAcquisition({ products, teams, members }: InputAcqu
     } catch (error) {
       console.error('Error loading existing data:', error);
     } finally {
-      setIsLoadingRecent(false);
+      setIsLoadingExistingData(false);
     }
   }, [selectedMemberId, selectedDate]);
 
   useEffect(() => {
     loadExistingData();
   }, [loadExistingData]);
-
-  // Load recent inputs for overview
-  const loadRecentInputs = useCallback(async () => {
-    setIsLoadingRecent(true);
-    try {
-      const today = new Date().toISOString().split('T')[0];
-      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-      const res = await fetch(`/api/acquisitions?startDate=${thirtyDaysAgo}&endDate=${today}`);
-      if (res.ok) {
-        const data = await res.json();
-        setRecentInputs(data.slice(0, 20)); // Last 20 entries
-      }
-    } catch (error) {
-      console.error('Error loading recent inputs:', error);
-    } finally {
-      setIsLoadingRecent(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadRecentInputs();
-  }, [loadRecentInputs]);
 
   const handleInputChange = (productKey: string, value: string) => {
     const qty = parseInt(value) || 0;
@@ -148,6 +126,7 @@ export default function InputAcquisition({ products, teams, members }: InputAcqu
       return;
     }
 
+    console.log('[InputAcquisition] Starting save for member:', selectedMemberId, 'date:', selectedDate);
     setIsSaving(true);
     setError(null);
 
@@ -156,6 +135,7 @@ export default function InputAcquisition({ products, teams, members }: InputAcqu
         .filter(p => p.is_active)
         .map(product => {
           const quantity = inputData[product.product_key] || 0;
+          console.log('[InputAcquisition] Saving:', product.product_key, '=', quantity);
           return fetch('/api/acquisitions', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -171,14 +151,38 @@ export default function InputAcquisition({ products, teams, members }: InputAcqu
       const results = await Promise.all(savePromises);
       const failed = results.some(r => !r.ok);
 
+      console.log('[InputAcquisition] Save results:', results.map((r, i) => ({
+        product: products.filter(p => p.is_active)[i]?.product_key,
+        status: r.status,
+        ok: r.ok
+      })));
+
       if (failed) throw new Error('Some requests failed');
 
+      console.log('[InputAcquisition] Save successful!');
       setSaveStatus('success');
+
+      // Add only products with quantity > 0 to recent inputs (local only, no DB fetch)
+      const timestamp = new Date().toISOString();
+      const newInputs = products
+        .filter(p => p.is_active && inputData[p.product_key] > 0)
+        .map(p => ({
+          id: `temp-${Date.now()}-${p.product_key}`,
+          member_id: selectedMemberId,
+          date: selectedDate,
+          product_key: p.product_key,
+          quantity: inputData[p.product_key],
+          updated_at: timestamp,
+          week: 1 // placeholder
+        }));
+
+      // Prepend new inputs to show newest first, keep last 20
+      setRecentInputs(prev => [...newInputs, ...prev].slice(0, 20));
       setInputData({});
-      loadRecentInputs();
-      
+
       setTimeout(() => setSaveStatus('idle'), 3000);
     } catch (err: any) {
+      console.error('[InputAcquisition] Save error:', err);
       setError(err.message);
       setSaveStatus('error');
     } finally {
@@ -323,7 +327,7 @@ export default function InputAcquisition({ products, teams, members }: InputAcqu
                   <Package className="w-5 h-5 text-blue-600" />
                   Input Produk
                 </h3>
-                {isLoadingRecent && (
+                {isLoadingExistingData && (
                   <GridLoader pattern="edge-cw" size="sm" color="#64748b" mode="stagger" />
                 )}
               </div>
@@ -398,11 +402,7 @@ export default function InputAcquisition({ products, teams, members }: InputAcqu
               <h3 className="text-md font-bold text-slate-800">Input Terakhir</h3>
             </div>
 
-            {isLoadingRecent ? (
-              <div className="flex justify-center py-8">
-                <GridLoader pattern="edge-cw" size="md" color="#64748b" mode="stagger" />
-              </div>
-            ) : recentInputs.length === 0 ? (
+            {recentInputs.length === 0 ? (
               <div className="text-center py-8 text-slate-400 text-sm">
                 Belum ada input
               </div>
