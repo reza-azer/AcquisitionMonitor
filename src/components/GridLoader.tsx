@@ -162,7 +162,7 @@ export default function GridLoader({
   const sequencePatterns = useMemo(() => {
     if (mode === 'sequence') {
       const seqNames = sequence || SEQUENCES.default;
-      return seqNames.map((name) => getPatternMatrix(name));
+      return seqNames.map((name) => getPatternMatrix(name as Pattern));
     }
     return [basePattern];
   }, [mode, sequence, basePattern]);

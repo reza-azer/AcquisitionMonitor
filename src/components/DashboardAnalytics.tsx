@@ -281,7 +281,7 @@ export default function DashboardAnalytics() {
               isExporting ? 'bg-slate-300 text-slate-500 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700 text-white shadow-green-200'
             }`}
           >
-            {isExporting ? <GridLoader pattern="edge-cw" size="xs" color="#fff" mode="stagger" /> : <Download className="w-4 h-4" />}
+            {isExporting ? <GridLoader pattern="edge-cw" size="sm" color="#fff" mode="stagger" /> : <Download className="w-4 h-4" />}
             EXPORT
           </button>
         </div>
@@ -742,7 +742,7 @@ export default function DashboardAnalytics() {
               <YAxis label={{ value: 'Points', angle: -90, position: 'insideLeft' }} stroke="#64748b" fontSize={12} />
               <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
               <Legend />
-              <Line type="scatter" dataKey="totalPoints" name="Points" fill="#003d79" stroke="#003d79" strokeWidth={2} />
+              <Line type="monotone" dataKey="totalPoints" name="Points" fill="#003d79" stroke="#003d79" strokeWidth={2} />
             </LineChart>
           </ResponsiveContainer>
         </div>
