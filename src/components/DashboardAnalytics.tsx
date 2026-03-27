@@ -140,9 +140,17 @@ export default function DashboardAnalytics() {
       const response = await fetch(`/api/analytics?${params.toString()}`);
       if (!response.ok) throw new Error('Failed to fetch analytics');
       const result = await response.json();
-      setData(result);
+      
+      // Check if there's no data
+      if (result.summary.totalMembers === 0 || result.memberRankings.length === 0) {
+        setData(null); // Set to null to show "no data" message
+      } else {
+        setData(result);
+      }
     } catch (err: any) {
+      console.error('Analytics fetch error:', err);
       setError(err.message);
+      setData(null);
     } finally {
       setLoading(false);
     }
@@ -263,7 +271,19 @@ export default function DashboardAnalytics() {
     );
   }
 
-  if (!data) return null;
+  if (!data) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20">
+        <div className="w-20 h-20 rounded-full bg-slate-100 flex items-center justify-center mb-6">
+          <FileText className="w-10 h-10 text-slate-400" />
+        </div>
+        <h3 className="text-xl font-black text-slate-800 mb-2">Belum Ada Data</h3>
+        <p className="text-slate-500 font-bold text-center max-w-md">
+          Tidak ada data akuisisi untuk periode {new Date(parseInt(selectedYear), parseInt(selectedMonth) - 1).toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}
+        </p>
+      </div>
+    );
+  }
 
   const { weeklyTrends, teamWeeklyTrends, teamPerformance, memberRankings, categoryPerformance, insights, summary, attendanceCorrelation } = data;
   const COLORS = ['#003d79', '#FDB813', '#10b981', '#ef4444', '#8b5cf6', '#f59e0b', '#06b6d4', '#ec4899'];

@@ -182,13 +182,28 @@ export default function App() {
     document.body.appendChild(script);
   }, []);
 
-  // Fetch data from Supabase
-  const fetchData = useCallback(async () => {
+  // Fetch data from Supabase with optional month/year filter
+  const fetchData = useCallback(async (month?: string, year?: string) => {
     try {
       setIsLoading(true);
+
+      // Build query params for acquisitions with date filter
+      const acquisitionsParams = new URLSearchParams();
+      if (month && year) {
+        const monthNum = parseInt(month);
+        const yearNum = parseInt(year);
+        const monthStr = String(monthNum).padStart(2, '0');
+        const startDate = `${yearNum}-${monthStr}-01`;
+        // Calculate last day of month correctly
+        const lastDay = new Date(yearNum, monthNum, 0).getDate();
+        const endDate = `${yearNum}-${monthStr}-${String(lastDay).padStart(2, '0')}`;
+        acquisitionsParams.append('startDate', startDate);
+        acquisitionsParams.append('endDate', endDate);
+      }
+
       const [teamsRes, acquisitionsRes, productsRes] = await Promise.all([
         fetch('/api/teams'),
-        fetch('/api/acquisitions'),
+        fetch(`/api/acquisitions?${acquisitionsParams.toString()}`),
         fetch('/api/products?activeOnly=true')
       ]);
 
@@ -231,8 +246,8 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    fetchData(selectedMonth, selectedYear);
+  }, [selectedMonth, selectedYear, fetchData]);
 
   const getMemberPoints = useCallback((acquisitions: Record<string, number> | undefined) => {
     let total = 0;
@@ -1053,95 +1068,92 @@ export default function App() {
 
         {viewMode === 'dashboard' && (
           <div className="space-y-4 sm:space-y-6 md:space-y-8 animate-in fade-in duration-500">
-            {/* Month/Year Navigation */}
-            <div className="bg-white rounded-[20px] sm:rounded-[30px] md:rounded-[40px] p-4 sm:p-6 md:p-8 border border-slate-200 shadow-sm mb-6">
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4">
-                <div className="flex items-center gap-2 sm:gap-4">
-                  <button
-                    onClick={() => {
-                      const newMonth = parseInt(selectedMonth) - 1;
-                      if (newMonth < 1) {
-                        setSelectedMonth('12');
-                        setSelectedYear(String(parseInt(selectedYear) - 1));
-                      } else {
-                        setSelectedMonth(String(newMonth));
-                      }
-                    }}
-                    className="p-2 sm:p-3 rounded-xl sm:rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-600 transition-all"
-                  >
-                    <ChevronUp className="w-4 h-4 sm:w-5 sm:h-5 rotate-270" style={{ transform: 'rotate(-90deg)' }} />
-                  </button>
-                  <div className="text-center">
-                    <select
-                      value={selectedMonth}
-                      onChange={(e) => setSelectedMonth(e.target.value)}
-                      className="bg-transparent text-base sm:text-lg font-black text-slate-800 outline-none cursor-pointer"
+            {/* Floating Navigation Bar - Sticky */}
+            <div className="sticky top-[60px] sm:top-[68px] z-30 bg-slate-50/9 backdrop-blur-[8px] pb-4 -mx-4 sm:-mx-6 md:-mx-8 px-4 sm:px-6 md:px-8 pt-4">
+              <div className="bg-white rounded-[20px] sm:rounded-[30px] md:rounded-[40px] p-4 sm:p-6 md:p-8 border border-slate-200 shadow-lg">
+                <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 lg:gap-6">
+                  {/* Month/Year Navigation */}
+                  <div className="flex items-center gap-2 sm:gap-4 w-full lg:w-auto">
+                    <button
+                      onClick={() => {
+                        const newMonth = parseInt(selectedMonth) - 1;
+                        if (newMonth < 1) {
+                          setSelectedMonth('12');
+                          setSelectedYear(String(parseInt(selectedYear) - 1));
+                        } else {
+                          setSelectedMonth(String(newMonth));
+                        }
+                      }}
+                      className="p-2 sm:p-3 rounded-xl sm:rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-600 transition-all flex-shrink-0"
                     >
-                      <option value="1">January</option>
-                      <option value="2">February</option>
-                      <option value="3">March</option>
-                      <option value="4">April</option>
-                      <option value="5">May</option>
-                      <option value="6">June</option>
-                      <option value="7">July</option>
-                      <option value="8">August</option>
-                      <option value="9">September</option>
-                      <option value="10">October</option>
-                      <option value="11">November</option>
-                      <option value="12">December</option>
-                    </select>
-                    <select
-                      value={selectedYear}
-                      onChange={(e) => setSelectedYear(e.target.value)}
-                      className="bg-transparent text-xs sm:text-sm font-bold text-slate-500 outline-none cursor-pointer ml-2"
+                      <ChevronUp className="w-4 h-4 sm:w-5 sm:h-5 rotate-270" style={{ transform: 'rotate(0deg)' }} />
+                    </button>
+                    <div className="text-center flex-1 lg:flex-none">
+                      <select
+                        value={selectedMonth}
+                        onChange={(e) => setSelectedMonth(e.target.value)}
+                        className="bg-transparent text-base sm:text-lg font-black text-slate-800 outline-none cursor-pointer"
+                      >
+                        <option value="1">January</option>
+                        <option value="2">February</option>
+                        <option value="3">March</option>
+                        <option value="4">April</option>
+                        <option value="5">May</option>
+                        <option value="6">June</option>
+                        <option value="7">July</option>
+                        <option value="8">August</option>
+                        <option value="9">September</option>
+                        <option value="10">October</option>
+                        <option value="11">November</option>
+                        <option value="12">December</option>
+                      </select>
+                      <select
+                        value={selectedYear}
+                        onChange={(e) => setSelectedYear(e.target.value)}
+                        className="bg-transparent text-xs sm:text-sm font-bold text-slate-500 outline-none cursor-pointer ml-2"
+                      >
+                        {Array.from({ length: 11 }, (_, i) => 2020 + i).map(year => (
+                          <option key={year} value={year}>{year}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <button
+                      onClick={() => {
+                        const newMonth = parseInt(selectedMonth) + 1;
+                        if (newMonth > 12) {
+                          setSelectedMonth('1');
+                          setSelectedYear(String(parseInt(selectedYear) + 1));
+                        } else {
+                          setSelectedMonth(String(newMonth));
+                        }
+                      }}
+                      className="p-2 sm:p-3 rounded-xl sm:rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-600 transition-all flex-shrink-0"
                     >
-                      {Array.from({ length: 11 }, (_, i) => 2020 + i).map(year => (
-                        <option key={year} value={year}>{year}</option>
-                      ))}
-                    </select>
+                      <ChevronUp className="w-4 h-4 sm:w-5 sm:h-5" style={{ transform: 'rotate(90deg)' }} />
+                    </button>
+                    <div className="hidden lg:block text-sm font-bold text-slate-500 ml-2">
+                      {new Date(parseInt(selectedYear), parseInt(selectedMonth) - 1).toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}
+                    </div>
                   </div>
-                  <button
-                    onClick={() => {
-                      const newMonth = parseInt(selectedMonth) + 1;
-                      if (newMonth > 12) {
-                        setSelectedMonth('1');
-                        setSelectedYear(String(parseInt(selectedYear) + 1));
-                      } else {
-                        setSelectedMonth(String(newMonth));
-                      }
-                    }}
-                    className="p-2 sm:p-3 rounded-xl sm:rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-600 transition-all"
-                  >
-                    <ChevronUp className="w-4 h-4 sm:w-5 sm:h-5" style={{ transform: 'rotate(90deg)' }} />
-                  </button>
-                </div>
-                <div className="text-sm font-bold text-slate-500">
-                  {new Date(parseInt(selectedYear), parseInt(selectedMonth) - 1).toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}
-                </div>
-              </div>
-            </div>
 
-            {/* Week Selector */}
-            <div className="bg-white rounded-[20px] sm:rounded-[30px] md:rounded-[40px] p-4 sm:p-6 md:p-8 border border-slate-200 shadow-sm">
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 mb-4 sm:mb-6">
-                <div>
-                  <h2 className="text-xl sm:text-2xl font-black text-slate-800 flex items-center gap-2 sm:gap-3">
-                    <Trophy className="w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7 text-blue-600" />
-                    <span className="hidden xs:inline">Weekly Acquisition Dashboard</span>
-                    <span className="xs:hidden">Dashboard</span>
-                  </h2>
-                  <p className="text-xs sm:text-sm font-bold text-slate-500 mt-1">Track your team's performance for Week {activeWeek}</p>
-                </div>
-                <div className="flex items-center gap-2 sm:gap-3">
-                  <div className="hidden md:flex bg-blue-100 rounded-full p-0.5 sm:p-1 border border-blue-200">
-                    {[1, 2, 3, 4].map(w => (
-                      <button key={w} onClick={() => setActiveWeek(w)} className={`px-3 sm:px-5 py-1.5 sm:py-2 rounded-full text-[10px] sm:text-xs font-black transition-all ${activeWeek === w ? 'bg-[#003d79] text-white shadow-md' : 'text-blue-700 hover:bg-blue-200'}`}>Week {w}</button>
-                    ))}
-                  </div>
-                  <div className="md:hidden flex bg-blue-100 p-0.5 sm:p-1 rounded-xl border border-blue-200 overflow-x-auto">
-                    {[1, 2, 3, 4].map(w => (
-                      <button key={w} onClick={() => setActiveWeek(w)} className={`flex-shrink-0 px-4 sm:px-5 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-black transition-all ${activeWeek === w ? 'bg-[#003d79] text-white shadow-md' : 'text-blue-700'}`}>W{w}</button>
-                    ))}
+                  {/* Divider */}
+                  <div className="hidden lg:block w-px h-12 bg-slate-200"></div>
+
+                  {/* Week Selector */}
+                  <div className="flex items-center gap-2 sm:gap-3 w-full lg:w-auto justify-between lg:justify-end">
+                    <div className="hidden md:flex bg-blue-100 rounded-full p-0.5 sm:p-1 border border-blue-200">
+                      {[1, 2, 3, 4].map(w => (
+                        <button key={w} onClick={() => setActiveWeek(w)} className={`px-3 sm:px-5 py-1.5 sm:py-2 rounded-full text-[10px] sm:text-xs font-black transition-all ${activeWeek === w ? 'bg-[#003d79] text-white shadow-md' : 'text-blue-700 hover:bg-blue-200'}`}>Week {w}</button>
+                      ))}
+                    </div>
+                    <div className="md:hidden flex bg-blue-100 p-0.5 sm:p-1 rounded-xl border border-blue-200 overflow-x-auto">
+                      {[1, 2, 3, 4].map(w => (
+                        <button key={w} onClick={() => setActiveWeek(w)} className={`flex-shrink-0 px-4 sm:px-5 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-black transition-all ${activeWeek === w ? 'bg-[#003d79] text-white shadow-md' : 'text-blue-700'}`}>W{w}</button>
+                      ))}
+                    </div>
+                    <div className="lg:hidden text-xs sm:text-sm font-bold text-slate-500">
+                      {new Date(parseInt(selectedYear), parseInt(selectedMonth) - 1).toLocaleDateString('id-ID', { month: 'short', year: 'numeric' })}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1465,8 +1477,8 @@ export default function App() {
         {viewMode === 'input' && (
           <div className="space-y-8 animate-in fade-in duration-500">
             <div className="bg-white rounded-[40px] p-8 border border-slate-200 shadow-sm">
-              <InputAcquisition 
-                products={products.filter(p => p.is_active)} 
+              <InputAcquisition
+                products={products.filter(p => p.is_active)}
                 teams={teams}
                 members={teams.flatMap(t => t.members || [])}
               />

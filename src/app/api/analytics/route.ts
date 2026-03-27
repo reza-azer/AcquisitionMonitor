@@ -29,32 +29,38 @@ export async function GET(request: Request) {
     // Determine date range for filtering
     const today = new Date();
     let dateFilter: { start?: string; end?: string } = {};
-    
+
     if (reportType === 'custom' && startDate && endDate) {
       dateFilter = { start: startDate, end: endDate };
     } else if (month && year) {
       // Filter by specific month and year
-      const monthStr = String(parseInt(month)).padStart(2, '0');
+      const monthNum = parseInt(month);
       const yearNum = parseInt(year);
+      const monthStr = String(monthNum).padStart(2, '0');
+      const lastDay = new Date(yearNum, monthNum, 0).getDate();
       dateFilter = {
         start: `${yearNum}-${monthStr}-01`,
-        end: `${yearNum}-${monthStr}-31`
+        end: `${yearNum}-${monthStr}-${String(lastDay).padStart(2, '0')}`
       };
     } else if (reportType === 'monthly') {
       // Current month
-      const currentMonth = String(today.getMonth() + 1).padStart(2, '0');
+      const currentMonth = today.getMonth() + 1;
       const currentYear = today.getFullYear();
+      const monthStr = String(currentMonth).padStart(2, '0');
+      const lastDay = new Date(currentYear, currentMonth, 0).getDate();
       dateFilter = {
-        start: `${currentYear}-${currentMonth}-01`,
-        end: `${currentYear}-${currentMonth}-31`
+        start: `${currentYear}-${monthStr}-01`,
+        end: `${currentYear}-${monthStr}-${String(lastDay).padStart(2, '0')}`
       };
     } else {
       // Weekly - default to current month
-      const currentMonth = String(today.getMonth() + 1).padStart(2, '0');
+      const currentMonth = today.getMonth() + 1;
       const currentYear = today.getFullYear();
+      const monthStr = String(currentMonth).padStart(2, '0');
+      const lastDay = new Date(currentYear, currentMonth, 0).getDate();
       dateFilter = {
-        start: `${currentYear}-${currentMonth}-01`,
-        end: `${currentYear}-${currentMonth}-31`
+        start: `${currentYear}-${monthStr}-01`,
+        end: `${currentYear}-${monthStr}-${String(lastDay).padStart(2, '0')}`
       };
     }
 
