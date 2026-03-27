@@ -272,7 +272,7 @@ export default function UniversalCalendar({
                 const product = products.find(p => p.product_key === acq.product_key);
                 return (
                   <div key={acq.product_key} className="text-[7px] sm:text-[8px] font-bold text-slate-600 truncate">
-                    {product?.product_name || acq.product_key}: {acq.quantity} {product?.unit}
+                    {acq.product_key}: {acq.quantity} {product?.unit}
                   </div>
                 );
               })}
