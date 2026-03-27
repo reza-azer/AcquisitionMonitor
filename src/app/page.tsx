@@ -125,6 +125,8 @@ export default function App() {
 
   // Member detail modal state
   const [selectedMember, setSelectedMember] = useState<{ member: Member, team: Team } | null>(null);
+  const [memberViewMode, setMemberViewMode] = useState<'weekly' | 'monthly'>('weekly');
+  const [memberAttendance, setMemberAttendance] = useState<any>(null);
 
   // Migration modal state
   const [migratingMember, setMigratingMember] = useState<{ member: Member, team: Team } | null>(null);
@@ -160,6 +162,45 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('chartFilters', JSON.stringify(chartFilters));
   }, [chartFilters]);
+
+  // Fetch attendance data for a member
+  const fetchMemberAttendance = async (memberId: string) => {
+    try {
+      const monthStr = String(parseInt(selectedMonth)).padStart(2, '0');
+      const startDate = `${selectedYear}-${monthStr}-01`;
+      const lastDay = new Date(parseInt(selectedYear), parseInt(selectedMonth), 0).getDate();
+      const endDate = `${selectedYear}-${monthStr}-${String(lastDay).padStart(2, '0')}`;
+      
+      const res = await fetch(`/api/attendances/summary?startDate=${startDate}&endDate=${endDate}`);
+      if (res.ok) {
+        const result = await res.json();
+        const memberData = result.data?.find((m: any) => m.member_id === memberId);
+        if (memberData) {
+          // Calculate percentages
+          const totalDays = memberData.total_days + memberData.alpha; // Include alpha days in total
+          const presentRate = totalDays > 0 ? Math.round((memberData.present / totalDays) * 100) : 0;
+          const lateRate = totalDays > 0 ? Math.round((memberData.late / totalDays) * 100) : 0;
+          const leaveRate = totalDays > 0 ? Math.round((memberData.leave / totalDays) * 100) : 0;
+          const alphaRate = totalDays > 0 ? Math.round((memberData.alpha / totalDays) * 100) : 0;
+          
+          setMemberAttendance({
+            present: memberData.present,
+            late: memberData.late,
+            leave: memberData.leave,
+            alpha: memberData.alpha,
+            totalDays: totalDays,
+            presentRate,
+            lateRate,
+            leaveRate,
+            alphaRate,
+            totalLateMinutes: memberData.total_late_minutes
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch member attendance:', error);
+    }
+  };
 
   // Lock body scroll when modal is open
   useEffect(() => {
@@ -839,69 +880,259 @@ export default function App() {
                   </div>
                 </div>
 
+                {/* Attendance Recap - Month to Date */}
+                {memberAttendance && (
+                  <div className="mb-6">
+                    <h4 className="font-black text-sm text-slate-700 mb-3 flex items-center gap-2">
+                      <Calendar className="w-4 h-4 text-blue-600" />
+                      REKAP ABSENSI - {new Date(parseInt(selectedYear), parseInt(selectedMonth) - 1).toLocaleDateString('id-ID', { month: 'short', year: 'numeric' }).toUpperCase()}
+                    </h4>
+                    <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm">
+                      {/* Summary Stats */}
+                      <div className="grid grid-cols-4 gap-3 mb-4">
+                        <div className="text-center">
+                          <div className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Hadir</div>
+                          <div className="text-2xl font-black text-green-600">{memberAttendance.present || 0}</div>
+                        </div>
+                        <div className="text-center">
+                          <div className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Terlambat</div>
+                          <div className="text-2xl font-black text-yellow-600">{memberAttendance.late || 0}</div>
+                        </div>
+                        <div className="text-center">
+                          <div className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Izin</div>
+                          <div className="text-2xl font-black text-blue-600">{memberAttendance.leave || 0}</div>
+                        </div>
+                        <div className="text-center">
+                          <div className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Alpha</div>
+                          <div className="text-2xl font-black text-red-600">{memberAttendance.alpha || 0}</div>
+                        </div>
+                      </div>
+
+                      {/* Progress Bars */}
+                      <div className="space-y-3">
+                        {/* Present */}
+                        <div>
+                          <div className="flex justify-between text-xs mb-1">
+                            <span className="font-bold text-slate-600 flex items-center gap-1">
+                              <span className="w-2 h-2 rounded-full bg-green-500"></span>
+                              Hadir
+                            </span>
+                            <span className="font-black text-green-600">{memberAttendance.presentRate || 0}%</span>
+                          </div>
+                          <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                            <div className="h-full bg-green-500 transition-all duration-500" style={{ width: `${memberAttendance.presentRate || 0}%` }}></div>
+                          </div>
+                        </div>
+
+                        {/* Late */}
+                        <div>
+                          <div className="flex justify-between text-xs mb-1">
+                            <span className="font-bold text-slate-600 flex items-center gap-1">
+                              <span className="w-2 h-2 rounded-full bg-yellow-500"></span>
+                              Terlambat
+                            </span>
+                            <span className="font-black text-yellow-600">{memberAttendance.lateRate || 0}%</span>
+                          </div>
+                          <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                            <div className="h-full bg-yellow-500 transition-all duration-500" style={{ width: `${memberAttendance.lateRate || 0}%` }}></div>
+                          </div>
+                        </div>
+
+                        {/* Leave */}
+                        <div>
+                          <div className="flex justify-between text-xs mb-1">
+                            <span className="font-bold text-slate-600 flex items-center gap-1">
+                              <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+                              Izin
+                            </span>
+                            <span className="font-black text-blue-600">{memberAttendance.leaveRate || 0}%</span>
+                          </div>
+                          <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                            <div className="h-full bg-blue-500 transition-all duration-500" style={{ width: `${memberAttendance.leaveRate || 0}%` }}></div>
+                          </div>
+                        </div>
+
+                        {/* Alpha */}
+                        <div>
+                          <div className="flex justify-between text-xs mb-1">
+                            <span className="font-bold text-slate-600 flex items-center gap-1">
+                              <span className="w-2 h-2 rounded-full bg-red-500"></span>
+                              Alpha
+                            </span>
+                            <span className="font-black text-red-600">{memberAttendance.alphaRate || 0}%</span>
+                          </div>
+                          <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                            <div className="h-full bg-red-500 transition-all duration-500" style={{ width: `${memberAttendance.alphaRate || 0}%` }}></div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Total Days */}
+                      <div className="mt-4 pt-4 border-t border-slate-100 text-center">
+                        <div className="text-xs text-slate-500">
+                          Total Hari Kerja: <span className="font-black text-slate-700">{memberAttendance.totalDays || 0} hari</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* Weekly Breakdown */}
                 <div className="mb-6">
-                  <h4 className="font-black text-sm text-slate-700 mb-3 flex items-center gap-2">
-                    <BarChart3 className="w-4 h-4 text-blue-600" />
-                    BREAKDOWN PER MINGGU
-                  </h4>
-                  <div className="space-y-3">
-                    {[1, 2, 3, 4].map(week => {
-                      const weekAcq = (selectedMember.member.weeklyAcquisitions || {})[week] || {};
-                      const weekScore = getMemberPoints(weekAcq);
-                      const weekTotal = Object.values(weekAcq).reduce((sum: number, qty: number) => sum + qty, 0);
-                      const hasData = weekTotal > 0;
-
-                      return (
-                        <div
-                          key={week}
-                          className={`rounded-2xl border p-4 transition-all ${hasData ? 'bg-white border-slate-200 shadow-sm' : 'bg-slate-50 border-slate-100 opacity-50'}`}
-                        >
-                          <div className="flex justify-between items-center mb-3">
-                            <div className="flex items-center gap-2">
-                              <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-black text-xs ${hasData ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-400'}`}>
-                                W{week}
-                              </div>
-                              <span className="text-xs font-bold text-slate-500 uppercase tracking-wide">
-                                {hasData ? `${weekTotal} Akuisisi` : 'Tidak ada data'}
-                              </span>
-                            </div>
-                            <div className={`text-lg font-black ${hasData ? 'text-green-600' : 'text-slate-300'}`}>
-                              +{weekScore} Poin
-                            </div>
-                          </div>
-
-                          {hasData && (
-                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                              {Object.entries(weekAcq)
-                                .filter(([_, qty]) => qty > 0)
-                                .map(([product, qty]) => {
-                                  const productConfig = products.find(p => p.product_key === product);
-                                  let pointsEarned = 0;
-                                  if (productConfig) {
-                                    if (productConfig.is_tiered && productConfig.tier_config) {
-                                      const tier = productConfig.tier_config.find(t => qty <= t.limit) || productConfig.tier_config[productConfig.tier_config.length - 1];
-                                      pointsEarned = qty * tier.points;
-                                    } else {
-                                      pointsEarned = qty * (productConfig.flat_points || 0);
-                                    }
-                                  }
-                                  return (
-                                    <div key={product} className="bg-slate-50 rounded-xl p-2.5 border border-slate-100">
-                                      <div className="text-[9px] font-black text-slate-400 uppercase">{product}</div>
-                                      <div className="flex justify-between items-center mt-1">
-                                        <span className="text-sm font-bold text-slate-700">{qty} {productConfig?.unit}</span>
-                                        <span className="text-xs font-black text-green-600">+{pointsEarned}</span>
-                                      </div>
-                                    </div>
-                                  );
-                                })}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="font-black text-sm text-slate-700 flex items-center gap-2">
+                      <BarChart3 className="w-4 h-4 text-blue-600" />
+                      {memberViewMode === 'weekly' ? 'BREAKDOWN PER MINGGU' : 'BREAKDOWN PER BULAN'}
+                    </h4>
+                    <div className="flex gap-1 bg-slate-100 p-1 rounded-xl">
+                      <button
+                        onClick={() => setMemberViewMode('weekly')}
+                        className={`px-3 py-1.5 rounded-lg text-[10px] font-black transition-all ${
+                          memberViewMode === 'weekly' 
+                            ? 'bg-blue-600 text-white shadow-sm' 
+                            : 'text-slate-500 hover:text-slate-700'
+                        }`}
+                      >
+                        Minggu
+                      </button>
+                      <button
+                        onClick={() => setMemberViewMode('monthly')}
+                        className={`px-3 py-1.5 rounded-lg text-[10px] font-black transition-all ${
+                          memberViewMode === 'monthly' 
+                            ? 'bg-blue-600 text-white shadow-sm' 
+                            : 'text-slate-500 hover:text-slate-700'
+                        }`}
+                      >
+                        Bulan
+                      </button>
+                    </div>
                   </div>
+
+                  {/* Weekly View */}
+                  {memberViewMode === 'weekly' && (
+                    <div className="space-y-3">
+                      {[1, 2, 3, 4].map(week => {
+                        const weekAcq = (selectedMember.member.weeklyAcquisitions || {})[week] || {};
+                        const weekScore = getMemberPoints(weekAcq);
+                        const weekTotal = Object.values(weekAcq).reduce((sum: number, qty: number) => sum + qty, 0);
+                        const hasData = weekTotal > 0;
+
+                        return (
+                          <div
+                            key={week}
+                            className={`rounded-2xl border p-4 transition-all ${hasData ? 'bg-white border-slate-200 shadow-sm' : 'bg-slate-50 border-slate-100 opacity-50'}`}
+                          >
+                            <div className="flex justify-between items-center mb-3">
+                              <div className="flex items-center gap-2">
+                                <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-black text-xs ${hasData ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-400'}`}>
+                                  W{week}
+                                </div>
+                                <span className="text-xs font-bold text-slate-500 uppercase tracking-wide">
+                                  {hasData ? `${weekTotal} Akuisisi` : 'Tidak ada data'}
+                                </span>
+                              </div>
+                              <div className={`text-lg font-black ${hasData ? 'text-green-600' : 'text-slate-300'}`}>
+                                +{weekScore} Poin
+                              </div>
+                            </div>
+
+                            {hasData && (
+                              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                                {Object.entries(weekAcq)
+                                  .filter(([_, qty]) => qty > 0)
+                                  .map(([product, qty]) => {
+                                    const productConfig = products.find(p => p.product_key === product);
+                                    let pointsEarned = 0;
+                                    if (productConfig) {
+                                      if (productConfig.is_tiered && productConfig.tier_config) {
+                                        const tier = productConfig.tier_config.find(t => qty <= t.limit) || productConfig.tier_config[productConfig.tier_config.length - 1];
+                                        pointsEarned = qty * tier.points;
+                                      } else {
+                                        pointsEarned = qty * (productConfig.flat_points || 0);
+                                      }
+                                    }
+                                    return (
+                                      <div key={product} className="bg-slate-50 rounded-xl p-2.5 border border-slate-100">
+                                        <div className="text-[9px] font-black text-slate-400 uppercase">{product}</div>
+                                        <div className="flex justify-between items-center mt-1">
+                                          <span className="text-sm font-bold text-slate-700">{qty} {productConfig?.unit}</span>
+                                          <span className="text-xs font-black text-green-600">+{pointsEarned}</span>
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {/* Monthly View */}
+                  {memberViewMode === 'monthly' && (
+                    <div className="space-y-3">
+                      {(() => {
+                        const monthlyAcq: Record<string, number> = {};
+                        Object.values(selectedMember.member.weeklyAcquisitions || {}).forEach(weekAcq => {
+                          Object.entries(weekAcq).forEach(([productKey, qty]) => {
+                            monthlyAcq[productKey] = (monthlyAcq[productKey] || 0) + qty;
+                          });
+                        });
+                        const monthlyTotal = Object.values(monthlyAcq).reduce((sum, qty) => sum + qty, 0);
+                        const monthlyScore = getMemberPoints(monthlyAcq);
+                        const hasData = monthlyTotal > 0;
+
+                        return (
+                          <div
+                            className={`rounded-2xl border p-4 transition-all ${hasData ? 'bg-white border-slate-200 shadow-sm' : 'bg-slate-50 border-slate-100 opacity-50'}`}
+                          >
+                            <div className="flex justify-between items-center mb-3">
+                              <div className="flex items-center gap-2">
+                                <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-black text-xs ${hasData ? 'bg-green-600 text-white' : 'bg-slate-200 text-slate-400'}`}>
+                                  <BarChart3 className="w-4 h-4" />
+                                </div>
+                                <span className="text-xs font-bold text-slate-500 uppercase tracking-wide">
+                                  {hasData ? `${monthlyTotal} Akuisisi` : 'Tidak ada data'}
+                                </span>
+                              </div>
+                              <div className={`text-lg font-black ${hasData ? 'text-green-600' : 'text-slate-300'}`}>
+                                +{monthlyScore} Poin
+                              </div>
+                            </div>
+
+                            {hasData && (
+                              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                                {Object.entries(monthlyAcq)
+                                  .filter(([_, qty]) => qty > 0)
+                                  .map(([product, qty]) => {
+                                    const productConfig = products.find(p => p.product_key === product);
+                                    let pointsEarned = 0;
+                                    if (productConfig) {
+                                      if (productConfig.is_tiered && productConfig.tier_config) {
+                                        const tier = productConfig.tier_config.find(t => qty <= t.limit) || productConfig.tier_config[productConfig.tier_config.length - 1];
+                                        pointsEarned = qty * tier.points;
+                                      } else {
+                                        pointsEarned = qty * (productConfig.flat_points || 0);
+                                      }
+                                    }
+                                    return (
+                                      <div key={product} className="bg-slate-50 rounded-xl p-2.5 border border-slate-100">
+                                        <div className="text-[9px] font-black text-slate-400 uppercase">{product}</div>
+                                        <div className="flex justify-between items-center mt-1">
+                                          <span className="text-sm font-bold text-slate-700">{qty} {productConfig?.unit}</span>
+                                          <span className="text-xs font-black text-green-600">+{pointsEarned}</span>
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  )}
                 </div>
 
                 {/* Score Calculation Info */}
@@ -1248,7 +1479,10 @@ export default function App() {
                           return (
                             <div
                               key={m.id}
-                              onClick={() => setSelectedMember({ member: m, team })}
+                              onClick={() => {
+                                setSelectedMember({ member: m, team });
+                                fetchMemberAttendance(m.id);
+                              }}
                               className={`flex justify-between items-center p-3 rounded-full border transition-all cursor-pointer hover:shadow-md hover:scale-[1.02] ${pts > 0 ? tier.bg + ' border-transparent shadow-sm' : 'bg-white/30 border-slate-100/30 opacity-60'}`}
                             >
                               <div className="flex items-center gap-3 overflow-hidden">
