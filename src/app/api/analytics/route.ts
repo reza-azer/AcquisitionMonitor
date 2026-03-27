@@ -9,6 +9,8 @@ export async function GET(request: Request) {
     const endDate = searchParams.get('endDate');
     const teamId = searchParams.get('teamId');
     const category = searchParams.get('category');
+    const month = searchParams.get('month');
+    const year = searchParams.get('year');
 
     // Fetch base data
     const { data: teams, error: teamsError } = await supabase.from('teams').select('id, name, accent_color');
@@ -24,30 +26,49 @@ export async function GET(request: Request) {
     const { data: products, error: productsError } = await productsQuery;
     if (productsError) throw productsError;
 
-    // Determine week number for weekly report
+    // Determine date range for filtering
     const today = new Date();
-    let weekFilter: number | null = null;
-    if (reportType === 'weekly') {
-      weekFilter = Math.ceil(today.getDate() / 7);
+    let dateFilter: { start?: string; end?: string } = {};
+    
+    if (reportType === 'custom' && startDate && endDate) {
+      dateFilter = { start: startDate, end: endDate };
+    } else if (month && year) {
+      // Filter by specific month and year
+      const monthStr = String(parseInt(month)).padStart(2, '0');
+      const yearNum = parseInt(year);
+      dateFilter = {
+        start: `${yearNum}-${monthStr}-01`,
+        end: `${yearNum}-${monthStr}-31`
+      };
+    } else if (reportType === 'monthly') {
+      // Current month
+      const currentMonth = String(today.getMonth() + 1).padStart(2, '0');
+      const currentYear = today.getFullYear();
+      dateFilter = {
+        start: `${currentYear}-${currentMonth}-01`,
+        end: `${currentYear}-${currentMonth}-31`
+      };
+    } else {
+      // Weekly - default to current month
+      const currentMonth = String(today.getMonth() + 1).padStart(2, '0');
+      const currentYear = today.getFullYear();
+      dateFilter = {
+        start: `${currentYear}-${currentMonth}-01`,
+        end: `${currentYear}-${currentMonth}-31`
+      };
     }
 
-    // Fetch acquisitions with optional week filter
+    // Fetch acquisitions with date filter
     let acquisitionsQuery = supabase.from('acquisitions').select('*');
-    if (weekFilter) acquisitionsQuery = acquisitionsQuery.eq('week', weekFilter);
+    if (dateFilter.start) acquisitionsQuery = acquisitionsQuery.gte('date', dateFilter.start);
+    if (dateFilter.end) acquisitionsQuery = acquisitionsQuery.lte('date', dateFilter.end);
     const { data: acquisitions, error: acquisitionsError } = await acquisitionsQuery;
     if (acquisitionsError) throw acquisitionsError;
 
     // Fetch attendances based on report type
     let attendanceQuery = supabase.from('attendances').select('member_id, date, status, late_minutes');
-    if (reportType === 'custom' && startDate && endDate) {
-      attendanceQuery = attendanceQuery.gte('date', startDate).lte('date', endDate);
-    } else if (reportType === 'monthly') {
-      const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-      attendanceQuery = attendanceQuery.gte('date', startOfMonth.toISOString().split('T')[0]);
-    } else {
-      // Weekly - get current month attendance
-      const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-      attendanceQuery = attendanceQuery.gte('date', startOfMonth.toISOString().split('T')[0]);
+    if (dateFilter.start && dateFilter.end) {
+      attendanceQuery = attendanceQuery.gte('date', dateFilter.start).lte('date', dateFilter.end);
     }
     const { data: attendances, error: attendancesError } = await attendanceQuery;
     if (attendancesError) throw attendancesError;

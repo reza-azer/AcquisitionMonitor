@@ -108,11 +108,13 @@ export default function DashboardAnalytics() {
   const [reportType, setReportType] = useState<'weekly' | 'monthly' | 'custom'>('weekly');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [selectedMonth, setSelectedMonth] = useState<string>(String(new Date().getMonth() + 1));
+  const [selectedYear, setSelectedYear] = useState<string>(String(new Date().getFullYear()));
   const [isExporting, setIsExporting] = useState(false);
 
   useEffect(() => {
     fetchAnalytics();
-  }, [reportType, startDate, endDate]);
+  }, [reportType, startDate, endDate, selectedMonth, selectedYear]);
 
   const fetchAnalytics = async () => {
     setLoading(true);
@@ -122,6 +124,10 @@ export default function DashboardAnalytics() {
       if (reportType === 'custom' && startDate && endDate) {
         params.append('startDate', startDate);
         params.append('endDate', endDate);
+      }
+      if (reportType !== 'custom') {
+        params.append('month', selectedMonth);
+        params.append('year', selectedYear);
       }
       const response = await fetch(`/api/analytics?${params.toString()}`);
       if (!response.ok) throw new Error('Failed to fetch analytics');
@@ -221,7 +227,8 @@ export default function DashboardAnalytics() {
         const topPerformersSheet = (window as any).XLSX.utils.json_to_sheet(topPerformersData);
         (window as any).XLSX.utils.book_append_sheet(workbook, topPerformersSheet, 'Top Performers');
 
-        const fileName = `Analytics_Report_${data.reportType}_${new Date().toISOString().split('T')[0]}.xlsx`;
+        const monthName = new Date(parseInt(selectedYear), parseInt(selectedMonth) - 1).toLocaleDateString('id-ID', { month: 'short', year: 'numeric' });
+        const fileName = `Analytics_Report_${data.reportType}_${monthName.replace(/ /g, '_')}_${new Date().toISOString().split('T')[0]}.xlsx`;
         (window as any).XLSX.writeFile(workbook, fileName);
       }
     } catch (error) {
@@ -262,9 +269,42 @@ export default function DashboardAnalytics() {
             <Activity className="w-7 h-7 text-blue-600" />
             Dashboard Analytics
           </h2>
-          <p className="text-sm font-bold text-slate-500 mt-1">Comprehensive performance insights</p>
+          <p className="text-sm font-bold text-slate-500 mt-1">
+            {new Date(parseInt(selectedYear), parseInt(selectedMonth) - 1).toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}
+          </p>
         </div>
         <div className="flex items-center gap-3">
+          {reportType !== 'custom' && (
+            <>
+              <select
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(e.target.value)}
+                className="bg-white border border-slate-200 rounded-xl px-4 py-2 text-sm font-bold outline-none focus:ring-2 focus:ring-blue-200"
+              >
+                <option value="1">January</option>
+                <option value="2">February</option>
+                <option value="3">March</option>
+                <option value="4">April</option>
+                <option value="5">May</option>
+                <option value="6">June</option>
+                <option value="7">July</option>
+                <option value="8">August</option>
+                <option value="9">September</option>
+                <option value="10">October</option>
+                <option value="11">November</option>
+                <option value="12">December</option>
+              </select>
+              <select
+                value={selectedYear}
+                onChange={(e) => setSelectedYear(e.target.value)}
+                className="bg-white border border-slate-200 rounded-xl px-4 py-2 text-sm font-bold outline-none focus:ring-2 focus:ring-blue-200"
+              >
+                {Array.from({ length: 11 }, (_, i) => 2020 + i).map(year => (
+                  <option key={year} value={year}>{year}</option>
+                ))}
+              </select>
+            </>
+          )}
           <select
             value={reportType}
             onChange={(e) => setReportType(e.target.value as any)}
