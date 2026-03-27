@@ -76,7 +76,7 @@ export async function GET(request: Request) {
     const memberIds = members.map(m => m.id);
     const filteredAcquisitions = acquisitions.filter(a => memberIds.includes(a.member_id));
 
-    // Calculate weekly trends (all 4 weeks)
+    // Calculate weekly trends (all 4 weeks) - overall
     const weeklyTrends: { week: number; totalPoints: number; totalQuantity: number }[] = [];
     for (let w = 1; w <= 4; w++) {
       const weekAcq = acquisitions.filter(a => a.week === w);
@@ -95,6 +95,31 @@ export async function GET(request: Request) {
       });
       weeklyTrends.push({ week: w, totalPoints, totalQuantity });
     }
+
+    // Calculate weekly trends per team
+    const teamWeeklyTrends = teams.map(team => {
+      const teamMembers = members.filter(m => m.team_id === team.id);
+      const teamMemberIds = teamMembers.map(m => m.id);
+      const teamAcquisitions = filteredAcquisitions.filter(a => teamMemberIds.includes(a.member_id));
+      
+      const weeklyData: { week: number; [teamName: string]: number }[] = [];
+      for (let w = 1; w <= 4; w++) {
+        const weekAcq = teamAcquisitions.filter(a => a.week === w);
+        let totalPoints = 0;
+        weekAcq.forEach(a => {
+          const product = products.find(p => p.product_key === a.product_key);
+          if (!product) return;
+          if (product.is_tiered && product.tier_config) {
+            const tier = product.tier_config.find((t: { limit: number }) => a.quantity <= t.limit) || product.tier_config[product.tier_config.length - 1];
+            totalPoints += a.quantity * tier.points;
+          } else {
+            totalPoints += a.quantity * (product.flat_points || 0);
+          }
+        });
+        weeklyData.push({ week: w, [team.name]: totalPoints });
+      }
+      return { teamId: team.id, teamName: team.name, accentColor: team.accent_color, weeklyData };
+    });
 
     // Calculate team performance
     const teamPerformance = teams.map(team => {
@@ -268,6 +293,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json({
       weeklyTrends,
+      teamWeeklyTrends,
       teamPerformance,
       memberRankings,
       categoryPerformance,

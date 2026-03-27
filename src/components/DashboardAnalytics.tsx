@@ -16,6 +16,13 @@ interface WeeklyTrend {
   totalQuantity: number;
 }
 
+interface TeamWeeklyTrend {
+  teamId: string;
+  teamName: string;
+  accentColor: string;
+  weeklyData: { week: number; [teamName: string]: number }[];
+}
+
 interface TeamPerformance {
   teamId: string;
   teamName: string;
@@ -89,6 +96,7 @@ interface Summary {
 
 interface AnalyticsData {
   weeklyTrends: WeeklyTrend[];
+  teamWeeklyTrends: TeamWeeklyTrend[];
   teamPerformance: TeamPerformance[];
   memberRankings: MemberRanking[];
   categoryPerformance: CategoryPerformance[];
@@ -257,8 +265,24 @@ export default function DashboardAnalytics() {
 
   if (!data) return null;
 
-  const { weeklyTrends, teamPerformance, memberRankings, categoryPerformance, insights, summary, attendanceCorrelation } = data;
+  const { weeklyTrends, teamWeeklyTrends, teamPerformance, memberRankings, categoryPerformance, insights, summary, attendanceCorrelation } = data;
   const COLORS = ['#003d79', '#FDB813', '#10b981', '#ef4444', '#8b5cf6', '#f59e0b', '#06b6d4', '#ec4899'];
+
+  // Helper function to merge team weekly data into a single array for the chart
+  const mergeTeamWeeklyData = (teamWeeklyTrends: TeamWeeklyTrend[]) => {
+    const merged: { week: number; [teamName: string]: number }[] = [];
+    for (let w = 1; w <= 4; w++) {
+      const weekData: { week: number; [teamName: string]: number } = { week: w };
+      teamWeeklyTrends.forEach(team => {
+        const dataPoint = team.weeklyData.find(d => d.week === w);
+        if (dataPoint) {
+          weekData[team.teamName] = dataPoint[team.teamName] || 0;
+        }
+      });
+      merged.push(weekData);
+    }
+    return merged;
+  };
 
   return (
     <div className="space-y-8">
@@ -604,6 +628,44 @@ export default function DashboardAnalytics() {
           </ResponsiveContainer>
         </div>
       </div>
+
+      {/* Team Weekly Trends Chart */}
+      {data.teamWeeklyTrends && data.teamWeeklyTrends.length > 0 && (
+        <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm mt-8">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-10 h-10 rounded-2xl bg-blue-50 flex items-center justify-center">
+              <Activity className="w-5 h-5 text-blue-600" />
+            </div>
+            <div>
+              <h3 className="font-black text-slate-800">Tren Performa Tim</h3>
+              <p className="text-xs font-bold text-slate-400">Perkembangan poin per tim setiap minggu</p>
+            </div>
+          </div>
+          <div className="h-80">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={mergeTeamWeeklyData(data.teamWeeklyTrends)}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                <XAxis dataKey="week" tickFormatter={(v) => `W${v}`} stroke="#64748b" fontSize={12} />
+                <YAxis stroke="#64748b" fontSize={12} />
+                <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} labelFormatter={(v) => `Week ${v}`} />
+                <Legend />
+                {data.teamWeeklyTrends.map((team, index) => (
+                  <Line
+                    key={team.teamId}
+                    type="monotone"
+                    dataKey={team.teamName}
+                    name={team.teamName}
+                    stroke={team.accentColor || COLORS[index % COLORS.length]}
+                    strokeWidth={3}
+                    dot={{ fill: 'white', strokeWidth: 2, r: 5 }}
+                    activeDot={{ r: 7 }}
+                  />
+                ))}
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      )}
 
       {/* Team Performance Table */}
       <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm">
