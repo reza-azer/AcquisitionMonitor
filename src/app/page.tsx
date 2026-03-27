@@ -101,6 +101,7 @@ export default function App() {
   const [exportMode, setExportMode] = useState<'weeks' | 'month' | 'all'>('weeks');
   const [exportStartDate, setExportStartDate] = useState('');
   const [exportEndDate, setExportEndDate] = useState('');
+  const [dashboardViewMode, setDashboardViewMode] = useState<'weekly' | 'monthly'>('weekly');
 
   // Data state
   const [teams, setTeams] = useState<Team[]>([]);
@@ -313,12 +314,20 @@ export default function App() {
     return teams.map(team => {
       const combined: Record<string, number> = {};
       (team.members || []).forEach(m => {
-        const currentAqc = (m.weeklyAcquisitions || {})[activeWeek] || {};
-        Object.keys(currentAqc).forEach(p => combined[p] = (combined[p] || 0) + currentAqc[p]);
+        if (dashboardViewMode === 'monthly') {
+          // Accumulate all weeks for monthly view
+          Object.values(m.weeklyAcquisitions || {}).forEach(weekAcq => {
+            Object.keys(weekAcq).forEach(p => combined[p] = (combined[p] || 0) + weekAcq[p]);
+          });
+        } else {
+          // Weekly view - use activeWeek
+          const currentAqc = (m.weeklyAcquisitions || {})[activeWeek] || {};
+          Object.keys(currentAqc).forEach(p => combined[p] = (combined[p] || 0) + currentAqc[p]);
+        }
       });
       return { ...team, stats: combined, totalPoints: getMemberPoints(combined) };
     }).sort((a, b) => b.totalPoints - a.totalPoints);
-  }, [teams, activeWeek]);
+  }, [teams, activeWeek, dashboardViewMode]);
 
   const chartData = useMemo(() => {
     const weeks = [1, 2, 3, 4];
@@ -1370,18 +1379,47 @@ export default function App() {
                   {/* Divider */}
                   <div className="hidden lg:block w-px h-12 bg-slate-200"></div>
 
-                  {/* Week Selector */}
+                  {/* Week/Month Toggle & Week Selector */}
                   <div className="flex items-center gap-2 sm:gap-3 w-full lg:w-auto justify-between lg:justify-end">
-                    <div className="hidden md:flex bg-blue-100 rounded-full p-0.5 sm:p-1 border border-blue-200">
-                      {[1, 2, 3, 4].map(w => (
-                        <button key={w} onClick={() => setActiveWeek(w)} className={`px-3 sm:px-5 py-1.5 sm:py-2 rounded-full text-[10px] sm:text-xs font-black transition-all ${activeWeek === w ? 'bg-[#003d79] text-white shadow-md' : 'text-blue-700 hover:bg-blue-200'}`}>Week {w}</button>
-                      ))}
+                    {/* Week/Month Toggle */}
+                    <div className="flex gap-1 bg-slate-100 p-1 rounded-xl">
+                      <button
+                        onClick={() => setDashboardViewMode('weekly')}
+                        className={`px-3 py-1.5 rounded-lg text-[10px] font-black transition-all ${
+                          dashboardViewMode === 'weekly' 
+                            ? 'bg-blue-600 text-white shadow-sm' 
+                            : 'text-slate-500 hover:text-slate-700'
+                        }`}
+                      >
+                        Mingguan
+                      </button>
+                      <button
+                        onClick={() => setDashboardViewMode('monthly')}
+                        className={`px-3 py-1.5 rounded-lg text-[10px] font-black transition-all ${
+                          dashboardViewMode === 'monthly' 
+                            ? 'bg-blue-600 text-white shadow-sm' 
+                            : 'text-slate-500 hover:text-slate-700'
+                        }`}
+                      >
+                        Bulanan
+                      </button>
                     </div>
-                    <div className="md:hidden flex bg-blue-100 p-0.5 sm:p-1 rounded-xl border border-blue-200 overflow-x-auto">
-                      {[1, 2, 3, 4].map(w => (
-                        <button key={w} onClick={() => setActiveWeek(w)} className={`flex-shrink-0 px-4 sm:px-5 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-black transition-all ${activeWeek === w ? 'bg-[#003d79] text-white shadow-md' : 'text-blue-700'}`}>W{w}</button>
-                      ))}
-                    </div>
+
+                    {/* Week Selector (only show in weekly mode) */}
+                    {dashboardViewMode === 'weekly' && (
+                      <>
+                        <div className="hidden md:flex bg-blue-100 rounded-full p-0.5 sm:p-1 border border-blue-200">
+                          {[1, 2, 3, 4].map(w => (
+                            <button key={w} onClick={() => setActiveWeek(w)} className={`px-3 sm:px-5 py-1.5 sm:py-2 rounded-full text-[10px] sm:text-xs font-black transition-all ${activeWeek === w ? 'bg-[#003d79] text-white shadow-md' : 'text-blue-700 hover:bg-blue-200'}`}>Week {w}</button>
+                          ))}
+                        </div>
+                        <div className="md:hidden flex bg-blue-100 p-0.5 sm:p-1 rounded-xl border border-blue-200 overflow-x-auto">
+                          {[1, 2, 3, 4].map(w => (
+                            <button key={w} onClick={() => setActiveWeek(w)} className={`flex-shrink-0 px-4 sm:px-5 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-black transition-all ${activeWeek === w ? 'bg-[#003d79] text-white shadow-md' : 'text-blue-700'}`}>W{w}</button>
+                          ))}
+                        </div>
+                      </>
+                    )}
                     <div className="lg:hidden text-xs sm:text-sm font-bold text-slate-500">
                       {new Date(parseInt(selectedYear), parseInt(selectedMonth) - 1).toLocaleDateString('id-ID', { month: 'short', year: 'numeric' })}
                     </div>
@@ -1438,8 +1476,18 @@ export default function App() {
 
                     <div className="p-6 relative z-10">
                       <div className="flex items-center justify-between mb-6 bg-white/60 backdrop-blur-md p-3 rounded-2xl border border-white/80 shadow-sm">
-                        <div className="flex flex-col"><span className="text-[10px] text-slate-500 font-black uppercase tracking-widest">Poin Minggu Ini</span><span className="text-3xl font-black tracking-tighter text-[#003d79]">{team.totalPoints}</span></div>
-                        <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center shadow-sm text-blue-900 border border-blue-100 font-black text-xs">W{activeWeek}</div>
+                        <div className="flex flex-col">
+                          <span className="text-[10px] text-slate-500 font-black uppercase tracking-widest">
+                            {dashboardViewMode === 'monthly' ? 'Poin Bulan Ini' : 'Poin Minggu Ini'}
+                          </span>
+                          <span className="text-3xl font-black tracking-tighter text-[#003d79]">{team.totalPoints}</span>
+                        </div>
+                        <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center shadow-sm text-blue-900 border border-blue-100 font-black text-xs">
+                          {dashboardViewMode === 'monthly' 
+                            ? new Date(parseInt(selectedYear), parseInt(selectedMonth) - 1).toLocaleDateString('id-ID', { month: 'short' }).toUpperCase().replace('.', '')
+                            : `W${activeWeek}`
+                          }
+                        </div>
                       </div>
 
                       <div className="mb-6 bg-white/40 backdrop-blur-sm p-4 rounded-2xl border border-white/60 shadow-inner">
@@ -1513,9 +1561,14 @@ export default function App() {
                   <div className="w-10 h-10 rounded-2xl bg-blue-100 flex items-center justify-center">
                     <Target className="text-blue-600 w-6 h-6" />
                   </div>
-                  Total Capaian Mingguan Seluruh Tim
+                  Total Capaian {dashboardViewMode === 'monthly' ? 'Bulanan' : 'Mingguan'} Seluruh Tim
                 </h2>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-14">Akumulasi seluruh tim periode Week {activeWeek}</p>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-14">
+                  {dashboardViewMode === 'monthly' 
+                    ? `Akumulasi seluruh tim periode ${new Date(parseInt(selectedYear), parseInt(selectedMonth) - 1).toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}`
+                    : `Akumulasi seluruh tim periode Week ${activeWeek}`
+                  }
+                </p>
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-8 relative z-10">
                 {products.filter(p => p.is_active).map(p => {
