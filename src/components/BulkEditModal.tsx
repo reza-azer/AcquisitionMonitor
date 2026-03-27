@@ -35,8 +35,9 @@ interface BulkEditModalProps {
   onClose: () => void;
   members: Member[];
   teams: Team[];
-  onSave: (records: Omit<Attendance, 'id'>[]) => Promise<void>;
-  onDelete: (records: Pick<Attendance, 'member_id' | 'date'>[]) => Promise<void>;
+  mode?: 'attendance' | 'acquisition';
+  onSave: (records: any[]) => Promise<void>;
+  onDelete: (records: any[]) => Promise<void>;
 }
 
 const statusOptions = [
@@ -58,6 +59,7 @@ export default function BulkEditModal({
   onClose,
   members,
   teams,
+  mode = 'attendance',
   onSave,
   onDelete,
 }: BulkEditModalProps) {
@@ -70,7 +72,7 @@ export default function BulkEditModal({
   const [notes, setNotes] = useState<string>('');
   const [isSaving, setIsSaving] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [mode, setMode] = useState<'create' | 'delete'>('create');
+  const [editMode, setEditMode] = useState<'create' | 'delete'>('create');
 
   // Initialize dates to current month
   useEffect(() => {
@@ -92,7 +94,7 @@ export default function BulkEditModal({
       setLeaveReason('');
       setNotes('');
       setSearchTerm('');
-      setMode('create');
+      setEditMode('create');
     }
   }, [isOpen]);
 
@@ -156,7 +158,7 @@ export default function BulkEditModal({
     try {
       const dates = getDateRange();
       
-      if (mode === 'delete') {
+      if (editMode === 'delete') {
         // Bulk delete
         const records: Pick<Attendance, 'member_id' | 'date'>[] = [];
         dates.forEach(date => {
@@ -216,8 +218,8 @@ export default function BulkEditModal({
         <div className="bg-gradient-to-r from-purple-600 to-purple-700 text-white p-6 shrink-0">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="font-black text-xl">Bulk Edit Absensi</h3>
-              <p className="text-xs font-bold text-purple-100 mt-1">Edit absensi multiple member sekaligus</p>
+              <h3 className="font-black text-xl">Bulk Edit {mode === 'acquisition' ? 'Akuisisi' : 'Absensi'}</h3>
+              <p className="text-xs font-bold text-purple-100 mt-1">Edit {mode === 'acquisition' ? 'akuisisi' : 'absensi'} multiple member sekaligus</p>
             </div>
             <button
               onClick={handleClose}
@@ -230,9 +232,9 @@ export default function BulkEditModal({
           {/* Mode Toggle */}
           <div className="flex gap-2 mt-4">
             <button
-              onClick={() => setMode('create')}
+              onClick={() => setEditMode('create')}
               className={`flex-1 py-2.5 rounded-xl font-black text-sm transition-all ${
-                mode === 'create'
+                editMode === 'create'
                   ? 'bg-white text-purple-700'
                   : 'bg-purple-800/50 text-purple-200 hover:bg-purple-800'
               }`}
@@ -240,9 +242,9 @@ export default function BulkEditModal({
               ✏️ Create/Edit
             </button>
             <button
-              onClick={() => setMode('delete')}
+              onClick={() => setEditMode('delete')}
               className={`flex-1 py-2.5 rounded-xl font-black text-sm transition-all ${
-                mode === 'delete'
+                editMode === 'delete'
                   ? 'bg-white text-red-700'
                   : 'bg-purple-800/50 text-purple-200 hover:bg-purple-800'
               }`}
@@ -438,17 +440,17 @@ export default function BulkEditModal({
           {/* Summary */}
           {affectedRecordsCount > 0 && (
             <div className={`rounded-2xl p-4 border ${
-              mode === 'delete'
+              editMode === 'delete'
                 ? 'bg-red-50 border-red-200'
                 : 'bg-amber-50 border-amber-200'
             }`}>
               <div className="flex items-center gap-2">
                 <div className={`font-black text-sm ${
-                  mode === 'delete' ? 'text-red-700' : 'text-amber-700'
+                  editMode === 'delete' ? 'text-red-700' : 'text-amber-700'
                 }`}>
-                  {mode === 'delete' 
-                    ? `⚠️ Akan menghapus ${affectedRecordsCount} record absensi`
-                    : `⚠️ Akan mempengaruhi ${affectedRecordsCount} record absensi`
+                  {editMode === 'delete' 
+                    ? `⚠️ Akan menghapus ${affectedRecordsCount} record ${mode === 'acquisition' ? 'akuisisi' : 'absensi'}`
+                    : `⚠️ Akan mempengaruhi ${affectedRecordsCount} record ${mode === 'acquisition' ? 'akuisisi' : 'absensi'}`
                   }
                 </div>
               </div>
@@ -473,7 +475,7 @@ export default function BulkEditModal({
                 flex-1 py-4 rounded-2xl font-black text-sm shadow-lg transition-all flex items-center justify-center gap-2
                 ${isSaving
                   ? 'bg-slate-400 cursor-not-allowed'
-                  : mode === 'delete'
+                  : editMode === 'delete'
                     ? 'bg-red-600 hover:bg-red-700 text-white shadow-red-200'
                     : 'bg-purple-600 hover:bg-purple-700 text-white shadow-purple-200'
                 }
@@ -482,12 +484,12 @@ export default function BulkEditModal({
               {isSaving ? (
                 <>
                   <GridLoader pattern="edge-cw" size="sm" color="#fff" mode="stagger" />
-                  {mode === 'delete' ? 'MENGHAPUS...' : 'MENYIMPAN...'}
+                  {editMode === 'delete' ? 'MENGHAPUS...' : 'MENYIMPAN...'}
                 </>
               ) : (
                 <>
-                  {mode === 'delete' ? <X className="w-4 h-4" /> : <Save className="w-4 h-4" />}
-                  {mode === 'delete' ? 'HAPUS' : 'SIMPAN'} ({affectedRecordsCount})
+                  {editMode === 'delete' ? <X className="w-4 h-4" /> : <Save className="w-4 h-4" />}
+                  {editMode === 'delete' ? 'HAPUS' : 'SIMPAN'} ({affectedRecordsCount})
                 </>
               )}
             </button>

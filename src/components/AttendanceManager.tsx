@@ -1,9 +1,8 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { User, Search, Calendar as CalendarIcon, Users, FileText, Package } from 'lucide-react';
+import { User, Search, Calendar as CalendarIcon, Users } from 'lucide-react';
 import GridLoader from '@/components/GridLoader';
-import AttendanceCalendar from './AttendanceCalendar';
 import AttendanceAssignModal from './AttendanceAssignModal';
 import BulkEditModal from './BulkEditModal';
 
@@ -48,7 +47,6 @@ export default function AttendanceManager({ members, teams }: AttendanceManagerP
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [existingAttendance, setExistingAttendance] = useState<Attendance | null>(null);
   const [isBulkEditModalOpen, setIsBulkEditModalOpen] = useState(false);
-  const [calendarMode, setCalendarMode] = useState<'attendance' | 'acquisition'>('attendance');
 
   const selectedMember = members.find(m => m.id === selectedMemberId) || null;
 
@@ -108,8 +106,8 @@ export default function AttendanceManager({ members, teams }: AttendanceManagerP
   // Handle member change
   const handleMemberChange = (memberId: string) => {
     setSelectedMemberId(memberId);
-    setAttendances([]); // Clear attendances immediately
-    setCurrentMonth(new Date()); // Reset to current month
+    setAttendances([]);
+    setCurrentMonth(new Date());
   };
 
   // Save attendance
@@ -122,8 +120,6 @@ export default function AttendanceManager({ members, teams }: AttendanceManagerP
       });
 
       if (!response.ok) throw new Error('Failed to save attendance');
-      
-      // Refresh attendances
       await fetchAttendances();
     } catch (error) {
       console.error('Failed to save attendance:', error);
@@ -139,8 +135,6 @@ export default function AttendanceManager({ members, teams }: AttendanceManagerP
       });
 
       if (!response.ok) throw new Error('Failed to delete attendance');
-
-      // Refresh attendances
       await fetchAttendances();
     } catch (error) {
       console.error('Failed to delete attendance:', error);
@@ -161,11 +155,10 @@ export default function AttendanceManager({ members, teams }: AttendanceManagerP
 
       const result = await response.json();
       
-      // Refresh current member's attendances if affected
       if (selectedMemberId && records.some(r => r.member_id === selectedMemberId)) {
         await fetchAttendances();
       }
-      
+
       return result;
     } catch (error) {
       console.error('Failed to save bulk attendance:', error);
@@ -183,8 +176,7 @@ export default function AttendanceManager({ members, teams }: AttendanceManagerP
       });
 
       if (!response.ok) throw new Error('Failed to delete bulk attendance');
-
-      // Refresh current member's attendances if affected
+      
       if (selectedMemberId && records.some(r => r.member_id === selectedMemberId)) {
         await fetchAttendances();
       }
@@ -200,47 +192,19 @@ export default function AttendanceManager({ members, teams }: AttendanceManagerP
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-lg font-black text-slate-800">Kelola Absensi</h2>
-          <p className="text-sm font-bold text-slate-500">Input absensi dengan kalender interaktif</p>
+          <p className="text-sm font-bold text-slate-500">Bulk edit absensi member</p>
         </div>
-        <div className="flex gap-2">
-          <button
-            onClick={() => setIsBulkEditModalOpen(true)}
-            className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white px-4 py-2.5 rounded-2xl font-black text-sm shadow-lg shadow-purple-200 transition-all"
-          >
-            <Users className="w-4 h-4" />
-            Bulk Edit
-          </button>
-        </div>
+        <button
+          onClick={() => setIsBulkEditModalOpen(true)}
+          className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white px-4 py-2.5 rounded-2xl font-black text-sm shadow-lg shadow-purple-200 transition-all"
+        >
+          <Users className="w-4 h-4" />
+          Bulk Edit
+        </button>
       </div>
 
       {/* Member Selection */}
       <div className="bg-white border border-slate-200 rounded-2xl p-6">
-        {/* Mode Toggle */}
-        <div className="flex gap-2 mb-4">
-          <button
-            onClick={() => setCalendarMode('attendance')}
-            className={`flex-1 py-3 rounded-xl font-black text-sm transition-all flex items-center justify-center gap-2 ${
-              calendarMode === 'attendance'
-                ? 'bg-blue-600 text-white shadow-lg shadow-blue-200'
-                : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
-            }`}
-          >
-            <FileText className="w-4 h-4" />
-            Mode Absensi
-          </button>
-          <button
-            onClick={() => setCalendarMode('acquisition')}
-            className={`flex-1 py-3 rounded-xl font-black text-sm transition-all flex items-center justify-center gap-2 ${
-              calendarMode === 'acquisition'
-                ? 'bg-purple-600 text-white shadow-lg shadow-purple-200'
-                : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
-            }`}
-          >
-            <Package className="w-4 h-4" />
-            Mode Akuisisi
-          </button>
-        </div>
-
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
           {/* Member Search */}
           <div>
@@ -297,38 +261,8 @@ export default function AttendanceManager({ members, teams }: AttendanceManagerP
         )}
       </div>
 
-      {/* Calendar */}
-      <div className="relative">
-        {isLoading && calendarMode === 'attendance' && (
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
-            <GridLoader pattern="edge-cw" size="lg" color="#FDB813" mode="stagger" />
-          </div>
-        )}
-        {calendarMode === 'attendance' ? (
-          <AttendanceCalendar
-            key={selectedMemberId}
-            member={selectedMember}
-            attendances={attendances}
-            currentMonth={currentMonth}
-            onMonthChange={handleMonthChange}
-            onDateClick={handleDateClick}
-          />
-        ) : (
-          <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden p-12 text-center">
-            <Package className="w-16 h-16 text-purple-300 mx-auto mb-4" />
-            <h3 className="font-black text-slate-700 mb-2">Mode Akuisisi</h3>
-            <p className="text-sm font-bold text-slate-500 mb-6">
-              Untuk input akuisisi, gunakan tab Input dengan Mode Akuisisi
-            </p>
-            <p className="text-xs text-slate-400">
-              Tab Absensi ini fokus untuk pengelolaan absensi karyawan
-            </p>
-          </div>
-        )}
-      </div>
-
       {/* Instructions */}
-      {!selectedMember && calendarMode === 'attendance' && (
+      {!selectedMember && (
         <div className="bg-slate-50 border border-slate-200 rounded-2xl p-8 text-center">
           <CalendarIcon className="w-12 h-12 text-slate-300 mx-auto mb-4" />
           <h3 className="font-black text-slate-700 mb-2">Pilih Member untuk Mulai</h3>
@@ -337,21 +271,6 @@ export default function AttendanceManager({ members, teams }: AttendanceManagerP
           </p>
         </div>
       )}
-
-      {/* Assign Modal */}
-      <AttendanceAssignModal
-        isOpen={isModalOpen}
-        onClose={() => {
-          setIsModalOpen(false);
-          setSelectedDate(null);
-          setExistingAttendance(null);
-        }}
-        date={selectedDate}
-        member={selectedMember}
-        existingAttendance={existingAttendance}
-        onSave={handleSaveAttendance}
-        onDelete={handleDeleteAttendance}
-      />
 
       {/* Bulk Edit Modal */}
       <BulkEditModal

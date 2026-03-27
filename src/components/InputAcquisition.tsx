@@ -20,6 +20,8 @@ import {
 import GridLoader from '@/components/GridLoader';
 import AcquisitionCalendar from './AcquisitionCalendar';
 import AcquisitionAssignModal from './AcquisitionAssignModal';
+import AttendanceCalendar from './AttendanceCalendar';
+import AttendanceAssignModal from './AttendanceAssignModal';
 import BulkEditModal from './BulkEditModal';
 
 interface Product {
@@ -62,6 +64,16 @@ interface Acquisition {
   updated_at?: string;
 }
 
+interface Attendance {
+  id?: string;
+  member_id: string;
+  date: string;
+  status: 'present' | 'late' | 'leave' | 'alpha';
+  leave_reason?: string;
+  late_minutes?: number;
+  notes?: string;
+}
+
 interface InputAcquisitionProps {
   products: Product[];
   teams: Team[];
@@ -92,9 +104,11 @@ export default function InputAcquisition({ products, teams, members }: InputAcqu
   const [isAcquisitionModalOpen, setIsAcquisitionModalOpen] = useState(false);
   const [existingAcquisitions, setExistingAcquisitions] = useState<Acquisition[]>([]);
   const [isBulkEditModalOpen, setIsBulkEditModalOpen] = useState(false);
-
+  
   // Attendance state
-  const [attendances, setAttendances] = useState<any[]>([]);
+  const [attendances, setAttendances] = useState<Attendance[]>([]);
+  const [isAttendanceModalOpen, setIsAttendanceModalOpen] = useState(false);
+  const [selectedAttendance, setSelectedAttendance] = useState<Attendance | null>(null);
 
   // Load audit logs and recent inputs from database on mount
   useEffect(() => {
@@ -260,8 +274,10 @@ export default function InputAcquisition({ products, teams, members }: InputAcqu
     if (calendarMode === 'acquisition') {
       setExistingAcquisitions(data || []);
       setIsAcquisitionModalOpen(true);
+    } else {
+      setSelectedAttendance(data);
+      setIsAttendanceModalOpen(true);
     }
-    // Attendance mode handled by AttendanceManager
   };
 
   // Handle month change
@@ -389,8 +405,40 @@ export default function InputAcquisition({ products, teams, members }: InputAcqu
     }
   };
 
-  // Bulk save for bulk edit modal
-  const handleBulkSave = async (records: any[]) => {
+  // Save attendance
+  const handleSaveAttendance = async (attendanceData: Omit<Attendance, 'id'>) => {
+    try {
+      const response = await fetch('/api/attendances', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(attendanceData),
+      });
+
+      if (!response.ok) throw new Error('Failed to save attendance');
+      await loadAttendances();
+    } catch (error) {
+      console.error('Failed to save attendance:', error);
+      throw error;
+    }
+  };
+
+  // Delete attendance
+  const handleDeleteAttendance = async (id: string) => {
+    try {
+      const response = await fetch(`/api/attendances?id=${id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) throw new Error('Failed to delete attendance');
+      await loadAttendances();
+    } catch (error) {
+      console.error('Failed to delete attendance:', error);
+      throw error;
+    }
+  };
+
+  // Bulk save for bulk edit modal (acquisitions)
+  const handleBulkSaveAcquisitions = async (records: any[]) => {
     try {
       const response = await fetch('/api/acquisitions', {
         method: 'POST',
@@ -412,8 +460,8 @@ export default function InputAcquisition({ products, teams, members }: InputAcqu
     }
   };
 
-  // Bulk delete for bulk edit modal
-  const handleBulkDelete = async (records: Pick<Acquisition, 'member_id' | 'date'>[]) => {
+  // Bulk delete for bulk edit modal (acquisitions)
+  const handleBulkDeleteAcquisitions = async (records: Pick<Acquisition, 'member_id' | 'date'>[]) => {
     try {
       const response = await fetch('/api/acquisitions?bulk=true', {
         method: 'DELETE',
@@ -429,6 +477,44 @@ export default function InputAcquisition({ products, teams, members }: InputAcqu
       }
     } catch (error) {
       console.error('Failed to delete bulk acquisitions:', error);
+      throw error;
+    }
+  };
+
+  // Bulk save for attendance
+  const handleBulkSaveAttendance = async (records: Omit<Attendance, 'id'>[]) => {
+    try {
+      const response = await fetch('/api/attendances', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bulk: true, records }),
+      });
+
+      if (!response.ok) throw new Error('Failed to save bulk attendance');
+
+      await loadAttendances();
+      
+      return response.json();
+    } catch (error) {
+      console.error('Failed to save bulk attendance:', error);
+      throw error;
+    }
+  };
+
+  // Bulk delete for attendance
+  const handleBulkDeleteAttendance = async (records: Pick<Attendance, 'member_id' | 'date'>[]) => {
+    try {
+      const response = await fetch('/api/attendances?bulk=true', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ records }),
+      });
+
+      if (!response.ok) throw new Error('Failed to delete bulk attendance');
+
+      await loadAttendances();
+    } catch (error) {
+      console.error('Failed to delete bulk attendance:', error);
       throw error;
     }
   };
@@ -685,9 +771,14 @@ export default function InputAcquisition({ products, teams, members }: InputAcqu
                 onDateClick={handleDateClick}
               />
             ) : (
-              <div className="text-center py-8 text-slate-400 text-sm">
-                Gunakan tab Absensi untuk mengelola absensi
-              </div>
+              <AttendanceCalendar
+                key={selectedMemberId}
+                member={selectedMember || null}
+                attendances={attendances}
+                currentMonth={currentMonth}
+                onMonthChange={handleMonthChange}
+                onDateClick={handleDateClick}
+              />
             )}
           </div>
         </div>
@@ -899,14 +990,28 @@ export default function InputAcquisition({ products, teams, members }: InputAcqu
         onDelete={handleDeleteAcquisition}
       />
 
+      {/* Attendance Assign Modal */}
+      <AttendanceAssignModal
+        isOpen={isAttendanceModalOpen}
+        onClose={() => {
+          setIsAttendanceModalOpen(false);
+          setSelectedAttendance(null);
+        }}
+        date={selectedDate}
+        member={selectedMember || null}
+        existingAttendance={selectedAttendance}
+        onSave={handleSaveAttendance}
+        onDelete={handleDeleteAttendance}
+      />
+
       {/* Bulk Edit Modal */}
       <BulkEditModal
         isOpen={isBulkEditModalOpen}
         onClose={() => setIsBulkEditModalOpen(false)}
         members={members}
         teams={teams}
-        onSave={handleBulkSave}
-        onDelete={handleBulkDelete}
+        onSave={calendarMode === 'acquisition' ? handleBulkSaveAcquisitions : handleBulkSaveAttendance}
+        onDelete={calendarMode === 'acquisition' ? handleBulkDeleteAcquisitions : handleBulkDeleteAttendance}
       />
     </div>
   );

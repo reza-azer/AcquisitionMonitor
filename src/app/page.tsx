@@ -678,7 +678,6 @@ export default function App() {
             <nav className="hidden md:flex bg-blue-900/40 p-0.5 sm:p-1 rounded-lg sm:rounded-xl gap-0.5 sm:gap-1 border border-white/5 overflow-x-auto max-w-[50vw]">
               <button onClick={() => setViewMode('dashboard')} className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-1.5 sm:py-2 rounded-md sm:rounded-lg text-[10px] sm:text-xs font-bold transition-all whitespace-nowrap ${viewMode === 'dashboard' ? 'bg-white text-blue-900 shadow-md' : 'text-white/70 hover:text-white'}`}><BarChart3 className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> Dashboard</button>
               <button onClick={() => setViewMode('analytics')} className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-1.5 sm:py-2 rounded-md sm:rounded-lg text-[10px] sm:text-xs font-bold transition-all whitespace-nowrap ${viewMode === 'analytics' ? 'bg-white text-blue-900 shadow-md' : 'text-white/70 hover:text-white'}`}><Activity className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> Analytics</button>
-              <button onClick={() => setViewMode('absensi')} className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-1.5 sm:py-2 rounded-md sm:rounded-lg text-[10px] sm:text-xs font-bold transition-all whitespace-nowrap ${viewMode === 'absensi' ? 'bg-white text-blue-900 shadow-md' : 'text-white/70 hover:text-white'}`}><FileText className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> Absensi</button>
               <button onClick={() => setViewMode('input')} className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-1.5 sm:py-2 rounded-md sm:rounded-lg text-[10px] sm:text-xs font-bold transition-all whitespace-nowrap ${viewMode === 'input' ? 'bg-white text-blue-900 shadow-md' : 'text-white/70 hover:text-white'}`}><Edit2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> Input</button>
               <button onClick={() => setViewMode('backup')} className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-1.5 sm:py-2 rounded-md sm:rounded-lg text-[10px] sm:text-xs font-bold transition-all whitespace-nowrap ${viewMode === 'backup' ? 'bg-white text-blue-900 shadow-md' : 'text-white/70 hover:text-white'}`}><Database className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> Backup</button>
               <button onClick={() => setViewMode('manage')} className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-1.5 sm:py-2 rounded-md sm:rounded-lg text-[10px] sm:text-xs font-bold transition-all whitespace-nowrap ${viewMode === 'manage' ? 'bg-white text-blue-900 shadow-md' : 'text-white/70 hover:text-white'}`}><Settings className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> Manage</button>
@@ -1746,17 +1745,6 @@ export default function App() {
           </div>
         )}
 
-        {viewMode === 'absensi' && (
-          <div className="space-y-8 animate-in fade-in duration-500">
-            <div className="bg-white rounded-[40px] p-8 border border-slate-200 shadow-sm">
-              <AttendanceManager members={teams.flatMap(t => t.members || [])} teams={teams} />
-            </div>
-            <div className="bg-white rounded-[40px] p-8 border border-slate-200 shadow-sm">
-              <AttendanceSummary members={teams.flatMap(t => t.members || [])} />
-            </div>
-          </div>
-        )}
-
         {viewMode === 'input' && (
           <div className="space-y-8 animate-in fade-in duration-500">
             <div className="bg-white rounded-[40px] p-8 border border-slate-200 shadow-sm">
@@ -1773,7 +1761,6 @@ export default function App() {
       <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-slate-200 px-2 sm:px-4 py-2 sm:py-3 md:hidden flex justify-around items-center z-50 rounded-t-[20px] sm:rounded-t-[30px] md:rounded-t-[40px] shadow-2xl overflow-x-auto">
         <button onClick={() => setViewMode('dashboard')} className={`flex flex-col items-center gap-0.5 sm:gap-1 transition-all flex-shrink-0 px-2 py-1 ${viewMode === 'dashboard' ? 'text-blue-900 scale-110' : 'text-slate-300'}`}><BarChart3 className="w-5 h-5 sm:w-6 sm:h-6" /><span className="text-[6px] sm:text-[7px] font-black uppercase">Home</span></button>
         <button onClick={() => setViewMode('analytics')} className={`flex flex-col items-center gap-0.5 sm:gap-1 transition-all flex-shrink-0 px-2 py-1 ${viewMode === 'analytics' ? 'text-blue-900 scale-110' : 'text-slate-300'}`}><Activity className="w-5 h-5 sm:w-6 sm:h-6" /><span className="text-[6px] sm:text-[7px] font-black uppercase">Analytics</span></button>
-        <button onClick={() => setViewMode('absensi')} className={`flex flex-col items-center gap-0.5 sm:gap-1 transition-all flex-shrink-0 px-2 py-1 ${viewMode === 'absensi' ? 'text-blue-900 scale-110' : 'text-slate-300'}`}><FileText className="w-5 h-5 sm:w-6 sm:h-6" /><span className="text-[6px] sm:text-[7px] font-black uppercase">Absensi</span></button>
         <button onClick={() => setViewMode('input')} className={`flex flex-col items-center gap-0.5 sm:gap-1 transition-all flex-shrink-0 px-2 py-1 ${viewMode === 'input' ? 'text-blue-900 scale-110' : 'text-slate-300'}`}><Edit2 className="w-5 h-5 sm:w-6 sm:h-6" /><span className="text-[6px] sm:text-[7px] font-black uppercase">Input</span></button>
         <button onClick={() => setViewMode('backup')} className={`flex flex-col items-center gap-0.5 sm:gap-1 transition-all flex-shrink-0 px-2 py-1 ${viewMode === 'backup' ? 'text-blue-900 scale-110' : 'text-slate-300'}`}><Database className="w-5 h-5 sm:w-6 sm:h-6" /><span className="text-[6px] sm:text-[7px] font-black uppercase">Backup</span></button>
         <button onClick={() => setViewMode('manage')} className={`flex flex-col items-center gap-0.5 sm:gap-1 transition-all flex-shrink-0 px-2 py-1 ${viewMode === 'manage' ? 'text-blue-900 scale-110' : 'text-slate-300'}`}><Settings className="w-5 h-5 sm:w-6 sm:h-6" /><span className="text-[6px] sm:text-[7px] font-black uppercase">Manage</span></button>
