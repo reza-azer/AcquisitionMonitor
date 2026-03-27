@@ -171,7 +171,7 @@ export default function App() {
       const startDate = `${selectedYear}-${monthStr}-01`;
       const lastDay = new Date(parseInt(selectedYear), parseInt(selectedMonth), 0).getDate();
       const endDate = `${selectedYear}-${monthStr}-${String(lastDay).padStart(2, '0')}`;
-      
+
       const res = await fetch(`/api/attendances/summary?startDate=${startDate}&endDate=${endDate}`);
       if (res.ok) {
         const result = await res.json();
@@ -183,7 +183,7 @@ export default function App() {
           const lateRate = totalDays > 0 ? Math.round((memberData.late / totalDays) * 100) : 0;
           const leaveRate = totalDays > 0 ? Math.round((memberData.leave / totalDays) * 100) : 0;
           const alphaRate = totalDays > 0 ? Math.round((memberData.alpha / totalDays) * 100) : 0;
-          
+
           setMemberAttendance({
             present: memberData.present,
             late: memberData.late,
@@ -996,21 +996,19 @@ export default function App() {
                     <div className="flex gap-1 bg-slate-100 p-1 rounded-xl">
                       <button
                         onClick={() => setMemberViewMode('weekly')}
-                        className={`px-3 py-1.5 rounded-lg text-[10px] font-black transition-all ${
-                          memberViewMode === 'weekly' 
-                            ? 'bg-blue-600 text-white shadow-sm' 
+                        className={`px-3 py-1.5 rounded-lg text-[10px] font-black transition-all ${memberViewMode === 'weekly'
+                            ? 'bg-blue-600 text-white shadow-sm'
                             : 'text-slate-500 hover:text-slate-700'
-                        }`}
+                          }`}
                       >
                         Minggu
                       </button>
                       <button
                         onClick={() => setMemberViewMode('monthly')}
-                        className={`px-3 py-1.5 rounded-lg text-[10px] font-black transition-all ${
-                          memberViewMode === 'monthly' 
-                            ? 'bg-blue-600 text-white shadow-sm' 
+                        className={`px-3 py-1.5 rounded-lg text-[10px] font-black transition-all ${memberViewMode === 'monthly'
+                            ? 'bg-blue-600 text-white shadow-sm'
                             : 'text-slate-500 hover:text-slate-700'
-                        }`}
+                          }`}
                       >
                         Bulan
                       </button>
@@ -1385,21 +1383,19 @@ export default function App() {
                     <div className="flex gap-1 bg-slate-100 p-1 rounded-xl">
                       <button
                         onClick={() => setDashboardViewMode('weekly')}
-                        className={`px-3 py-1.5 rounded-lg text-[10px] font-black transition-all ${
-                          dashboardViewMode === 'weekly' 
-                            ? 'bg-blue-600 text-white shadow-sm' 
+                        className={`px-3 py-1.5 rounded-lg text-[10px] font-black transition-all ${dashboardViewMode === 'weekly'
+                            ? 'bg-blue-600 text-white shadow-sm'
                             : 'text-slate-500 hover:text-slate-700'
-                        }`}
+                          }`}
                       >
                         Mingguan
                       </button>
                       <button
                         onClick={() => setDashboardViewMode('monthly')}
-                        className={`px-3 py-1.5 rounded-lg text-[10px] font-black transition-all ${
-                          dashboardViewMode === 'monthly' 
-                            ? 'bg-blue-600 text-white shadow-sm' 
+                        className={`px-3 py-1.5 rounded-lg text-[10px] font-black transition-all ${dashboardViewMode === 'monthly'
+                            ? 'bg-blue-600 text-white shadow-sm'
                             : 'text-slate-500 hover:text-slate-700'
-                        }`}
+                          }`}
                       >
                         Bulanan
                       </button>
@@ -1483,7 +1479,7 @@ export default function App() {
                           <span className="text-3xl font-black tracking-tighter text-[#003d79]">{team.totalPoints}</span>
                         </div>
                         <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center shadow-sm text-blue-900 border border-blue-100 font-black text-xs">
-                          {dashboardViewMode === 'monthly' 
+                          {dashboardViewMode === 'monthly'
                             ? new Date(parseInt(selectedYear), parseInt(selectedMonth) - 1).toLocaleDateString('id-ID', { month: 'short' }).toUpperCase().replace('.', '')
                             : `W${activeWeek}`
                           }
@@ -1564,7 +1560,7 @@ export default function App() {
                   Total Capaian {dashboardViewMode === 'monthly' ? 'Bulanan' : 'Mingguan'} Seluruh Tim
                 </h2>
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-14">
-                  {dashboardViewMode === 'monthly' 
+                  {dashboardViewMode === 'monthly'
                     ? `Akumulasi seluruh tim periode ${new Date(parseInt(selectedYear), parseInt(selectedMonth) - 1).toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}`
                     : `Akumulasi seluruh tim periode Week ${activeWeek}`
                   }
