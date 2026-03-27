@@ -72,7 +72,7 @@ export default function AttendanceManager({ members, teams }: AttendanceManagerP
       const endDate = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
 
       const response = await fetch(
-        `/api/attendances?member_id=${selectedMemberId}&startDate=${startDate}&endDate=${endDate}`
+        `/api/attendances?memberId=${selectedMemberId}&startDate=${startDate}&endDate=${endDate}`
       );
       const result = await response.json();
 
@@ -100,6 +100,13 @@ export default function AttendanceManager({ members, teams }: AttendanceManagerP
   // Handle month change
   const handleMonthChange = (date: Date) => {
     setCurrentMonth(date);
+  };
+
+  // Handle member change
+  const handleMemberChange = (memberId: string) => {
+    setSelectedMemberId(memberId);
+    setAttendances([]); // Clear attendances immediately
+    setCurrentMonth(new Date()); // Reset to current month
   };
 
   // Save attendance
@@ -177,10 +184,7 @@ export default function AttendanceManager({ members, teams }: AttendanceManagerP
             </label>
             <select
               value={selectedMemberId}
-              onChange={(e) => {
-                setSelectedMemberId(e.target.value);
-                setCurrentMonth(new Date()); // Reset to current month when changing member
-              }}
+              onChange={(e) => handleMemberChange(e.target.value)}
               className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-semibold outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400"
             >
               <option value="">-- Pilih Member --</option>
@@ -217,6 +221,7 @@ export default function AttendanceManager({ members, teams }: AttendanceManagerP
           </div>
         )}
         <AttendanceCalendar
+          key={selectedMemberId}
           member={selectedMember}
           attendances={attendances}
           currentMonth={currentMonth}
