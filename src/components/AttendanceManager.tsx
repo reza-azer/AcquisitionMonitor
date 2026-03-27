@@ -1,10 +1,11 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { User, Search, Calendar as CalendarIcon } from 'lucide-react';
+import { User, Search, Calendar as CalendarIcon, Users } from 'lucide-react';
 import GridLoader from '@/components/GridLoader';
 import AttendanceCalendar from './AttendanceCalendar';
 import AttendanceAssignModal from './AttendanceAssignModal';
+import BulkEditModal from './BulkEditModal';
 
 interface Member {
   id: string;
@@ -46,6 +47,7 @@ export default function AttendanceManager({ members, teams }: AttendanceManagerP
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [existingAttendance, setExistingAttendance] = useState<Attendance | null>(null);
+  const [isBulkEditModalOpen, setIsBulkEditModalOpen] = useState(false);
 
   const selectedMember = members.find(m => m.id === selectedMemberId) || null;
 
@@ -136,11 +138,57 @@ export default function AttendanceManager({ members, teams }: AttendanceManagerP
       });
 
       if (!response.ok) throw new Error('Failed to delete attendance');
-      
+
       // Refresh attendances
       await fetchAttendances();
     } catch (error) {
       console.error('Failed to delete attendance:', error);
+      throw error;
+    }
+  };
+
+  // Bulk save attendance
+  const handleBulkSave = async (records: Omit<Attendance, 'id'>[]) => {
+    try {
+      const response = await fetch('/api/attendances', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bulk: true, records }),
+      });
+
+      if (!response.ok) throw new Error('Failed to save bulk attendance');
+
+      const result = await response.json();
+      
+      // Refresh current member's attendances if affected
+      if (selectedMemberId && records.some(r => r.member_id === selectedMemberId)) {
+        await fetchAttendances();
+      }
+      
+      return result;
+    } catch (error) {
+      console.error('Failed to save bulk attendance:', error);
+      throw error;
+    }
+  };
+
+  // Bulk delete attendance
+  const handleBulkDelete = async (records: Pick<Attendance, 'member_id' | 'date'>[]) => {
+    try {
+      const response = await fetch('/api/attendances?bulk=true', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ records }),
+      });
+
+      if (!response.ok) throw new Error('Failed to delete bulk attendance');
+
+      // Refresh current member's attendances if affected
+      if (selectedMemberId && records.some(r => r.member_id === selectedMemberId)) {
+        await fetchAttendances();
+      }
+    } catch (error) {
+      console.error('Failed to delete bulk attendance:', error);
       throw error;
     }
   };
@@ -153,6 +201,13 @@ export default function AttendanceManager({ members, teams }: AttendanceManagerP
           <h2 className="text-lg font-black text-slate-800">Kelola Absensi</h2>
           <p className="text-sm font-bold text-slate-500">Input absensi dengan kalender interaktif</p>
         </div>
+        <button
+          onClick={() => setIsBulkEditModalOpen(true)}
+          className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white px-4 py-2.5 rounded-2xl font-black text-sm shadow-lg shadow-purple-200 transition-all"
+        >
+          <Users className="w-4 h-4" />
+          Bulk Edit
+        </button>
       </div>
 
       {/* Member Selection */}
@@ -254,6 +309,16 @@ export default function AttendanceManager({ members, teams }: AttendanceManagerP
         existingAttendance={existingAttendance}
         onSave={handleSaveAttendance}
         onDelete={handleDeleteAttendance}
+      />
+
+      {/* Bulk Edit Modal */}
+      <BulkEditModal
+        isOpen={isBulkEditModalOpen}
+        onClose={() => setIsBulkEditModalOpen(false)}
+        members={members}
+        teams={teams}
+        onSave={handleBulkSave}
+        onDelete={handleBulkDelete}
       />
     </div>
   );
