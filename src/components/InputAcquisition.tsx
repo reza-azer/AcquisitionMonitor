@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  Calendar,
+  Calendar as CalendarIcon,
   Clock,
   Save,
   AlertCircle,
@@ -14,8 +14,13 @@ import {
   Edit2,
   History,
   Trash2,
+  FileText,
+  Users,
 } from 'lucide-react';
 import GridLoader from '@/components/GridLoader';
+import AcquisitionCalendar from './AcquisitionCalendar';
+import AcquisitionAssignModal from './AcquisitionAssignModal';
+import BulkEditModal from './BulkEditModal';
 
 interface Product {
   id?: string;
@@ -63,6 +68,8 @@ interface InputAcquisitionProps {
   members: Member[];
 }
 
+type CalendarMode = 'attendance' | 'acquisition';
+
 export default function InputAcquisition({ products, teams, members }: InputAcquisitionProps) {
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [selectedMemberId, setSelectedMemberId] = useState<string>('');
@@ -78,6 +85,16 @@ export default function InputAcquisition({ products, teams, members }: InputAcqu
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editQuantity, setEditQuantity] = useState<number>(0);
   const [isDeleting, setIsDeleting] = useState(false);
+  
+  // Calendar state
+  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [calendarMode, setCalendarMode] = useState<CalendarMode>('acquisition');
+  const [isAcquisitionModalOpen, setIsAcquisitionModalOpen] = useState(false);
+  const [existingAcquisitions, setExistingAcquisitions] = useState<Acquisition[]>([]);
+  const [isBulkEditModalOpen, setIsBulkEditModalOpen] = useState(false);
+
+  // Attendance state
+  const [attendances, setAttendances] = useState<any[]>([]);
 
   // Load audit logs and recent inputs from database on mount
   useEffect(() => {
@@ -94,7 +111,7 @@ export default function InputAcquisition({ products, teams, members }: InputAcqu
             localStorage.setItem('auditLogs', JSON.stringify(dbLogs));
           }
         }
-        
+
         // Fetch recent inputs from acquisitions table (last 20 with quantity > 0)
         const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
         const inputRes = await fetch(`/api/acquisitions?startDate=${thirtyDaysAgo}`);
@@ -103,7 +120,7 @@ export default function InputAcquisition({ products, teams, members }: InputAcqu
           // Filter only quantity > 0 and get latest 20
           const recentOnly = allInputs
             .filter((item: Acquisition) => item.quantity > 0)
-            .sort((a: Acquisition, b: Acquisition) => 
+            .sort((a: Acquisition, b: Acquisition) =>
               new Date(b.updated_at || b.date).getTime() - new Date(a.updated_at || a.date).getTime()
             )
             .slice(0, 20)
@@ -111,7 +128,7 @@ export default function InputAcquisition({ products, teams, members }: InputAcqu
               ...item,
               member_name: members.find(m => m.id === item.member_id)?.name || 'Unknown'
             }));
-          
+
           if (recentOnly.length > 0) {
             console.log('[InputAcquisition] Loaded', recentOnly.length, 'recent inputs from DB');
             setRecentInputs(recentOnly);
@@ -120,7 +137,7 @@ export default function InputAcquisition({ products, teams, members }: InputAcqu
         }
       } catch (error) {
         console.error('[InputAcquisition] Error loading data:', error);
-        
+
         // Fallback to localStorage
         const savedRecent = localStorage.getItem('recentInputs');
         const savedAudit = localStorage.getItem('auditLogs');
@@ -166,8 +183,8 @@ export default function InputAcquisition({ products, teams, members }: InputAcqu
   // Get member details
   const selectedMember = members.find(m => m.id === selectedMemberId);
 
-  // Load existing data for selected date and member
-  const loadExistingData = useCallback(async () => {
+  // Load existing acquisitions for selected date and member
+  const loadExistingAcquisitions = useCallback(async () => {
     if (!selectedMemberId || !selectedDate) return;
 
     setIsLoadingExistingData(true);
@@ -177,6 +194,7 @@ export default function InputAcquisition({ products, teams, members }: InputAcqu
       );
       if (res.ok) {
         const data = await res.json();
+        setExistingAcquisitions(data);
         const existingData: Record<string, number> = {};
         data.forEach((item: Acquisition) => {
           existingData[item.product_key] = item.quantity;
@@ -191,8 +209,40 @@ export default function InputAcquisition({ products, teams, members }: InputAcqu
   }, [selectedMemberId, selectedDate]);
 
   useEffect(() => {
-    loadExistingData();
-  }, [loadExistingData]);
+    loadExistingAcquisitions();
+  }, [loadExistingAcquisitions]);
+
+  // Load attendances for attendance mode
+  const loadAttendances = useCallback(async () => {
+    if (!selectedMemberId) {
+      setAttendances([]);
+      return;
+    }
+
+    const year = currentMonth.getFullYear();
+    const month = currentMonth.getMonth() + 1;
+    const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
+    const lastDay = new Date(year, currentMonth.getMonth() + 1, 0).getDate();
+    const endDate = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+
+    try {
+      const response = await fetch(
+        `/api/attendances?memberId=${selectedMemberId}&startDate=${startDate}&endDate=${endDate}`
+      );
+      const result = await response.json();
+      if (result.error) throw new Error(result.error);
+      setAttendances(result.data || []);
+    } catch (err: any) {
+      console.error('Failed to fetch attendances:', err);
+      setAttendances([]);
+    }
+  }, [selectedMemberId, currentMonth]);
+
+  useEffect(() => {
+    if (calendarMode === 'attendance') {
+      loadAttendances();
+    }
+  }, [calendarMode, loadAttendances]);
 
   const handleInputChange = (productKey: string, value: string) => {
     const qty = parseInt(value) || 0;
@@ -204,142 +254,189 @@ export default function InputAcquisition({ products, teams, members }: InputAcqu
     setError(null);
   };
 
-  const handleSave = async () => {
-    if (!selectedMemberId) {
-      setError('Please select a member');
-      return;
+  // Handle date click from calendar
+  const handleDateClick = (date: string, data: any) => {
+    setSelectedDate(date);
+    if (calendarMode === 'acquisition') {
+      setExistingAcquisitions(data || []);
+      setIsAcquisitionModalOpen(true);
     }
+    // Attendance mode handled by AttendanceManager
+  };
 
-    console.log('[InputAcquisition] Starting save for member:', selectedMemberId, 'date:', selectedDate);
-    setIsSaving(true);
-    setError(null);
+  // Handle month change
+  const handleMonthChange = (date: Date) => {
+    setCurrentMonth(date);
+  };
 
+  // Handle member change
+  const handleMemberChange = (memberId: string) => {
+    setSelectedMemberId(memberId);
+    setInputData({});
+    setCurrentMonth(new Date()); // Reset to current month
+  };
+
+  // Save acquisitions (bulk)
+  const handleSaveAcquisitions = async (acquisitions: Omit<Acquisition, 'id'>[]) => {
     try {
-      // First, fetch existing data to compare for audit log
-      const existingRes = await fetch(
-        `/api/acquisitions?member_id=${selectedMemberId}&date=${selectedDate}`
+      const savePromises = acquisitions.map(acq =>
+        fetch('/api/acquisitions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(acq),
+        })
       );
-      const existingData = await existingRes.json();
-      const existingMap: Record<string, number> = {};
-      existingData.forEach((item: Acquisition) => {
-        existingMap[item.product_key] = item.quantity;
-      });
-
-      // Save all products
-      const savePromises = products
-        .filter(p => p.is_active)
-        .map(product => {
-          const quantity = inputData[product.product_key] || 0;
-          console.log('[InputAcquisition] Saving:', product.product_key, '=', quantity);
-          return fetch('/api/acquisitions', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              member_id: selectedMemberId,
-              date: selectedDate,
-              product_key: product.product_key,
-              quantity
-            })
-          });
-        });
 
       const results = await Promise.all(savePromises);
       const failed = results.some(r => !r.ok);
 
-      console.log('[InputAcquisition] Save results:', results.map((r, i) => ({
-        product: products.filter(p => p.is_active)[i]?.product_key,
-        status: r.status,
-        ok: r.ok
-      })));
-
       if (failed) throw new Error('Some requests failed');
 
-      console.log('[InputAcquisition] Save successful!');
-      setSaveStatus('success');
-
+      // Create audit logs for changed values
       const timestamp = new Date().toISOString();
       const memberName = selectedMember?.name || 'Unknown';
 
-      // Create audit logs for changed values
-      const changedLogs = products
-        .filter(p => p.is_active)
-        .map(p => {
-          const oldQty = existingMap[p.product_key] || 0;
-          const newQty = inputData[p.product_key] || 0;
-          return { oldQty, newQty, product: p };
+      const changedLogs = acquisitions
+        .map(acq => {
+          const existing = existingAcquisitions.find(e => e.product_key === acq.product_key);
+          const oldQty = existing?.quantity || 0;
+          const newQty = acq.quantity;
+          return { oldQty, newQty, acq };
         })
         .filter(({ oldQty, newQty }) => oldQty !== newQty)
-        .map(({ oldQty, newQty, product }) => ({
-          id: `audit-${Date.now()}-${product.product_key}`,
-          member_id: selectedMemberId,
-          member_name: memberName,
-          date: selectedDate,
-          product_key: product.product_key,
-          product_name: product.product_name,
-          old_quantity: oldQty,
-          new_quantity: newQty,
-          changed_at: timestamp,
-          unit: product.unit
-        }));
+        .map(({ oldQty, newQty, acq }) => {
+          const product = products.find(p => p.product_key === acq.product_key);
+          return {
+            id: `audit-${Date.now()}-${acq.product_key}`,
+            member_id: acq.member_id,
+            member_name: memberName,
+            date: acq.date,
+            product_key: acq.product_key,
+            product_name: product?.product_name || acq.product_key,
+            old_quantity: oldQty,
+            new_quantity: newQty,
+            changed_at: timestamp,
+            unit: product?.unit || ''
+          };
+        });
 
-      // Add audit logs to state and save to database
+      // Save audit logs to database
       if (changedLogs.length > 0) {
-        console.log('[InputAcquisition] Audit logs created:', changedLogs.length);
-
-        // Save to database
         try {
-          const auditRes = await fetch('/api/audit-log', {
+          await fetch('/api/audit-log', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ logs: changedLogs })
           });
-          if (auditRes.ok) {
-            console.log('[InputAcquisition] Audit logs saved to DB');
-          } else {
-            console.error('[InputAcquisition] Failed to save audit logs to DB');
-          }
+          setAuditLogs(prev => [...changedLogs, ...prev].slice(0, 50));
         } catch (auditError) {
           console.error('[InputAcquisition] Audit log API error:', auditError);
         }
-
-        // Also save to localStorage and update state
-        setAuditLogs(prev => [...changedLogs, ...prev].slice(0, 50));
       }
 
-      // Refresh recent inputs from database to show latest data
-      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-      const inputRes = await fetch(`/api/acquisitions?startDate=${thirtyDaysAgo}`);
-      if (inputRes.ok) {
-        const allInputs = await inputRes.json();
-        const recentOnly = allInputs
-          .filter((item: Acquisition) => item.quantity > 0)
-          .sort((a: Acquisition, b: Acquisition) => 
-            new Date(b.updated_at || b.date).getTime() - new Date(a.updated_at || a.date).getTime()
-          )
-          .slice(0, 20)
-          .map((item: Acquisition) => ({
-            ...item,
-            member_name: members.find(m => m.id === item.member_id)?.name || 'Unknown'
-          }));
-        
-        console.log('[InputAcquisition] Refreshed recent inputs:', recentOnly.length);
-        setRecentInputs(recentOnly);
-        localStorage.setItem('recentInputs', JSON.stringify(recentOnly));
-      }
-
-      setInputData({});
-
-      setTimeout(() => setSaveStatus('idle'), 3000);
+      // Refresh recent inputs
+      await refreshRecentInputs();
+      
+      // Refresh existing acquisitions
+      await loadExistingAcquisitions();
+      
+      setSaveStatus('success');
     } catch (err: any) {
-      console.error('[InputAcquisition] Save error:', err);
-      setError(err.message);
-      setSaveStatus('error');
-    } finally {
-      setIsSaving(false);
+      console.error('Failed to save acquisitions:', err);
+      throw err;
     }
   };
 
-  const hasChanges = Object.values(inputData).some(qty => qty !== 0);
+  // Delete single acquisition
+  const handleDeleteAcquisition = async (id: string) => {
+    try {
+      const response = await fetch(`/api/acquisitions?id=${id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) throw new Error('Failed to delete acquisition');
+
+      // Refresh recent inputs
+      await refreshRecentInputs();
+      
+      // Refresh existing acquisitions
+      await loadExistingAcquisitions();
+    } catch (error) {
+      console.error('Failed to delete acquisition:', error);
+      throw error;
+    }
+  };
+
+  // Refresh recent inputs
+  const refreshRecentInputs = async () => {
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const inputRes = await fetch(`/api/acquisitions?startDate=${thirtyDaysAgo}`);
+    if (inputRes.ok) {
+      const allInputs = await inputRes.json();
+      const recentOnly = allInputs
+        .filter((item: Acquisition) => item.quantity > 0)
+        .sort((a: Acquisition, b: Acquisition) =>
+          new Date(b.updated_at || a.date).getTime() - new Date(a.updated_at || a.date).getTime()
+        )
+        .slice(0, 20)
+        .map((item: Acquisition) => ({
+          ...item,
+          member_name: members.find(m => m.id === item.member_id)?.name || 'Unknown'
+        }));
+
+      setRecentInputs(recentOnly);
+      localStorage.setItem('recentInputs', JSON.stringify(recentOnly));
+    }
+  };
+
+  // Bulk save for bulk edit modal
+  const handleBulkSave = async (records: any[]) => {
+    try {
+      const response = await fetch('/api/acquisitions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bulk: true, records }),
+      });
+
+      if (!response.ok) throw new Error('Failed to save bulk acquisitions');
+
+      await refreshRecentInputs();
+      if (selectedMemberId && records.some((r: any) => r.member_id === selectedMemberId)) {
+        await loadExistingAcquisitions();
+      }
+      
+      return response.json();
+    } catch (error) {
+      console.error('Failed to save bulk acquisitions:', error);
+      throw error;
+    }
+  };
+
+  // Bulk delete for bulk edit modal
+  const handleBulkDelete = async (records: Pick<Acquisition, 'member_id' | 'date'>[]) => {
+    try {
+      const response = await fetch('/api/acquisitions?bulk=true', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ records }),
+      });
+
+      if (!response.ok) throw new Error('Failed to delete bulk acquisitions');
+
+      await refreshRecentInputs();
+      if (selectedMemberId && records.some((r: any) => r.member_id === selectedMemberId)) {
+        await loadExistingAcquisitions();
+      }
+    } catch (error) {
+      console.error('Failed to delete bulk acquisitions:', error);
+      throw error;
+    }
+  };
+
+  const hasChanges = Object.values(inputData).some(qty => {
+    const existing = existingAcquisitions.find(a => a.product_key === Object.keys(inputData)[0]);
+    return qty !== (existing?.quantity || 0);
+  });
 
   const clearHistory = () => {
     if (window.confirm('Hapus semua riwayat input dan koreksi?')) {
@@ -347,53 +444,6 @@ export default function InputAcquisition({ products, teams, members }: InputAcqu
       setAuditLogs([]);
       localStorage.removeItem('recentInputs');
       localStorage.removeItem('auditLogs');
-    }
-  };
-
-  const handleDelete = async (id: string, productKey: string) => {
-    const product = products.find(p => p.product_key === productKey);
-    const productName = product?.product_name || productKey;
-    
-    if (!window.confirm(`Hapus akuisisi ${productName}?`)) {
-      return;
-    }
-
-    setIsDeleting(true);
-    try {
-      const res = await fetch(`/api/acquisitions?id=${id}`, {
-        method: 'DELETE'
-      });
-
-      if (res.ok) {
-        // Remove from recent inputs
-        setRecentInputs(prev => prev.filter(item => item.id !== id));
-        
-        // Refresh data from database
-        const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-        const inputRes = await fetch(`/api/acquisitions?startDate=${thirtyDaysAgo}`);
-        if (inputRes.ok) {
-          const allInputs = await inputRes.json();
-          const recentOnly = allInputs
-            .filter((item: Acquisition) => item.quantity > 0)
-            .sort((a: Acquisition, b: Acquisition) =>
-              new Date(b.updated_at || b.date).getTime() - new Date(a.updated_at || a.date).getTime()
-            )
-            .slice(0, 20)
-            .map((item: Acquisition) => ({
-              ...item,
-              member_name: members.find(m => m.id === item.member_id)?.name || 'Unknown'
-            }));
-          setRecentInputs(recentOnly);
-          localStorage.setItem('recentInputs', JSON.stringify(recentOnly));
-        }
-      } else {
-        setError('Gagal menghapus akuisisi');
-      }
-    } catch (error) {
-      console.error('Error deleting acquisition:', error);
-      setError('Gagal menghapus akuisisi');
-    } finally {
-      setIsDeleting(false);
     }
   };
 
@@ -425,24 +475,7 @@ export default function InputAcquisition({ products, teams, members }: InputAcqu
       });
 
       if (res.ok) {
-        // Refresh recent inputs from database
-        const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-        const inputRes = await fetch(`/api/acquisitions?startDate=${thirtyDaysAgo}`);
-        if (inputRes.ok) {
-          const allInputs = await inputRes.json();
-          const recentOnly = allInputs
-            .filter((item: Acquisition) => item.quantity > 0)
-            .sort((a: Acquisition, b: Acquisition) =>
-              new Date(b.updated_at || b.date).getTime() - new Date(a.updated_at || a.date).getTime()
-            )
-            .slice(0, 20)
-            .map((item: Acquisition) => ({
-              ...item,
-              member_name: members.find(m => m.id === item.member_id)?.name || 'Unknown'
-            }));
-          setRecentInputs(recentOnly);
-          localStorage.setItem('recentInputs', JSON.stringify(recentOnly));
-        }
+        await refreshRecentInputs();
         setEditingId(null);
         setSaveStatus('success');
         setTimeout(() => setSaveStatus('idle'), 3000);
@@ -460,6 +493,34 @@ export default function InputAcquisition({ products, teams, members }: InputAcqu
   const handleCancelEdit = () => {
     setEditingId(null);
     setEditQuantity(0);
+  };
+
+  const handleDelete = async (id: string, productKey: string) => {
+    const product = products.find(p => p.product_key === productKey);
+    const productName = product?.product_name || productKey;
+
+    if (!window.confirm(`Hapus akuisisi ${productName}?`)) {
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      const res = await fetch(`/api/acquisitions?id=${id}`, {
+        method: 'DELETE'
+      });
+
+      if (res.ok) {
+        setRecentInputs(prev => prev.filter(item => item.id !== id));
+        await refreshRecentInputs();
+      } else {
+        setError('Gagal menghapus akuisisi');
+      }
+    } catch (error) {
+      console.error('Error deleting acquisition:', error);
+      setError('Gagal menghapus akuisisi');
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   const getCategoryColor = (category: string) => {
@@ -493,9 +554,16 @@ export default function InputAcquisition({ products, teams, members }: InputAcqu
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-bold text-slate-800">Input Akuisisi</h2>
-          <p className="text-sm text-slate-500">Input data akuisisi berdasarkan tanggal</p>
+          <h2 className="text-lg font-black text-slate-800">Input Akuisisi</h2>
+          <p className="text-sm font-bold text-slate-500">Input data dengan kalender interaktif</p>
         </div>
+        <button
+          onClick={() => setIsBulkEditModalOpen(true)}
+          className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white px-4 py-2.5 rounded-2xl font-black text-sm shadow-lg shadow-purple-200 transition-all"
+        >
+          <Users className="w-4 h-4" />
+          Bulk Edit
+        </button>
       </div>
 
       {/* Error/Success Messages */}
@@ -513,36 +581,45 @@ export default function InputAcquisition({ products, teams, members }: InputAcqu
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column - Input Form */}
+        {/* Left Column - Calendar */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Date and Member Selection */}
+          {/* Mode Toggle & Member Selection */}
           <div className="bg-white border border-slate-200 rounded-2xl p-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-              {/* Date Picker */}
-              <div>
-                <label className="flex items-center gap-2 text-xs font-black text-slate-600 uppercase mb-2">
-                  <Calendar className="w-4 h-4" />
-                  Tanggal Input
-                </label>
-                <input
-                  type="date"
-                  value={selectedDate}
-                  onChange={(e) => {
-                    setSelectedDate(e.target.value);
-                    setInputData({});
-                  }}
-                  className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-semibold outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400"
-                />
-              </div>
+            {/* Mode Toggle */}
+            <div className="flex gap-2 mb-4">
+              <button
+                onClick={() => setCalendarMode('acquisition')}
+                className={`flex-1 py-3 rounded-xl font-black text-sm transition-all flex items-center justify-center gap-2 ${
+                  calendarMode === 'acquisition'
+                    ? 'bg-purple-600 text-white shadow-lg shadow-purple-200'
+                    : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                }`}
+              >
+                <Package className="w-4 h-4" />
+                Mode Akuisisi
+              </button>
+              <button
+                onClick={() => setCalendarMode('attendance')}
+                className={`flex-1 py-3 rounded-xl font-black text-sm transition-all flex items-center justify-center gap-2 ${
+                  calendarMode === 'attendance'
+                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-200'
+                    : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                }`}
+              >
+                <FileText className="w-4 h-4" />
+                Mode Absensi
+              </button>
+            </div>
 
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
               {/* Member Search */}
               <div>
                 <label className="flex items-center gap-2 text-xs font-black text-slate-600 uppercase mb-2">
-                  <User className="w-4 h-4" />
-                  Pilih Member
+                  <Search className="w-4 h-4" />
+                  Cari Member
                 </label>
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                   <input
                     type="text"
                     value={searchTerm}
@@ -552,25 +629,26 @@ export default function InputAcquisition({ products, teams, members }: InputAcqu
                   />
                 </div>
               </div>
-            </div>
 
-            {/* Member Dropdown */}
-            <div className="mb-4">
-              <select
-                value={selectedMemberId}
-                onChange={(e) => {
-                  setSelectedMemberId(e.target.value);
-                  setInputData({});
-                }}
-                className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-semibold outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400"
-              >
-                <option value="">-- Pilih Member --</option>
-                {filteredMembers.map(member => (
-                  <option key={member.id} value={member.id}>
-                    {member.name} - {member.position} ({teams.find(t => t.id === member.team_id)?.name || 'Unknown Team'})
-                  </option>
-                ))}
-              </select>
+              {/* Member Dropdown */}
+              <div>
+                <label className="flex items-center gap-2 text-xs font-black text-slate-600 uppercase mb-2">
+                  <User className="w-4 h-4" />
+                  Pilih Member
+                </label>
+                <select
+                  value={selectedMemberId}
+                  onChange={(e) => handleMemberChange(e.target.value)}
+                  className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-semibold outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400"
+                >
+                  <option value="">-- Pilih Member --</option>
+                  {filteredMembers.map(member => (
+                    <option key={member.id} value={member.id}>
+                      {member.name} - {member.position} ({teams.find(t => t.id === member.team_id)?.name || 'Unknown Team'})
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
 
             {/* Selected Member Info */}
@@ -589,79 +667,29 @@ export default function InputAcquisition({ products, teams, members }: InputAcqu
             )}
           </div>
 
-          {/* Product Input Form */}
-          {selectedMember && (
-            <div className="bg-white border border-slate-200 rounded-2xl p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-md font-bold text-slate-800 flex items-center gap-2">
-                  <Package className="w-5 h-5 text-blue-600" />
-                  Input Produk
-                </h3>
-                {isLoadingExistingData && (
-                  <GridLoader pattern="edge-cw" size="sm" color="#64748b" mode="stagger" />
-                )}
+          {/* Calendar */}
+          <div className="relative">
+            {isLoadingExistingData && calendarMode === 'acquisition' && (
+              <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10">
+                <GridLoader pattern="edge-cw" size="lg" color="#FDB813" mode="stagger" />
               </div>
-
-              <div className="space-y-3">
-                {products.filter(p => p.is_active).map(product => (
-                  <div
-                    key={product.id}
-                    className="flex items-center gap-4 p-4 bg-slate-50 rounded-xl border border-slate-100"
-                  >
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="font-bold text-slate-800">{product.product_name}</span>
-                        <span className={`px-2 py-0.5 rounded-full text-xs font-black border ${getCategoryColor(product.category)}`}>
-                          {product.category}
-                        </span>
-                      </div>
-                      <div className="text-xs text-slate-500">
-                        Target: {product.weekly_target} {product.unit} • 
-                        {product.is_tiered ? ' Tiered' : ` ${product.flat_points} pts/${product.unit}`}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <input
-                        type="number"
-                        min="0"
-                        value={inputData[product.product_key] || 0}
-                        onChange={(e) => handleInputChange(product.product_key, e.target.value)}
-                        placeholder="0"
-                        className="w-24 bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm font-bold text-center outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400"
-                      />
-                      <span className="text-xs text-slate-500 w-16">{product.unit}</span>
-                    </div>
-                  </div>
-                ))}
+            )}
+            {calendarMode === 'acquisition' ? (
+              <AcquisitionCalendar
+                key={selectedMemberId}
+                member={selectedMember || null}
+                acquisitions={existingAcquisitions}
+                products={products.filter(p => p.is_active)}
+                currentMonth={currentMonth}
+                onMonthChange={handleMonthChange}
+                onDateClick={handleDateClick}
+              />
+            ) : (
+              <div className="text-center py-8 text-slate-400 text-sm">
+                Gunakan tab Absensi untuk mengelola absensi
               </div>
-
-              {/* Save Button */}
-              <div className="mt-6 flex items-center justify-between">
-                <div className="text-sm text-slate-500">
-                  {hasChanges ? (
-                    <span className="text-amber-600 font-bold flex items-center gap-1">
-                      <AlertCircle className="w-4 h-4" />
-                      Ada perubahan yang belum disimpan
-                    </span>
-                  ) : (
-                    <span>Tidak ada perubahan</span>
-                  )}
-                </div>
-                <button
-                  onClick={handleSave}
-                  disabled={isSaving || !hasChanges}
-                  className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-xl text-sm font-black hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  {isSaving ? (
-                    <GridLoader pattern="edge-cw" size="sm" color="#FDB813" mode="stagger" />
-                  ) : (
-                    <Save className="w-4 h-4" />
-                  )}
-                  Simpan Data
-                </button>
-              </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
 
         {/* Right Column - History Panels */}
@@ -726,7 +754,7 @@ export default function InputAcquisition({ products, teams, members }: InputAcqu
                       </div>
                       <div className="flex items-center justify-between text-xs text-slate-500">
                         <span className="flex items-center gap-1">
-                          <Calendar className="w-3 h-3" />
+                          <CalendarIcon className="w-3 h-3" />
                           {formatDate(input.date)}
                         </span>
                         {input.week && (
@@ -843,7 +871,7 @@ export default function InputAcquisition({ products, teams, members }: InputAcqu
                       </div>
                       <div className="flex items-center justify-between text-xs text-slate-500">
                         <span className="flex items-center gap-1">
-                          <Calendar className="w-3 h-3" />
+                          <CalendarIcon className="w-3 h-3" />
                           {formatDate(log.date)}
                         </span>
                       </div>
@@ -855,6 +883,31 @@ export default function InputAcquisition({ products, teams, members }: InputAcqu
           </div>
         </div>
       </div>
+
+      {/* Acquisition Assign Modal */}
+      <AcquisitionAssignModal
+        isOpen={isAcquisitionModalOpen}
+        onClose={() => {
+          setIsAcquisitionModalOpen(false);
+          setExistingAcquisitions([]);
+        }}
+        date={selectedDate}
+        member={selectedMember || null}
+        existingAcquisitions={existingAcquisitions}
+        products={products.filter(p => p.is_active)}
+        onSave={handleSaveAcquisitions}
+        onDelete={handleDeleteAcquisition}
+      />
+
+      {/* Bulk Edit Modal */}
+      <BulkEditModal
+        isOpen={isBulkEditModalOpen}
+        onClose={() => setIsBulkEditModalOpen(false)}
+        members={members}
+        teams={teams}
+        onSave={handleBulkSave}
+        onDelete={handleBulkDelete}
+      />
     </div>
   );
 }

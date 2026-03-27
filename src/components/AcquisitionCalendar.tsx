@@ -3,39 +3,46 @@
 import React from 'react';
 import UniversalCalendar from './UniversalCalendar';
 
-interface Attendance {
+interface Acquisition {
   id?: string;
   member_id: string;
   date: string;
-  status: 'present' | 'late' | 'leave' | 'alpha';
-  leave_reason?: string;
-  late_minutes?: number;
-  notes?: string;
+  product_key: string;
+  quantity: number;
 }
 
-interface AttendanceCalendarProps {
+interface Product {
+  product_key: string;
+  product_name: string;
+  unit: string;
+}
+
+interface AcquisitionCalendarProps {
   member: { id: string; name: string; position: string } | null;
-  attendances: Attendance[];
+  acquisitions: Acquisition[];
+  products: Product[];
   currentMonth: Date;
   onMonthChange: (date: Date) => void;
-  onDateClick: (date: string, attendance: Attendance | null) => void;
+  onDateClick: (date: string, acquisitions: Acquisition[]) => void;
 }
 
-export default function AttendanceCalendar({
+export default function AcquisitionCalendar({
   member,
-  attendances,
+  acquisitions,
+  products,
   currentMonth,
   onMonthChange,
   onDateClick,
-}: AttendanceCalendarProps) {
+}: AcquisitionCalendarProps) {
   return (
     <UniversalCalendar
-      mode="attendance"
+      mode="acquisition"
       member={member}
       currentMonth={currentMonth}
       onMonthChange={onMonthChange}
       onDateClick={onDateClick}
-      attendances={attendances}
+      acquisitions={acquisitions}
+      products={products}
     />
   );
 }
