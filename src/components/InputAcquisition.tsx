@@ -103,6 +103,7 @@ export default function InputAcquisition({ products, teams, members }: InputAcqu
   const [calendarMode, setCalendarMode] = useState<CalendarMode>('acquisition');
   const [isAcquisitionModalOpen, setIsAcquisitionModalOpen] = useState(false);
   const [existingAcquisitions, setExistingAcquisitions] = useState<Acquisition[]>([]);
+  const [allMonthAcquisitions, setAllMonthAcquisitions] = useState<Acquisition[]>([]);
   const [isBulkEditModalOpen, setIsBulkEditModalOpen] = useState(false);
   
   // Attendance state
@@ -225,6 +226,36 @@ export default function InputAcquisition({ products, teams, members }: InputAcqu
   useEffect(() => {
     loadExistingAcquisitions();
   }, [loadExistingAcquisitions]);
+
+  // Load all acquisitions for the entire month (for calendar display)
+  const loadMonthAcquisitions = useCallback(async () => {
+    if (!selectedMemberId) {
+      setAllMonthAcquisitions([]);
+      return;
+    }
+
+    const year = currentMonth.getFullYear();
+    const month = currentMonth.getMonth() + 1;
+    const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
+    const lastDay = new Date(year, currentMonth.getMonth() + 1, 0).getDate();
+    const endDate = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+
+    try {
+      const res = await fetch(
+        `/api/acquisitions?member_id=${selectedMemberId}&startDate=${startDate}&endDate=${endDate}`
+      );
+      if (res.ok) {
+        const data = await res.json();
+        setAllMonthAcquisitions(data);
+      }
+    } catch (error) {
+      console.error('Error loading month acquisitions:', error);
+    }
+  }, [selectedMemberId, currentMonth]);
+
+  useEffect(() => {
+    loadMonthAcquisitions();
+  }, [loadMonthAcquisitions]);
 
   // Load attendances for attendance mode
   const loadAttendances = useCallback(async () => {
@@ -352,10 +383,13 @@ export default function InputAcquisition({ products, teams, members }: InputAcqu
 
       // Refresh recent inputs
       await refreshRecentInputs();
-      
-      // Refresh existing acquisitions
+
+      // Refresh existing acquisitions (for the selected date)
       await loadExistingAcquisitions();
-      
+
+      // Refresh all month acquisitions (for calendar display)
+      await loadMonthAcquisitions();
+
       setSaveStatus('success');
     } catch (err: any) {
       console.error('Failed to save acquisitions:', err);
@@ -374,9 +408,12 @@ export default function InputAcquisition({ products, teams, members }: InputAcqu
 
       // Refresh recent inputs
       await refreshRecentInputs();
-      
-      // Refresh existing acquisitions
+
+      // Refresh existing acquisitions (for the selected date)
       await loadExistingAcquisitions();
+
+      // Refresh all month acquisitions (for calendar display)
+      await loadMonthAcquisitions();
     } catch (error) {
       console.error('Failed to delete acquisition:', error);
       throw error;
@@ -451,8 +488,9 @@ export default function InputAcquisition({ products, teams, members }: InputAcqu
       await refreshRecentInputs();
       if (selectedMemberId && records.some((r: any) => r.member_id === selectedMemberId)) {
         await loadExistingAcquisitions();
+        await loadMonthAcquisitions();
       }
-      
+
       return response.json();
     } catch (error) {
       console.error('Failed to save bulk acquisitions:', error);
@@ -474,6 +512,7 @@ export default function InputAcquisition({ products, teams, members }: InputAcqu
       await refreshRecentInputs();
       if (selectedMemberId && records.some((r: any) => r.member_id === selectedMemberId)) {
         await loadExistingAcquisitions();
+        await loadMonthAcquisitions();
       }
     } catch (error) {
       console.error('Failed to delete bulk acquisitions:', error);
@@ -562,6 +601,7 @@ export default function InputAcquisition({ products, teams, members }: InputAcqu
 
       if (res.ok) {
         await refreshRecentInputs();
+        await loadMonthAcquisitions();
         setEditingId(null);
         setSaveStatus('success');
         setTimeout(() => setSaveStatus('idle'), 3000);
@@ -598,6 +638,7 @@ export default function InputAcquisition({ products, teams, members }: InputAcqu
       if (res.ok) {
         setRecentInputs(prev => prev.filter(item => item.id !== id));
         await refreshRecentInputs();
+        await loadMonthAcquisitions();
       } else {
         setError('Gagal menghapus akuisisi');
       }
@@ -764,7 +805,7 @@ export default function InputAcquisition({ products, teams, members }: InputAcqu
               <AcquisitionCalendar
                 key={selectedMemberId}
                 member={selectedMember || null}
-                acquisitions={existingAcquisitions}
+                acquisitions={allMonthAcquisitions}
                 products={products.filter(p => p.is_active)}
                 currentMonth={currentMonth}
                 onMonthChange={handleMonthChange}

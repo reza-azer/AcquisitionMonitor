@@ -235,8 +235,10 @@ export default function UniversalCalendar({
     } else {
       // ACQUISITION MODE RENDERING
       const dateAcquisitions = getAcquisitionsForDate(day);
-      const totalQuantity = dateAcquisitions.reduce((sum, a) => sum + a.quantity, 0);
-      const hasData = totalQuantity > 0;
+      // Filter only products with quantity > 0
+      const filledAcquisitions = dateAcquisitions.filter(a => a.quantity > 0);
+      const productCount = filledAcquisitions.length;
+      const hasData = productCount > 0;
 
       calendarDays.push(
         <div
@@ -264,9 +266,9 @@ export default function UniversalCalendar({
           {hasData && (
             <div className="space-y-1">
               <div className="text-[9px] sm:text-[10px] font-black text-purple-700 uppercase">
-                {totalQuantity} Item
+                {productCount} Produk
               </div>
-              {dateAcquisitions.slice(0, 3).map(acq => {
+              {filledAcquisitions.slice(0, 3).map(acq => {
                 const product = products.find(p => p.product_key === acq.product_key);
                 return (
                   <div key={acq.product_key} className="text-[7px] sm:text-[8px] font-bold text-slate-600 truncate">
@@ -274,9 +276,9 @@ export default function UniversalCalendar({
                   </div>
                 );
               })}
-              {dateAcquisitions.length > 3 && (
+              {filledAcquisitions.length > 3 && (
                 <div className="text-[7px] sm:text-[8px] font-bold text-slate-400">
-                  +{dateAcquisitions.length - 3} lainnya
+                  +{filledAcquisitions.length - 3} lainnya
                 </div>
               )}
             </div>
