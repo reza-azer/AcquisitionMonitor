@@ -1700,7 +1700,7 @@ export default function App() {
         {viewMode === 'absensi' && (
           <div className="space-y-8 animate-in fade-in duration-500">
             <div className="bg-white rounded-[40px] p-8 border border-slate-200 shadow-sm">
-              <AttendanceManager members={teams.flatMap(t => t.members || [])} />
+              <AttendanceManager members={teams.flatMap(t => t.members || [])} teams={teams} />
             </div>
             <div className="bg-white rounded-[40px] p-8 border border-slate-200 shadow-sm">
               <AttendanceSummary members={teams.flatMap(t => t.members || [])} />
