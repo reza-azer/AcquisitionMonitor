@@ -75,6 +75,9 @@ export default function InputAcquisition({ products, teams, members }: InputAcqu
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
   const [isLoadingExistingData, setIsLoadingExistingData] = useState(false);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editQuantity, setEditQuantity] = useState<number>(0);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Load audit logs and recent inputs from database on mount
   useEffect(() => {
@@ -347,6 +350,118 @@ export default function InputAcquisition({ products, teams, members }: InputAcqu
     }
   };
 
+  const handleDelete = async (id: string, productKey: string) => {
+    const product = products.find(p => p.product_key === productKey);
+    const productName = product?.product_name || productKey;
+    
+    if (!window.confirm(`Hapus akuisisi ${productName}?`)) {
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      const res = await fetch(`/api/acquisitions?id=${id}`, {
+        method: 'DELETE'
+      });
+
+      if (res.ok) {
+        // Remove from recent inputs
+        setRecentInputs(prev => prev.filter(item => item.id !== id));
+        
+        // Refresh data from database
+        const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+        const inputRes = await fetch(`/api/acquisitions?startDate=${thirtyDaysAgo}`);
+        if (inputRes.ok) {
+          const allInputs = await inputRes.json();
+          const recentOnly = allInputs
+            .filter((item: Acquisition) => item.quantity > 0)
+            .sort((a: Acquisition, b: Acquisition) =>
+              new Date(b.updated_at || b.date).getTime() - new Date(a.updated_at || a.date).getTime()
+            )
+            .slice(0, 20)
+            .map((item: Acquisition) => ({
+              ...item,
+              member_name: members.find(m => m.id === item.member_id)?.name || 'Unknown'
+            }));
+          setRecentInputs(recentOnly);
+          localStorage.setItem('recentInputs', JSON.stringify(recentOnly));
+        }
+      } else {
+        setError('Gagal menghapus akuisisi');
+      }
+    } catch (error) {
+      console.error('Error deleting acquisition:', error);
+      setError('Gagal menghapus akuisisi');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleEdit = (item: Acquisition) => {
+    setEditingId(item.id || null);
+    setEditQuantity(item.quantity);
+  };
+
+  const handleUpdate = async (id: string, productKey: string) => {
+    const item = recentInputs.find(i => i.id === id);
+    if (!item) return;
+
+    const product = products.find(p => p.product_key === productKey);
+    const memberName = members.find(m => m.id === item.member_id)?.name || 'Unknown';
+
+    setIsSaving(true);
+    try {
+      const res = await fetch('/api/acquisitions', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id,
+          member_id: item.member_id,
+          date: item.date,
+          product_key: productKey,
+          quantity: editQuantity,
+          member_name: memberName
+        })
+      });
+
+      if (res.ok) {
+        // Refresh recent inputs from database
+        const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+        const inputRes = await fetch(`/api/acquisitions?startDate=${thirtyDaysAgo}`);
+        if (inputRes.ok) {
+          const allInputs = await inputRes.json();
+          const recentOnly = allInputs
+            .filter((item: Acquisition) => item.quantity > 0)
+            .sort((a: Acquisition, b: Acquisition) =>
+              new Date(b.updated_at || b.date).getTime() - new Date(a.updated_at || a.date).getTime()
+            )
+            .slice(0, 20)
+            .map((item: Acquisition) => ({
+              ...item,
+              member_name: members.find(m => m.id === item.member_id)?.name || 'Unknown'
+            }));
+          setRecentInputs(recentOnly);
+          localStorage.setItem('recentInputs', JSON.stringify(recentOnly));
+        }
+        setEditingId(null);
+        setSaveStatus('success');
+        setTimeout(() => setSaveStatus('idle'), 3000);
+      } else {
+        setError('Gagal mengupdate akuisisi');
+      }
+    } catch (error) {
+      console.error('Error updating acquisition:', error);
+      setError('Gagal mengupdate akuisisi');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingId(null);
+    setEditQuantity(0);
+  };
+
   const getCategoryColor = (category: string) => {
     const colors = {
       FUNDING: 'bg-blue-100 text-blue-700 border-blue-200',
@@ -566,45 +681,102 @@ export default function InputAcquisition({ products, teams, members }: InputAcqu
               </div>
             ) : (
               <div className="space-y-2 max-h-[600px] overflow-y-auto">
-                {recentInputs.map((input, idx) => (
-                  <div
-                    key={input.id || idx}
-                    className="p-3 bg-slate-50 rounded-xl border border-slate-100 hover:bg-slate-100 transition-colors"
-                  >
-                    <div className="flex items-start justify-between mb-2">
-                      <div className="flex-1">
-                        <div className="font-semibold text-slate-800 text-sm">
-                          {products.find(p => p.product_key === input.product_key)?.product_name || input.product_key}
-                        </div>
-                        <div className="text-xs text-slate-500">
-                          {input.member_name || members.find(m => m.id === input.member_id)?.name || 'Unknown'}
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <div className="font-bold text-blue-600 text-sm">
-                          {input.quantity} {products.find(p => p.product_key === input.product_key)?.unit}
-                        </div>
-                        {input.updated_at && (
-                          <div className="text-xs text-slate-400 flex items-center gap-1 justify-end mt-1">
-                            <Clock className="w-3 h-3" />
-                            {formatTime(input.updated_at)}
+                {recentInputs.map((input, idx) => {
+                  const product = products.find(p => p.product_key === input.product_key);
+                  const isEditing = editingId === input.id;
+
+                  return (
+                    <div
+                      key={input.id || idx}
+                      className="p-3 bg-slate-50 rounded-xl border border-slate-100 hover:bg-slate-100 transition-colors"
+                    >
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="flex-1">
+                          <div className="font-semibold text-slate-800 text-sm">
+                            {product?.product_name || input.product_key}
                           </div>
+                          <div className="text-xs text-slate-500">
+                            {input.member_name || members.find(m => m.id === input.member_id)?.name || 'Unknown'}
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          {isEditing ? (
+                            <div className="flex items-center gap-2 justify-end">
+                              <input
+                                type="number"
+                                min="0"
+                                value={editQuantity}
+                                onChange={(e) => setEditQuantity(parseInt(e.target.value) || 0)}
+                                className="w-20 bg-white border border-blue-300 rounded-lg px-2 py-1 text-sm font-bold text-center outline-none focus:ring-2 focus:ring-blue-200"
+                              />
+                              <span className="text-xs text-slate-500">{product?.unit}</span>
+                            </div>
+                          ) : (
+                            <div className="font-bold text-blue-600 text-sm">
+                              {input.quantity} {product?.unit}
+                            </div>
+                          )}
+                          {input.updated_at && !isEditing && (
+                            <div className="text-xs text-slate-400 flex items-center gap-1 justify-end mt-1">
+                              <Clock className="w-3 h-3" />
+                              {formatTime(input.updated_at)}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between text-xs text-slate-500">
+                        <span className="flex items-center gap-1">
+                          <Calendar className="w-3 h-3" />
+                          {formatDate(input.date)}
+                        </span>
+                        {input.week && (
+                          <span className="px-2 py-0.5 bg-slate-200 rounded-full">
+                            Week {input.week}
+                          </span>
                         )}
+                        <div className="flex items-center gap-1">
+                          {isEditing ? (
+                            <>
+                              <button
+                                onClick={() => handleUpdate(input.id!, input.product_key)}
+                                disabled={isSaving}
+                                className="p-1 text-green-600 hover:bg-green-100 rounded transition-colors"
+                                title="Simpan"
+                              >
+                                <Save className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                onClick={handleCancelEdit}
+                                className="p-1 text-slate-600 hover:bg-slate-200 rounded transition-colors"
+                                title="Batal"
+                              >
+                                <AlertCircle className="w-3.5 h-3.5" />
+                              </button>
+                            </>
+                          ) : (
+                            <>
+                              <button
+                                onClick={() => handleEdit(input)}
+                                className="p-1 text-blue-600 hover:bg-blue-100 rounded transition-colors"
+                                title="Edit"
+                              >
+                                <Edit2 className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                onClick={() => handleDelete(input.id!, input.product_key)}
+                                disabled={isDeleting}
+                                className="p-1 text-red-600 hover:bg-red-100 rounded transition-colors"
+                                title="Hapus"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </>
+                          )}
+                        </div>
                       </div>
                     </div>
-                    <div className="flex items-center justify-between text-xs text-slate-500">
-                      <span className="flex items-center gap-1">
-                        <Calendar className="w-3 h-3" />
-                        {formatDate(input.date)}
-                      </span>
-                      {input.week && (
-                        <span className="px-2 py-0.5 bg-slate-200 rounded-full">
-                          Week {input.week}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

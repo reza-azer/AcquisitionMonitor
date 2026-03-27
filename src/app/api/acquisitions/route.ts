@@ -114,3 +114,67 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ error: 'Failed to delete acquisition' }, { status: 500 });
   }
 }
+
+export async function PATCH(request: Request) {
+  try {
+    const body = await request.json();
+    const { id, member_id, date, product_key, quantity, member_name } = body;
+
+    console.log('[Acquisitions API] PATCH received:', { id, member_id, date, product_key, quantity });
+
+    if (!id) {
+      return NextResponse.json({ error: 'Acquisition ID required' }, { status: 400 });
+    }
+
+    // Fetch existing data for audit log
+    const { data: existingData } = await supabase
+      .from('acquisitions')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (!existingData) {
+      return NextResponse.json({ error: 'Acquisition not found' }, { status: 404 });
+    }
+
+    const oldQuantity = existingData.quantity;
+
+    // Update the acquisition
+    const { data, error } = await supabase
+      .from('acquisitions')
+      .update({
+        quantity,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('[Acquisitions API] Update error:', error);
+      throw error;
+    }
+
+    // Create audit log if quantity changed
+    if (oldQuantity !== quantity && member_name) {
+      const auditLog = {
+        member_id,
+        member_name,
+        date,
+        product_key,
+        old_quantity: oldQuantity,
+        new_quantity: quantity,
+        changed_at: new Date().toISOString()
+      };
+
+      await supabase.from('acquisition_audit_log').insert([auditLog]);
+      console.log('[Acquisitions API] Audit log created for update:', auditLog);
+    }
+
+    console.log('[Acquisitions API] Update success:', data);
+    return NextResponse.json(data, { status: 200 });
+  } catch (error) {
+    console.error('[Acquisitions API] Error updating acquisition:', error);
+    return NextResponse.json({ error: 'Failed to update acquisition' }, { status: 500 });
+  }
+}
