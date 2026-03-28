@@ -1,6 +1,20 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 
+interface AttendanceDetail {
+  id: string;
+  member_id: string;
+  member_name: string;
+  member_position: string;
+  team_id: string;
+  team_name: string;
+  date: string;
+  status: 'present' | 'late' | 'leave' | 'alpha';
+  leave_reason: string | null;
+  late_minutes: number;
+  notes: string | null;
+}
+
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -11,6 +25,9 @@ export async function GET(request: Request) {
     const category = searchParams.get('category');
     const month = searchParams.get('month');
     const year = searchParams.get('year');
+    // Attendance-specific filters
+    const attendanceMonth = searchParams.get('attendanceMonth');
+    const attendanceYear = searchParams.get('attendanceYear');
 
     // Fetch base data
     const { data: teams, error: teamsError } = await supabase.from('teams').select('id, name, accent_color');
@@ -72,12 +89,68 @@ export async function GET(request: Request) {
     if (acquisitionsError) throw acquisitionsError;
 
     // Fetch attendances based on report type
-    let attendanceQuery = supabase.from('attendances').select('member_id, date, status, late_minutes');
+    let attendanceQuery = supabase.from('attendances').select('member_id, date, status, late_minutes, leave_reason, notes');
     if (dateFilter.start && dateFilter.end) {
       attendanceQuery = attendanceQuery.gte('date', dateFilter.start).lte('date', dateFilter.end);
     }
     const { data: attendances, error: attendancesError } = await attendanceQuery;
     if (attendancesError) throw attendancesError;
+
+    // Fetch detailed attendance records with member info (for attendance summary table)
+    // Use attendanceMonth/attendanceYear if provided, otherwise use the main dateFilter
+    let attendanceDetailStart = dateFilter.start;
+    let attendanceDetailEnd = dateFilter.end;
+    if (attendanceMonth && attendanceYear) {
+      const attMonthNum = parseInt(attendanceMonth);
+      const attYearNum = parseInt(attendanceYear);
+      const attMonthStr = String(attMonthNum).padStart(2, '0');
+      const attLastDay = new Date(attYearNum, attMonthNum, 0).getDate();
+      attendanceDetailStart = `${attYearNum}-${attMonthStr}-01`;
+      attendanceDetailEnd = `${attYearNum}-${attMonthStr}-${String(attLastDay).padStart(2, '0')}`;
+    }
+
+    const { data: attendanceDetailsRaw, error: attendanceDetailsError } = await supabase
+      .from('attendances')
+      .select(`
+        id,
+        member_id,
+        date,
+        status,
+        late_minutes,
+        leave_reason,
+        notes,
+        member:members (
+          id,
+          name,
+          position,
+          team_id,
+          team:teams (
+            id,
+            name
+          )
+        )
+      `)
+      .gte('date', attendanceDetailStart || '2020-01-01')
+      .lte('date', attendanceDetailEnd || '2099-12-31')
+      .in('status', ['late', 'leave', 'alpha'])
+      .order('date', { ascending: false });
+
+    if (attendanceDetailsError) throw attendanceDetailsError;
+
+    // Transform attendance details into flat structure
+    const attendanceDetails: AttendanceDetail[] = (attendanceDetailsRaw || []).map((a: any) => ({
+      id: a.id,
+      member_id: a.member_id,
+      member_name: a.member?.name || 'Unknown',
+      member_position: a.member?.position || '',
+      team_id: a.member?.team_id || '',
+      team_name: a.member?.team?.name || '',
+      date: a.date,
+      status: a.status,
+      leave_reason: a.leave_reason,
+      late_minutes: a.late_minutes || 0,
+      notes: a.notes,
+    }));
 
     const memberIds = members.map(m => m.id);
     const filteredAcquisitions = acquisitions.filter(a => memberIds.includes(a.member_id));
@@ -330,6 +403,7 @@ export async function GET(request: Request) {
       insights,
       summary,
       attendanceCorrelation,
+      attendanceDetails,
       reportType,
       startDate: reportType === 'custom' ? startDate : null,
       endDate: reportType === 'custom' ? endDate : null,

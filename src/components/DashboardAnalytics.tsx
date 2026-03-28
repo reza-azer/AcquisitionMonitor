@@ -103,10 +103,25 @@ interface AnalyticsData {
   insights: Insights;
   summary: Summary;
   attendanceCorrelation: AttendanceCorrelation[];
+  attendanceDetails: AttendanceDetail[];
   reportType: string;
   startDate: string | null;
   endDate: string | null;
   generatedAt: string;
+}
+
+interface AttendanceDetail {
+  id: string;
+  member_id: string;
+  member_name: string;
+  member_position: string;
+  team_id: string;
+  team_name: string;
+  date: string;
+  status: 'present' | 'late' | 'leave' | 'alpha';
+  leave_reason: string | null;
+  late_minutes: number;
+  notes: string | null;
 }
 
 export default function DashboardAnalytics() {
@@ -119,6 +134,11 @@ export default function DashboardAnalytics() {
   const [selectedMonth, setSelectedMonth] = useState<string>(String(new Date().getMonth() + 1));
   const [selectedYear, setSelectedYear] = useState<string>(String(new Date().getFullYear()));
   const [isExporting, setIsExporting] = useState(false);
+  
+  // Attendance summary filter states
+  const [attendanceMonth, setAttendanceMonth] = useState<string>(String(new Date().getMonth() + 1));
+  const [attendanceYear, setAttendanceYear] = useState<string>(String(new Date().getFullYear()));
+  const [attendanceStatusFilter, setAttendanceStatusFilter] = useState<'all' | 'late' | 'leave' | 'alpha'>('all');
 
   useEffect(() => {
     fetchAnalytics();
@@ -137,10 +157,14 @@ export default function DashboardAnalytics() {
         params.append('month', selectedMonth);
         params.append('year', selectedYear);
       }
+      // Add attendance-specific filters
+      params.append('attendanceMonth', attendanceMonth);
+      params.append('attendanceYear', attendanceYear);
+      
       const response = await fetch(`/api/analytics?${params.toString()}`);
       if (!response.ok) throw new Error('Failed to fetch analytics');
       const result = await response.json();
-      
+
       // Check if there's no data
       if (result.summary.totalMembers === 0 || result.memberRankings.length === 0) {
         setData(null); // Set to null to show "no data" message
@@ -564,6 +588,201 @@ export default function DashboardAnalytics() {
               <span className="text-xs font-black text-red-700 uppercase">Alpha</span>
             </div>
             <div className="text-3xl font-black text-red-800">{summary.totalAlphaDays}</div>
+          </div>
+        </div>
+
+        {/* Attendance Detail Table */}
+        <div className="mt-8 pt-8 border-t border-slate-200">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+            <div>
+              <h4 className="font-black text-slate-800 mb-1">Detail Kehadiran</h4>
+              <p className="text-xs font-bold text-slate-400">Daftar member dengan izin, terlambat, dan alpha</p>
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex items-center gap-2">
+                <Calendar className="w-4 h-4 text-slate-400" />
+                <select
+                  value={attendanceMonth}
+                  onChange={(e) => setAttendanceMonth(e.target.value)}
+                  className="bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm font-bold outline-none focus:ring-2 focus:ring-blue-200"
+                >
+                  <option value="1">January</option>
+                  <option value="2">February</option>
+                  <option value="3">March</option>
+                  <option value="4">April</option>
+                  <option value="5">May</option>
+                  <option value="6">June</option>
+                  <option value="7">July</option>
+                  <option value="8">August</option>
+                  <option value="9">September</option>
+                  <option value="10">October</option>
+                  <option value="11">November</option>
+                  <option value="12">December</option>
+                </select>
+                <select
+                  value={attendanceYear}
+                  onChange={(e) => setAttendanceYear(e.target.value)}
+                  className="bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm font-bold outline-none focus:ring-2 focus:ring-blue-200"
+                >
+                  {Array.from({ length: 11 }, (_, i) => 2020 + i).map(year => (
+                    <option key={year} value={year}>{year}</option>
+                  ))}
+                </select>
+              </div>
+              <button
+                onClick={fetchAnalytics}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-sm font-black transition-all"
+              >
+                FILTER
+              </button>
+            </div>
+          </div>
+
+          {/* Status Filter Tabs */}
+          <div className="flex flex-wrap gap-2 mb-4">
+            <button
+              onClick={() => setAttendanceStatusFilter('all')}
+              className={`px-4 py-2 rounded-xl text-sm font-black transition-all ${
+                attendanceStatusFilter === 'all'
+                  ? 'bg-slate-800 text-white'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              }`}
+            >
+              All ({data?.attendanceDetails.length || 0})
+            </button>
+            <button
+              onClick={() => setAttendanceStatusFilter('leave')}
+              className={`px-4 py-2 rounded-xl text-sm font-black transition-all ${
+                attendanceStatusFilter === 'leave'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-blue-50 text-blue-600 hover:bg-blue-100'
+              }`}
+            >
+              Izin ({data?.attendanceDetails.filter(d => d.status === 'leave').length || 0})
+            </button>
+            <button
+              onClick={() => setAttendanceStatusFilter('late')}
+              className={`px-4 py-2 rounded-xl text-sm font-black transition-all ${
+                attendanceStatusFilter === 'late'
+                  ? 'bg-amber-600 text-white'
+                  : 'bg-amber-50 text-amber-600 hover:bg-amber-100'
+              }`}
+            >
+              Terlambat ({data?.attendanceDetails.filter(d => d.status === 'late').length || 0})
+            </button>
+            <button
+              onClick={() => setAttendanceStatusFilter('alpha')}
+              className={`px-4 py-2 rounded-xl text-sm font-black transition-all ${
+                attendanceStatusFilter === 'alpha'
+                  ? 'bg-red-600 text-white'
+                  : 'bg-red-50 text-red-600 hover:bg-red-100'
+              }`}
+            >
+              Alpha ({data?.attendanceDetails.filter(d => d.status === 'alpha').length || 0})
+            </button>
+          </div>
+
+          {/* Table */}
+          <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-slate-50 border-b border-slate-200">
+                  <tr>
+                    <th className="text-left px-4 py-3 text-xs font-black text-slate-600 uppercase tracking-wide">No</th>
+                    <th className="text-left px-4 py-3 text-xs font-black text-slate-600 uppercase tracking-wide">Nama</th>
+                    <th className="text-center px-4 py-3 text-xs font-black text-slate-600 uppercase tracking-wide">Tanggal</th>
+                    <th className="text-center px-4 py-3 text-xs font-black text-slate-600 uppercase tracking-wide">Jenis Kehadiran</th>
+                    <th className="text-left px-4 py-3 text-xs font-black text-slate-600 uppercase tracking-wide">Keterangan</th>
+                    <th className="text-center px-4 py-3 text-xs font-black text-slate-600 uppercase tracking-wide">Terlambat (menit)</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {(() => {
+                    const filteredDetails = data?.attendanceDetails.filter(d => {
+                      if (attendanceStatusFilter === 'all') return true;
+                      return d.status === attendanceStatusFilter;
+                    }) || [];
+
+                    if (filteredDetails.length === 0) {
+                      return (
+                        <tr>
+                          <td colSpan={6} className="px-4 py-12 text-center text-slate-400">
+                            Tidak ada data kehadiran untuk filter ini
+                          </td>
+                        </tr>
+                      );
+                    }
+
+                    return filteredDetails.map((detail, index) => {
+                      const getStatusBadge = () => {
+                        if (detail.status === 'late') {
+                          return (
+                            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-amber-100 text-amber-700 text-xs font-black">
+                              <Clock className="w-3 h-3" /> Terlambat
+                            </span>
+                          );
+                        }
+                        if (detail.status === 'leave') {
+                          return (
+                            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-blue-100 text-blue-700 text-xs font-black">
+                              <FileText className="w-3 h-3" /> Izin
+                            </span>
+                          );
+                        }
+                        if (detail.status === 'alpha') {
+                          return (
+                            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-red-100 text-red-700 text-xs font-black">
+                              <XCircle className="w-3 h-3" /> Alpha
+                            </span>
+                          );
+                        }
+                        return null;
+                      };
+
+                      const getKeterangan = () => {
+                        if (detail.status === 'late') {
+                          return detail.notes || '-';
+                        }
+                        if (detail.status === 'leave') {
+                          const reasonLabels: Record<string, string> = {
+                            sakit: 'Sakit',
+                            family_affairs: 'Urusan Keluarga',
+                            annual_leave: 'Cuti Tahunan',
+                            others: 'Lainnya',
+                          };
+                          return detail.leave_reason ? reasonLabels[detail.leave_reason] || detail.leave_reason : '-';
+                        }
+                        return detail.notes || '-';
+                      };
+
+                      return (
+                        <tr key={detail.id} className="hover:bg-slate-50 transition-colors">
+                          <td className="px-4 py-3 text-sm font-bold text-slate-700">{index + 1}</td>
+                          <td className="px-4 py-3">
+                            <div className="font-bold text-slate-800">{detail.member_name}</div>
+                            <div className="text-xs text-slate-500">{detail.team_name} • {detail.member_position}</div>
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            <span className="text-sm font-bold text-slate-700">
+                              {new Date(detail.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-center">{getStatusBadge()}</td>
+                          <td className="px-4 py-3 text-sm font-bold text-slate-700">{getKeterangan()}</td>
+                          <td className="px-4 py-3 text-center">
+                            {detail.status === 'late' ? (
+                              <span className="text-sm font-black text-amber-600">{detail.late_minutes} min</span>
+                            ) : (
+                              <span className="text-slate-300">-</span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    });
+                  })()}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       </div>
