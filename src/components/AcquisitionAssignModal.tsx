@@ -21,6 +21,7 @@ interface Acquisition {
   id?: string;
   member_id: string;
   date: string;
+  week?: number;
   product_key: string;
   quantity: number;
 }
@@ -88,11 +89,19 @@ export default function AcquisitionAssignModal({
     setIsSaving(true);
     setError(null);
     try {
+      // Calculate week from date
+      const dateObj = new Date(date);
+      const day = dateObj.getDate();
+      const firstDayOfMonth = new Date(dateObj.getFullYear(), dateObj.getMonth(), 1);
+      const firstDayWeekday = firstDayOfMonth.getDay();
+      const weekNum = Math.min(Math.ceil((day + firstDayWeekday) / 7), 4);
+
       const acquisitions: Omit<Acquisition, 'id'>[] = products
         .filter(p => p.is_active)
         .map(product => ({
           member_id: member.id,
           date,
+          week: weekNum,
           product_key: product.product_key,
           quantity: inputData[product.product_key] || 0
         }));

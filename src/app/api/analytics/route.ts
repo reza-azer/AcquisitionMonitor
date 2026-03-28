@@ -82,10 +82,25 @@ export async function GET(request: Request) {
     const memberIds = members.map(m => m.id);
     const filteredAcquisitions = acquisitions.filter(a => memberIds.includes(a.member_id));
 
+    // Helper to calculate week from date if not provided
+    const getWeekFromDate = (dateStr: string): number => {
+      const dateObj = new Date(dateStr);
+      const day = dateObj.getDate();
+      const firstDayOfMonth = new Date(dateObj.getFullYear(), dateObj.getMonth(), 1);
+      const firstDayWeekday = firstDayOfMonth.getDay();
+      return Math.min(Math.ceil((day + firstDayWeekday) / 7), 4);
+    };
+
+    // Normalize week field for all acquisitions
+    const normalizedAcquisitions = filteredAcquisitions.map(a => ({
+      ...a,
+      week: a.week || getWeekFromDate(a.date)
+    }));
+
     // Calculate weekly trends (all 4 weeks) - overall
     const weeklyTrends: { week: number; totalPoints: number; totalQuantity: number }[] = [];
     for (let w = 1; w <= 4; w++) {
-      const weekAcq = acquisitions.filter(a => a.week === w);
+      const weekAcq = normalizedAcquisitions.filter(a => a.week === w);
       let totalPoints = 0;
       let totalQuantity = 0;
       weekAcq.forEach(a => {
@@ -106,8 +121,8 @@ export async function GET(request: Request) {
     const teamWeeklyTrends = teams.map(team => {
       const teamMembers = members.filter(m => m.team_id === team.id);
       const teamMemberIds = teamMembers.map(m => m.id);
-      const teamAcquisitions = filteredAcquisitions.filter(a => teamMemberIds.includes(a.member_id));
-      
+      const teamAcquisitions = normalizedAcquisitions.filter(a => teamMemberIds.includes(a.member_id));
+
       const weeklyData: { week: number; [teamName: string]: number }[] = [];
       for (let w = 1; w <= 4; w++) {
         const weekAcq = teamAcquisitions.filter(a => a.week === w);
@@ -131,7 +146,7 @@ export async function GET(request: Request) {
     const teamPerformance = teams.map(team => {
       const teamMembers = members.filter(m => m.team_id === team.id);
       const teamMemberIds = teamMembers.map(m => m.id);
-      const teamAcquisitions = filteredAcquisitions.filter(a => teamMemberIds.includes(a.member_id));
+      const teamAcquisitions = normalizedAcquisitions.filter(a => teamMemberIds.includes(a.member_id));
       const teamAttendances = attendances.filter(a => teamMemberIds.includes(a.member_id));
       let totalPoints = 0;
       let totalQuantity = 0;
@@ -176,7 +191,7 @@ export async function GET(request: Request) {
 
     // Calculate member rankings
     const memberRankings = members.map(member => {
-      const memberAcquisitions = filteredAcquisitions.filter(a => a.member_id === member.id);
+      const memberAcquisitions = normalizedAcquisitions.filter(a => a.member_id === member.id);
       const memberAttendances = attendances.filter(a => a.member_id === member.id);
       let totalPoints = 0;
       let totalQuantity = 0;
