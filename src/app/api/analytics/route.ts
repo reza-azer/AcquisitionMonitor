@@ -82,19 +82,28 @@ export async function GET(request: Request) {
     const memberIds = members.map(m => m.id);
     const filteredAcquisitions = acquisitions.filter(a => memberIds.includes(a.member_id));
 
-    // Helper to calculate week from date if not provided
+    /**
+     * Calculate week of month from date (1-4)
+     * Formula: CEIL(day_of_month / 7)
+     * - Week 1: days 1-7
+     * - Week 2: days 8-14
+     * - Week 3: days 15-21
+     * - Week 4: days 22-31 (caps at 4)
+     * 
+     * This matches the acquisitions API and SQL migration calculation.
+     */
     const getWeekFromDate = (dateStr: string): number => {
       const dateObj = new Date(dateStr);
       const day = dateObj.getDate();
-      const firstDayOfMonth = new Date(dateObj.getFullYear(), dateObj.getMonth(), 1);
-      const firstDayWeekday = firstDayOfMonth.getDay();
-      return Math.min(Math.ceil((day + firstDayWeekday) / 7), 4);
+      // Simple ceiling division by 7
+      return Math.min(Math.ceil(day / 7), 4);
     };
 
     // Normalize week field for all acquisitions
+    // If week is null/undefined, calculate it from the date
     const normalizedAcquisitions = filteredAcquisitions.map(a => ({
       ...a,
-      week: a.week || getWeekFromDate(a.date)
+      week: a.week ?? getWeekFromDate(a.date)
     }));
 
     // Calculate weekly trends (all 4 weeks) - overall

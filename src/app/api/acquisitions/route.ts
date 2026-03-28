@@ -48,6 +48,8 @@ export async function POST(request: Request) {
     const inputDate = date || new Date().toISOString().split('T')[0];
 
     // Calculate week number within the month (1-4) if not provided
+    // Week calculation: Week 1 = days 1-7, Week 2 = days 8-14, Week 3 = days 15-21, Week 4 = days 22-31
+    // This matches the database migration and analytics API calculation
     const inputWeek = week || getWeekOfMonth(new Date(inputDate));
 
     const upsertData = {
@@ -74,7 +76,7 @@ export async function POST(request: Request) {
       console.error('[Acquisitions API] Upsert error:', error);
       throw error;
     }
-    
+
     console.log('[Acquisitions API] Upsert success:', data);
     return NextResponse.json(data, { status: 201 });
   } catch (error) {
@@ -83,16 +85,21 @@ export async function POST(request: Request) {
   }
 }
 
-// Helper function to calculate week of month (1-4)
+/**
+ * Calculate week of month from a date (1-4)
+ * Formula: CEIL(day_of_month / 7)
+ * - Week 1: days 1-7
+ * - Week 2: days 8-14
+ * - Week 3: days 15-21
+ * - Week 4: days 22-31 (caps at 4)
+ * 
+ * This matches the SQL migration calculation: CEIL(EXTRACT(DAY FROM date) / 7.0)
+ */
 function getWeekOfMonth(date: Date): number {
   const day = date.getDate();
-  const firstDayOfMonth = new Date(date.getFullYear(), date.getMonth(), 1);
-  const firstDayWeekday = firstDayOfMonth.getDay();
-  
-  // Calculate the week number within the month
-  const weekNum = Math.ceil((day + firstDayWeekday) / 7);
-  
-  // Ensure week is between 1 and 4
+  // Simple ceiling division by 7
+  const weekNum = Math.ceil(day / 7);
+  // Cap at 4 for days 29-31
   return Math.min(weekNum, 4);
 }
 
@@ -138,11 +145,17 @@ export async function PATCH(request: Request) {
     }
 
     const oldQuantity = existingData.quantity;
+    const updateDate = date || existingData.date;
+
+    // Recalculate week from date to ensure consistency
+    const updateWeek = getWeekOfMonth(new Date(updateDate));
 
     // Update the acquisition
     const { data, error } = await supabase
       .from('acquisitions')
       .update({
+        date: updateDate,
+        week: updateWeek,
         quantity,
         updated_at: new Date().toISOString()
       })
@@ -160,7 +173,7 @@ export async function PATCH(request: Request) {
       const auditLog = {
         member_id,
         member_name,
-        date,
+        date: updateDate,
         product_key,
         old_quantity: oldQuantity,
         new_quantity: quantity,
