@@ -40,8 +40,46 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { member_id, week, date, product_key, quantity } = body;
+    const { bulk, records, member_id, week, date, product_key, quantity } = body;
 
+    // Handle bulk operations
+    if (bulk && Array.isArray(records)) {
+      console.log('[Acquisitions API] Bulk POST received:', records.length, 'records');
+
+      // Prepare records with week calculation and updated_at
+      const upsertRecords = records.map((record: any) => {
+        const inputDate = record.date || new Date().toISOString().split('T')[0];
+        const inputWeek = record.week || getWeekOfMonth(new Date(inputDate));
+        return {
+          member_id: record.member_id,
+          week: inputWeek,
+          date: inputDate,
+          product_key: record.product_key,
+          quantity: record.quantity,
+          updated_at: new Date().toISOString()
+        };
+      });
+
+      console.log('[Acquisitions API] Bulk upserting:', upsertRecords.length, 'records');
+
+      // Bulk upsert using .upsert() with array
+      const { data, error } = await supabase
+        .from('acquisitions')
+        .upsert(upsertRecords, {
+          onConflict: 'member_id,date,product_key'
+        })
+        .select();
+
+      if (error) {
+        console.error('[Acquisitions API] Bulk upsert error:', error);
+        throw error;
+      }
+
+      console.log('[Acquisitions API] Bulk upsert success:', data?.length, 'records');
+      return NextResponse.json({ success: true, count: data?.length || 0, data }, { status: 201 });
+    }
+
+    // Handle single record
     console.log('[Acquisitions API] POST received:', { member_id, week, date, product_key, quantity });
 
     // Use today's date if not provided
@@ -107,7 +145,43 @@ export async function DELETE(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
+    const bulk = searchParams.get('bulk');
 
+    // Handle bulk delete
+    if (bulk === 'true') {
+      const body = await request.json();
+      const { records } = body;
+
+      if (!Array.isArray(records) || records.length === 0) {
+        return NextResponse.json({ error: 'Records array required' }, { status: 400 });
+      }
+
+      console.log('[Acquisitions API] Bulk DELETE received:', records.length, 'records');
+
+      // Build filter conditions for bulk delete
+      // We need to delete by (member_id, date) pairs
+      // Since Supabase doesn't support composite IN, we'll delete in batches
+      const deletePromises = records.map((record: { member_id: string; date: string }) =>
+        supabase
+          .from('acquisitions')
+          .delete()
+          .eq('member_id', record.member_id)
+          .eq('date', record.date)
+      );
+
+      const results = await Promise.all(deletePromises);
+      const errors = results.filter(r => r.error);
+
+      if (errors.length > 0) {
+        console.error('[Acquisitions API] Bulk delete errors:', errors);
+        throw new Error('Some deletions failed');
+      }
+
+      console.log('[Acquisitions API] Bulk delete success');
+      return NextResponse.json({ success: true, count: records.length });
+    }
+
+    // Handle single delete
     if (!id) {
       return NextResponse.json({ error: 'Acquisition ID required' }, { status: 400 });
     }

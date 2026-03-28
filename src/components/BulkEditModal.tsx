@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { X, CheckCircle, Clock, FileText, XCircle, Save, Users, Calendar } from 'lucide-react';
+import { X, CheckCircle, Clock, FileText, XCircle, Save, Users, Calendar, Package } from 'lucide-react';
 import GridLoader from './GridLoader';
 
 interface Member {
@@ -20,6 +20,18 @@ interface Team {
   accent_color: string;
 }
 
+interface Product {
+  product_key: string;
+  product_name: string;
+  category: 'FUNDING' | 'TRANSACTION' | 'CREDIT';
+  unit: string;
+  weekly_target: number;
+  is_tiered: boolean;
+  tier_config?: { limit: number; points: number }[];
+  flat_points?: number;
+  is_active: boolean;
+}
+
 interface Attendance {
   id?: string;
   member_id: string;
@@ -30,11 +42,19 @@ interface Attendance {
   notes?: string;
 }
 
+interface Acquisition {
+  member_id: string;
+  date: string;
+  product_key: string;
+  quantity: number;
+}
+
 interface BulkEditModalProps {
   isOpen: boolean;
   onClose: () => void;
   members: Member[];
   teams: Team[];
+  products?: Product[];
   mode?: 'attendance' | 'acquisition';
   onSave: (records: any[]) => Promise<void>;
   onDelete: (records: any[]) => Promise<void>;
@@ -59,6 +79,7 @@ export default function BulkEditModal({
   onClose,
   members,
   teams,
+  products = [],
   mode = 'attendance',
   onSave,
   onDelete,
@@ -66,10 +87,17 @@ export default function BulkEditModal({
   const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
+  
+  // Attendance fields
   const [status, setStatus] = useState<'present' | 'late' | 'leave' | 'alpha'>('present');
   const [lateMinutes, setLateMinutes] = useState<number>(0);
   const [leaveReason, setLeaveReason] = useState<string>('');
   const [notes, setNotes] = useState<string>('');
+  
+  // Acquisition fields
+  const [selectedProductKey, setSelectedProductKey] = useState<string>('');
+  const [quantity, setQuantity] = useState<number>(0);
+  
   const [isSaving, setIsSaving] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [editMode, setEditMode] = useState<'create' | 'delete'>('create');
@@ -95,6 +123,8 @@ export default function BulkEditModal({
       setNotes('');
       setSearchTerm('');
       setEditMode('create');
+      setSelectedProductKey('');
+      setQuantity(0);
     }
   }, [isOpen]);
 
@@ -154,10 +184,15 @@ export default function BulkEditModal({
       return;
     }
 
+    if (mode === 'acquisition' && editMode === 'create' && !selectedProductKey) {
+      alert('Pilih produk terlebih dahulu');
+      return;
+    }
+
     setIsSaving(true);
     try {
       const dates = getDateRange();
-      
+
       if (editMode === 'delete') {
         // Bulk delete
         const records: Pick<Attendance, 'member_id' | 'date'>[] = [];
@@ -169,25 +204,42 @@ export default function BulkEditModal({
         await onDelete(records);
       } else {
         // Bulk create/update
-        const records: Omit<Attendance, 'id'>[] = [];
-        dates.forEach(date => {
-          selectedMemberIds.forEach(memberId => {
-            records.push({
-              member_id: memberId,
-              date,
-              status,
-              ...(status === 'late' && { late_minutes: lateMinutes }),
-              ...(status === 'leave' && { leave_reason: leaveReason }),
-              notes: notes || undefined,
+        if (mode === 'acquisition') {
+          // Acquisition mode
+          const records: Omit<Acquisition, 'id'>[] = [];
+          dates.forEach(date => {
+            selectedMemberIds.forEach(memberId => {
+              records.push({
+                member_id: memberId,
+                date,
+                product_key: selectedProductKey,
+                quantity,
+              });
             });
           });
-        });
-        await onSave(records);
+          await onSave(records);
+        } else {
+          // Attendance mode
+          const records: Omit<Attendance, 'id'>[] = [];
+          dates.forEach(date => {
+            selectedMemberIds.forEach(memberId => {
+              records.push({
+                member_id: memberId,
+                date,
+                status,
+                ...(status === 'late' && { late_minutes: lateMinutes }),
+                ...(status === 'leave' && { leave_reason: leaveReason }),
+                notes: notes || undefined,
+              });
+            });
+          });
+          await onSave(records);
+        }
       }
-      
+
       handleClose();
     } catch (error) {
-      console.error('Failed to save bulk attendance:', error);
+      console.error('Failed to save bulk data:', error);
     } finally {
       setIsSaving(false);
     }
@@ -357,85 +409,130 @@ export default function BulkEditModal({
             )}
           </div>
 
-          {/* Step 3: Status */}
-          <div>
-            <label className="text-xs font-black text-slate-500 uppercase tracking-widest block mb-3">
-              3. Status Kehadiran
-            </label>
-            <div className="grid grid-cols-2 gap-2">
-              {statusOptions.map((option) => {
-                const Icon = option.icon;
-                const isSelected = status === option.value;
-                return (
-                  <button
-                    key={option.value}
-                    onClick={() => setStatus(option.value as any)}
-                    className={`
-                      p-3 rounded-xl border-2 transition-all flex items-center gap-2
-                      ${isSelected
-                        ? `${option.bg} ${option.border} ${option.color}`
-                        : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300'
-                      }
-                    `}
+          {/* Step 3: Mode-specific fields */}
+          {mode === 'acquisition' ? (
+            <>
+              {/* Product Selection */}
+              <div className="bg-purple-50 rounded-2xl p-4 border border-purple-200">
+                <div className="flex items-center gap-2 mb-3">
+                  <Package className="w-5 h-5 text-purple-600" />
+                  <label className="text-sm font-black text-purple-800">
+                    3. Pilih Produk
+                  </label>
+                </div>
+
+                <select
+                  value={selectedProductKey}
+                  onChange={(e) => setSelectedProductKey(e.target.value)}
+                  className="w-full bg-white border border-purple-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:ring-2 focus:ring-purple-200"
+                >
+                  <option value="">-- Pilih Produk --</option>
+                  {products.filter(p => p.is_active).map(product => (
+                    <option key={product.product_key} value={product.product_key}>
+                      {product.product_name} ({product.unit})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Quantity Input */}
+              <div>
+                <label className="text-xs font-black text-slate-500 uppercase tracking-widest block mb-2">
+                  4. Jumlah
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  value={quantity}
+                  onChange={(e) => setQuantity(parseInt(e.target.value) || 0)}
+                  className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:ring-2 focus:ring-purple-200"
+                  placeholder="0"
+                />
+              </div>
+            </>
+          ) : (
+            <>
+              {/* Status Selection (Attendance mode) */}
+              <div>
+                <label className="text-xs font-black text-slate-500 uppercase tracking-widest block mb-3">
+                  3. Status Kehadiran
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  {statusOptions.map((option) => {
+                    const Icon = option.icon;
+                    const isSelected = status === option.value;
+                    return (
+                      <button
+                        key={option.value}
+                        onClick={() => setStatus(option.value as any)}
+                        className={`
+                          p-3 rounded-xl border-2 transition-all flex items-center gap-2
+                          ${isSelected
+                            ? `${option.bg} ${option.border} ${option.color}`
+                            : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300'
+                          }
+                        `}
+                      >
+                        <Icon className={`w-5 h-5 ${isSelected ? '' : 'text-slate-400'}`} />
+                        <span className="text-xs font-black">{option.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Conditional Fields */}
+              {status === 'late' && (
+                <div className="animate-in fade-in slide-in-from-top-2">
+                  <label className="text-xs font-black text-slate-500 uppercase tracking-widest block mb-2">
+                    Menit Terlambat
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={lateMinutes}
+                    onChange={(e) => setLateMinutes(parseInt(e.target.value) || 0)}
+                    className="w-full bg-white border border-yellow-300 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:ring-2 focus:ring-yellow-200"
+                    placeholder="0"
+                  />
+                </div>
+              )}
+
+              {status === 'leave' && (
+                <div className="animate-in fade-in slide-in-from-top-2">
+                  <label className="text-xs font-black text-slate-500 uppercase tracking-widest block mb-2">
+                    Alasan Izin
+                  </label>
+                  <select
+                    value={leaveReason}
+                    onChange={(e) => setLeaveReason(e.target.value)}
+                    className="w-full bg-white border border-blue-300 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:ring-2 focus:ring-blue-200"
                   >
-                    <Icon className={`w-5 h-5 ${isSelected ? '' : 'text-slate-400'}`} />
-                    <span className="text-xs font-black">{option.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+                    <option value="">-- Pilih Alasan --</option>
+                    {leaveReasons.map((reason) => (
+                      <option key={reason.value} value={reason.value}>
+                        {reason.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
-          {/* Conditional Fields */}
-          {status === 'late' && (
-            <div className="animate-in fade-in slide-in-from-top-2">
-              <label className="text-xs font-black text-slate-500 uppercase tracking-widest block mb-2">
-                Menit Terlambat
-              </label>
-              <input
-                type="number"
-                min="0"
-                value={lateMinutes}
-                onChange={(e) => setLateMinutes(parseInt(e.target.value) || 0)}
-                className="w-full bg-white border border-yellow-300 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:ring-2 focus:ring-yellow-200"
-                placeholder="0"
-              />
-            </div>
+              {/* Notes */}
+              <div>
+                <label className="text-xs font-black text-slate-500 uppercase tracking-widest block mb-2">
+                  Catatan (Opsional)
+                </label>
+                <textarea
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:ring-2 focus:ring-blue-200 resize-none"
+                  rows={2}
+                  placeholder="Tambahkan catatan..."
+                />
+              </div>
+            </>
           )}
-
-          {status === 'leave' && (
-            <div className="animate-in fade-in slide-in-from-top-2">
-              <label className="text-xs font-black text-slate-500 uppercase tracking-widest block mb-2">
-                Alasan Izin
-              </label>
-              <select
-                value={leaveReason}
-                onChange={(e) => setLeaveReason(e.target.value)}
-                className="w-full bg-white border border-blue-300 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:ring-2 focus:ring-blue-200"
-              >
-                <option value="">-- Pilih Alasan --</option>
-                {leaveReasons.map((reason) => (
-                  <option key={reason.value} value={reason.value}>
-                    {reason.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-
-          {/* Notes */}
-          <div>
-            <label className="text-xs font-black text-slate-500 uppercase tracking-widest block mb-2">
-              Catatan (Opsional)
-            </label>
-            <textarea
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:ring-2 focus:ring-blue-200 resize-none"
-              rows={2}
-              placeholder="Tambahkan catatan..."
-            />
-          </div>
 
           {/* Summary */}
           {affectedRecordsCount > 0 && (

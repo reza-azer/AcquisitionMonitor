@@ -1051,6 +1051,8 @@ export default function InputAcquisition({ products, teams, members }: InputAcqu
         onClose={() => setIsBulkEditModalOpen(false)}
         members={members}
         teams={teams}
+        products={products}
+        mode={calendarMode}
         onSave={calendarMode === 'acquisition' ? handleBulkSaveAcquisitions : handleBulkSaveAttendance}
         onDelete={calendarMode === 'acquisition' ? handleBulkDeleteAcquisitions : handleBulkDeleteAttendance}
       />
