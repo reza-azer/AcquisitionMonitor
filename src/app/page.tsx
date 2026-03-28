@@ -18,6 +18,7 @@ import { useAutoSave } from '@/hooks/useAutoSave';
 import DashboardAnalytics from '@/components/DashboardAnalytics';
 import DataBackup from '@/components/DataBackup';
 import InputAcquisition from '@/components/InputAcquisition';
+import Skeleton, { SkeletonCard, SkeletonStatsCard, SkeletonTable, SkeletonAvatar, SkeletonText } from '@/components/Skeleton';
 
 // --- KONFIGURASI POIN & TARGET ---
 type TieredProduct = { name: string; unit: string; type: 'tiered'; tiers: { limit: number; p: number }[] };
@@ -656,11 +657,93 @@ export default function App() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <div className="text-center">
-          <GridLoader pattern="frame" size="lg" color="#FDB813" mode="stagger" />
-          <p className="text-slate-500 font-bold mt-4">Loading data...</p>
-        </div>
+      <div className="min-h-screen bg-slate-50 font-sans text-slate-900 pb-20">
+        <header className="bg-[#003d79] text-white sticky top-0 z-50 shadow-lg border-b-4 border-[#FDB813]">
+          <div className="max-w-[95%] lg:max-w-7xl mx-auto px-3 sm:px-4 md:px-6 h-14 sm:h-16 flex items-center justify-between">
+            <div className="flex items-center gap-2 sm:gap-4">
+              <Skeleton variant="rectangular" width="120px" height="24px" />
+            </div>
+          </div>
+        </header>
+
+        <main className="max-w-[95%] lg:max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-4 sm:py-6 md:py-8">
+          {/* Export Button Skeleton */}
+          <div className="mb-4 sm:mb-6 md:mb-8">
+            <Skeleton variant="rectangular" width="140px" height="40px" className="rounded-xl" />
+          </div>
+
+          {/* Navigation Bar Skeleton */}
+          <div className="sticky top-[60px] sm:top-[68px] z-30 bg-slate-50/9 backdrop-blur-[8px] pb-4 -mx-4 sm:-mx-6 md:-mx-8 px-4 sm:px-6 md:px-8 pt-4">
+            <div className="bg-white rounded-[20px] sm:rounded-[30px] md:rounded-[40px] p-4 sm:p-6 md:p-8 border border-slate-200 shadow-lg">
+              <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 lg:gap-6">
+                <div className="flex items-center gap-2 sm:gap-4 w-full lg:w-auto">
+                  <Skeleton variant="circular" width="40px" height="40px" />
+                  <Skeleton variant="text" width="120px" height="24px" />
+                  <Skeleton variant="circular" width="40px" height="40px" />
+                </div>
+                <div className="flex items-center gap-2 sm:gap-3 w-full lg:w-auto justify-between lg:justify-end">
+                  <Skeleton variant="rectangular" width="160px" height="40px" className="rounded-xl" />
+                  <div className="hidden md:flex gap-1">
+                    {[1, 2, 3, 4].map(w => (
+                      <Skeleton key={w} variant="circular" width="60px" height="36px" />
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Team Cards Skeleton */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mt-8">
+            {[1, 2, 3, 4, 5, 6].map(i => (
+              <div key={i} className="rounded-[32px] border border-slate-200 shadow-sm overflow-hidden">
+                <div className="h-32 w-full bg-slate-200 animate-pulse" />
+                <div className="p-6 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <Skeleton variant="text" width="80px" height="32px" />
+                    <Skeleton variant="circular" width="40px" height="40px" />
+                  </div>
+                  <div className="bg-slate-100 rounded-2xl p-4">
+                    <Skeleton variant="text" width="100px" height="16px" className="mb-3" />
+                    <div className="grid grid-cols-3 gap-2">
+                      {[1, 2, 3, 4, 5, 6].map(j => (
+                        <Skeleton key={j} variant="rectangular" width="100%" height="50px" className="rounded-xl" />
+                      ))}
+                    </div>
+                  </div>
+                  <div className="space-y-3">
+                    {[1, 2, 3].map(j => (
+                      <div key={j} className="flex items-center gap-3">
+                        <Skeleton variant="circular" width="40px" height="40px" />
+                        <div className="flex-1">
+                          <Skeleton variant="text" width="120px" height="16px" className="mb-1" />
+                          <Skeleton variant="text" width="80px" height="12px" />
+                        </div>
+                        <Skeleton variant="text" width="30px" height="20px" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Global Progress Skeleton */}
+          <div className="bg-white rounded-[40px] p-8 border border-slate-200 shadow-sm mt-8">
+            <div className="mb-10">
+              <Skeleton variant="text" width="200px" height="24px" className="mb-2" />
+              <Skeleton variant="text" width="150px" height="14px" />
+            </div>
+            <div className="grid grid-cols-4 sm:grid-cols-7 gap-8">
+              {[1, 2, 3, 4, 5, 6, 7].map(i => (
+                <div key={i} className="flex flex-col items-center">
+                  <Skeleton variant="circular" width="64px" height="64px" className="mb-3" />
+                  <Skeleton variant="text" width="40px" height="12px" />
+                </div>
+              ))}
+            </div>
+          </div>
+        </main>
       </div>
     );
   }
@@ -1591,7 +1674,7 @@ export default function App() {
           <div className="space-y-8 animate-in slide-in-from-bottom-4 duration-500">
             {/* Product Management */}
             <div className="bg-white rounded-[40px] p-8 border border-slate-200 shadow-sm">
-              <ProductManager products={products} onSaveProducts={setProducts} />
+              <ProductManager products={products} onSaveProducts={setProducts} isLoading={isLoading} />
             </div>
 
             {/* Control Center - Team Management Only */}

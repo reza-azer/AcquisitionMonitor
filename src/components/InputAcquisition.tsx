@@ -18,6 +18,7 @@ import {
   Users,
 } from 'lucide-react';
 import GridLoader from '@/components/GridLoader';
+import Skeleton, { SkeletonCard, SkeletonTable } from '@/components/Skeleton';
 import AcquisitionCalendar from './AcquisitionCalendar';
 import AcquisitionAssignModal from './AcquisitionAssignModal';
 import AttendanceCalendar from './AttendanceCalendar';
@@ -796,12 +797,25 @@ export default function InputAcquisition({ products, teams, members }: InputAcqu
 
           {/* Calendar */}
           <div className="relative">
-            {isLoadingExistingData && calendarMode === 'acquisition' && (
-              <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10">
-                <GridLoader pattern="edge-cw" size="lg" color="#FDB813" mode="stagger" />
+            {isLoadingExistingData && calendarMode === 'acquisition' ? (
+              <div className="bg-white border border-slate-200 rounded-2xl p-6 space-y-4">
+                <div className="flex items-center justify-between">
+                  <Skeleton variant="circular" width="40px" height="40px" />
+                  <Skeleton variant="text" width="120px" height="20px" />
+                  <Skeleton variant="circular" width="40px" height="40px" />
+                </div>
+                <div className="grid grid-cols-7 gap-2">
+                  {[1, 2, 3, 4, 5, 6, 7].map(i => (
+                    <Skeleton key={i} variant="text" width="30px" height="14px" />
+                  ))}
+                </div>
+                <div className="grid grid-cols-7 gap-2">
+                  {Array.from({ length: 35 }).map((_, i) => (
+                    <Skeleton key={i} variant="rounded" width="100%" height="60px" />
+                  ))}
+                </div>
               </div>
-            )}
-            {calendarMode === 'acquisition' ? (
+            ) : calendarMode === 'acquisition' ? (
               <AcquisitionCalendar
                 key={selectedMemberId}
                 member={selectedMember || null}
@@ -960,8 +974,22 @@ export default function InputAcquisition({ products, teams, members }: InputAcqu
             </div>
 
             {isLoadingHistory ? (
-              <div className="flex justify-center py-8">
-                <GridLoader pattern="edge-cw" size="md" color="#64748b" mode="stagger" />
+              <div className="space-y-3">
+                {[1, 2, 3, 4, 5].map(i => (
+                  <div key={i} className="p-3 bg-slate-50 rounded-xl border border-slate-100 space-y-2">
+                    <div className="flex items-start justify-between">
+                      <div className="space-y-2 flex-1">
+                        <Skeleton variant="text" width="120px" height="14px" />
+                        <Skeleton variant="text" width="80px" height="12px" />
+                      </div>
+                      <div className="space-y-2">
+                        <Skeleton variant="text" width="80px" height="14px" />
+                        <Skeleton variant="text" width="60px" height="12px" />
+                      </div>
+                    </div>
+                    <Skeleton variant="text" width="100px" height="12px" />
+                  </div>
+                ))}
               </div>
             ) : auditLogs.length === 0 ? (
               <div className="text-center py-8 text-slate-400 text-sm">

@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { User, Search, Calendar as CalendarIcon, Users } from 'lucide-react';
 import GridLoader from '@/components/GridLoader';
+import Skeleton from '@/components/Skeleton';
 import AttendanceAssignModal from './AttendanceAssignModal';
 import BulkEditModal from './BulkEditModal';
 
@@ -246,7 +247,28 @@ export default function AttendanceManager({ members, teams }: AttendanceManagerP
         </div>
 
         {/* Selected Member Info */}
-        {selectedMember && (
+        {selectedMember && isLoading ? (
+          <div className="space-y-4">
+            {/* Calendar Skeleton */}
+            <div className="bg-white border border-slate-200 rounded-2xl p-6">
+              <div className="flex items-center justify-between mb-4">
+                <Skeleton variant="circular" width="40px" height="40px" />
+                <Skeleton variant="text" width="120px" height="20px" />
+                <Skeleton variant="circular" width="40px" height="40px" />
+              </div>
+              <div className="grid grid-cols-7 gap-2">
+                {[1, 2, 3, 4, 5, 6, 7].map(i => (
+                  <Skeleton key={i} variant="text" width="30px" height="14px" />
+                ))}
+              </div>
+              <div className="grid grid-cols-7 gap-2 mt-2">
+                {Array.from({ length: 35 }).map((_, i) => (
+                  <Skeleton key={i} variant="rounded" width="100%" height="40px" />
+                ))}
+              </div>
+            </div>
+          </div>
+        ) : selectedMember && (
           <div className="flex items-center gap-3 bg-blue-50 rounded-xl p-4 border border-blue-100">
             <div className="w-10 h-10 rounded-full bg-blue-200 flex items-center justify-center text-blue-700 font-black">
               {selectedMember.name.charAt(0).toUpperCase()}

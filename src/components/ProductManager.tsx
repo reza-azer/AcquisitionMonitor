@@ -15,6 +15,7 @@ import {
   Award,
 } from 'lucide-react';
 import GridLoader from '@/components/GridLoader';
+import Skeleton from '@/components/Skeleton';
 
 interface Product {
   id?: string;
@@ -32,6 +33,7 @@ interface Product {
 interface ProductManagerProps {
   products: Product[];
   onSaveProducts: (products: Product[]) => void;
+  isLoading?: boolean;
 }
 
 const CATEGORY_COLORS = {
@@ -40,7 +42,7 @@ const CATEGORY_COLORS = {
   CREDIT: 'bg-purple-100 text-purple-700 border-purple-200',
 };
 
-export default function ProductManager({ products, onSaveProducts }: ProductManagerProps) {
+export default function ProductManager({ products, onSaveProducts, isLoading = false }: ProductManagerProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -228,7 +230,38 @@ export default function ProductManager({ products, onSaveProducts }: ProductMana
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {products.length === 0 ? (
+              {isLoading ? (
+                <>
+                  {[1, 2, 3, 4, 5].map((i) => (
+                    <tr key={i}>
+                      <td className="px-4 py-3">
+                        <div className="space-y-2">
+                          <Skeleton variant="text" width="180px" height="16px" />
+                          <Skeleton variant="text" width="80px" height="12px" />
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <Skeleton variant="rectangular" width="80px" height="24px" className="rounded-full" />
+                      </td>
+                      <td className="px-4 py-3">
+                        <Skeleton variant="text" width="60px" height="14px" />
+                      </td>
+                      <td className="text-center px-4 py-3">
+                        <Skeleton variant="text" width="50px" height="16px" />
+                      </td>
+                      <td className="text-center px-4 py-3">
+                        <Skeleton variant="text" width="60px" height="14px" />
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center justify-center gap-2">
+                          <Skeleton variant="circular" width="32px" height="32px" />
+                          <Skeleton variant="circular" width="32px" height="32px" />
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </>
+              ) : products.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="px-4 py-12 text-center text-slate-400">
                     No products configured. Click "Add Product" to create one.

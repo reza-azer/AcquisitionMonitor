@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Scatter } from 'recharts';
 import GridLoader from './GridLoader';
+import Skeleton, { SkeletonStatsCard, SkeletonCard } from './Skeleton';
 
 interface WeeklyTrend {
   week: number;
@@ -281,8 +282,105 @@ export default function DashboardAnalytics() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <GridLoader pattern="edge-cw" size="lg" color="#FDB813" mode="stagger" />
+      <div className="space-y-8">
+        {/* Header Skeleton */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div className="space-y-2">
+            <Skeleton variant="text" width="200px" height="28px" />
+            <Skeleton variant="text" width="120px" height="16px" />
+          </div>
+          <div className="flex items-center gap-3">
+            <Skeleton variant="rectangular" width="120px" height="42px" className="rounded-xl" />
+            <Skeleton variant="rectangular" width="120px" height="42px" className="rounded-xl" />
+            <Skeleton variant="rectangular" width="140px" height="42px" className="rounded-xl" />
+          </div>
+        </div>
+
+        {/* Summary Cards Skeleton */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map(i => (
+            <SkeletonStatsCard key={i} />
+          ))}
+        </div>
+
+        {/* Key Insights Skeleton */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {[1, 2, 3].map(i => (
+            <div key={i} className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-4">
+              <div className="flex items-center gap-2">
+                <Skeleton variant="circular" width="40px" height="40px" />
+                <div className="space-y-2">
+                  <Skeleton variant="text" width="100px" height="16px" />
+                  <Skeleton variant="text" width="80px" height="12px" />
+                </div>
+              </div>
+              <div className="flex items-center gap-4">
+                <Skeleton variant="circular" width="56px" height="56px" />
+                <div className="space-y-2">
+                  <Skeleton variant="text" width="120px" height="16px" />
+                  <Skeleton variant="text" width="80px" height="12px" />
+                  <Skeleton variant="text" width="60px" height="14px" />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Attendance Summary Skeleton */}
+        <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm">
+          <div className="flex items-center gap-3 mb-6">
+            <Skeleton variant="circular" width="40px" height="40px" />
+            <div className="space-y-2">
+              <Skeleton variant="text" width="140px" height="18px" />
+              <Skeleton variant="text" width="100px" height="12px" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {[1, 2, 3, 4].map(i => (
+              <div key={i} className="bg-slate-50 rounded-2xl p-5 border border-slate-100 space-y-3">
+                <div className="flex items-center gap-2">
+                  <Skeleton variant="circular" width="20px" height="20px" />
+                  <Skeleton variant="text" width="60px" height="12px" />
+                </div>
+                <Skeleton variant="text" width="50px" height="28px" />
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Charts Skeleton */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {[1, 2].map(i => (
+            <div key={i} className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-4">
+              <div className="flex items-center gap-2">
+                <Skeleton variant="circular" width="32px" height="32px" />
+                <Skeleton variant="text" width="140px" height="18px" />
+              </div>
+              <Skeleton variant="rectangular" width="100%" height="250px" className="rounded-xl" />
+            </div>
+          ))}
+        </div>
+
+        {/* Tables Skeleton */}
+        <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-4">
+          <div className="flex items-center gap-2">
+            <Skeleton variant="circular" width="32px" height="32px" />
+            <Skeleton variant="text" width="140px" height="18px" />
+          </div>
+          <div className="space-y-3">
+            {[1, 2, 3, 4, 5].map(j => (
+              <div key={j} className="flex items-center gap-4">
+                <Skeleton variant="text" width="24px" height="14px" />
+                <Skeleton variant="circular" width="32px" height="32px" />
+                <div className="flex-1">
+                  <Skeleton variant="text" width="140px" height="16px" className="mb-1" />
+                  <Skeleton variant="text" width="80px" height="12px" />
+                </div>
+                <Skeleton variant="text" width="60px" height="20px" />
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     );
   }
