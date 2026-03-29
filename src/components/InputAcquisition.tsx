@@ -62,6 +62,7 @@ interface Acquisition {
   week?: number;
   product_key: string;
   quantity: number;
+  nominal?: number;  // For CREDIT products: nominal in millions
   updated_at?: string;
 }
 
@@ -87,7 +88,7 @@ export default function InputAcquisition({ products, teams, members }: InputAcqu
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [selectedMemberId, setSelectedMemberId] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState('');
-  const [inputData, setInputData] = useState<Record<string, number>>({});
+  const [inputData, setInputData] = useState<Record<string, number | { quantity: number; nominal: number }>>({});
   const [isSaving, setIsSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [error, setError] = useState<string | null>(null);
@@ -211,9 +212,16 @@ export default function InputAcquisition({ products, teams, members }: InputAcqu
       if (res.ok) {
         const data = await res.json();
         setExistingAcquisitions(data);
-        const existingData: Record<string, number> = {};
+        const existingData: Record<string, number | { quantity: number; nominal: number }> = {};
         data.forEach((item: Acquisition) => {
-          existingData[item.product_key] = item.quantity;
+          const product = products.find(p => p.product_key === item.product_key);
+          if (product?.category === 'CREDIT') {
+            // For CREDIT: store both quantity and nominal
+            existingData[item.product_key] = { quantity: item.quantity, nominal: item.nominal || 0 };
+          } else {
+            // For FUNDING/TRANSACTION: store just quantity
+            existingData[item.product_key] = item.quantity;
+          }
         });
         setInputData(existingData);
       }
@@ -222,7 +230,7 @@ export default function InputAcquisition({ products, teams, members }: InputAcqu
     } finally {
       setIsLoadingExistingData(false);
     }
-  }, [selectedMemberId, selectedDate]);
+  }, [selectedMemberId, selectedDate, products]);
 
   useEffect(() => {
     loadExistingAcquisitions();
@@ -290,12 +298,30 @@ export default function InputAcquisition({ products, teams, members }: InputAcqu
     }
   }, [calendarMode, loadAttendances]);
 
-  const handleInputChange = (productKey: string, value: string) => {
-    const qty = parseInt(value) || 0;
-    setInputData(prev => ({
-      ...prev,
-      [productKey]: qty
-    }));
+  const handleInputChange = (productKey: string, value: string, field: 'quantity' | 'nominal' = 'quantity') => {
+    const val = parseInt(value) || 0;
+    setInputData(prev => {
+      const currentValue = prev[productKey];
+      const product = products.find(p => p.product_key === productKey);
+      
+      if (product?.category === 'CREDIT') {
+        // For CREDIT: maintain both quantity and nominal
+        const currentObj = typeof currentValue === 'object' ? currentValue : { quantity: 0, nominal: 0 };
+        return {
+          ...prev,
+          [productKey]: {
+            ...currentObj,
+            [field]: val
+          }
+        };
+      } else {
+        // For FUNDING/TRANSACTION: just quantity
+        return {
+          ...prev,
+          [productKey]: val
+        };
+      }
+    });
     setSaveStatus('idle');
     setError(null);
   };

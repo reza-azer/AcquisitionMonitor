@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { X, Package, Save, Trash2, AlertCircle } from 'lucide-react';
+import { X, Package, Save, Trash2, AlertCircle, Plus } from 'lucide-react';
 import GridLoader from './GridLoader';
 
 interface Product {
@@ -24,6 +24,12 @@ interface Acquisition {
   week?: number;
   product_key: string;
   quantity: number;
+  nominal?: number;  // For CREDIT products: nominal in millions
+}
+
+interface CreditAcquisitionEntry {
+  id?: string;
+  nominal: number;
 }
 
 interface AcquisitionAssignModalProps {
@@ -47,7 +53,11 @@ export default function AcquisitionAssignModal({
   onSave,
   onDelete,
 }: AcquisitionAssignModalProps) {
-  const [inputData, setInputData] = useState<Record<string, number>>({});
+  // For FUNDING/TRANSACTION: product_key -> quantity
+  const [quantityData, setQuantityData] = useState<Record<string, number>>({});
+  // For CREDIT: product_key -> array of acquisitions
+  const [creditAcquisitions, setCreditAcquisitions] = useState<Record<string, CreditAcquisitionEntry[]>>({});
+  
   const [isSaving, setIsSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [error, setError] = useState<string | null>(null);
@@ -56,32 +66,101 @@ export default function AcquisitionAssignModal({
   // Initialize input data from existing acquisitions
   useEffect(() => {
     if (existingAcquisitions.length > 0) {
-      const data: Record<string, number> = {};
+      const qtyData: Record<string, number> = {};
+      const creditData: Record<string, CreditAcquisitionEntry[]> = {};
+
       existingAcquisitions.forEach(acq => {
-        data[acq.product_key] = acq.quantity;
+        const product = products.find(p => p.product_key === acq.product_key);
+        if (product?.category === 'CREDIT') {
+          // For CREDIT: group by product_key, each entry is separate
+          if (!creditData[acq.product_key]) {
+            creditData[acq.product_key] = [];
+          }
+          creditData[acq.product_key].push({
+            id: acq.id,
+            nominal: acq.nominal || 0
+          });
+        } else {
+          // For FUNDING/TRANSACTION: just quantity
+          qtyData[acq.product_key] = acq.quantity;
+        }
       });
-      setInputData(data);
+
+      setQuantityData(qtyData);
+      setCreditAcquisitions(creditData);
     } else {
-      setInputData({});
+      setQuantityData({});
+      setCreditAcquisitions({});
     }
     setSaveStatus('idle');
     setError(null);
-  }, [existingAcquisitions, isOpen]);
+  }, [existingAcquisitions, isOpen, products]);
 
-  const handleInputChange = (productKey: string, value: string) => {
-    const qty = parseInt(value) || 0;
-    setInputData(prev => ({
+  // Handle quantity change for FUNDING/TRANSACTION
+  const handleQuantityChange = (productKey: string, value: string) => {
+    const val = parseInt(value) || 0;
+    setQuantityData(prev => ({
       ...prev,
-      [productKey]: qty
+      [productKey]: val
     }));
     setSaveStatus('idle');
     setError(null);
   };
 
-  const hasChanges = Object.values(inputData).some(qty => {
-    const existing = existingAcquisitions.find(a => a.product_key === Object.keys(inputData)[0]);
-    return qty !== (existing?.quantity || 0);
-  });
+  // Add new acquisition entry for CREDIT
+  const addCreditAcquisition = (productKey: string) => {
+    setCreditAcquisitions(prev => ({
+      ...prev,
+      [productKey]: [
+        ...(prev[productKey] || []),
+        { nominal: 0 }
+      ]
+    }));
+    setSaveStatus('idle');
+    setError(null);
+  };
+
+  // Update acquisition entry nominal for CREDIT
+  const updateCreditAcquisition = (productKey: string, index: number, nominal: number) => {
+    setCreditAcquisitions(prev => ({
+      ...prev,
+      [productKey]: prev[productKey]?.map((entry, i) => 
+        i === index ? { ...entry, nominal } : entry
+      ) || []
+    }));
+    setSaveStatus('idle');
+    setError(null);
+  };
+
+  // Delete acquisition entry for CREDIT
+  const deleteCreditAcquisition = async (productKey: string, index: number) => {
+    const entry = creditAcquisitions[productKey]?.[index];
+    if (!entry?.id) {
+      // New entry (not saved yet), just remove from state
+      setCreditAcquisitions(prev => ({
+        ...prev,
+        [productKey]: prev[productKey]?.filter((_, i) => i !== index) || []
+      }));
+      return;
+    }
+
+    const product = products.find(p => p.product_key === productKey);
+    if (!window.confirm(`Hapus akuisisi ${product?.product_name || productKey} sebesar ${entry.nominal} Juta?`)) return;
+
+    setDeletingId(entry.id);
+    try {
+      await onDelete(entry.id);
+      setCreditAcquisitions(prev => ({
+        ...prev,
+        [productKey]: prev[productKey]?.filter((_, i) => i !== index) || []
+      }));
+    } catch (err: any) {
+      console.error('Failed to delete acquisition:', err);
+      setError(err.message);
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   const handleSave = async () => {
     if (!member || !date) return;
@@ -96,15 +175,38 @@ export default function AcquisitionAssignModal({
       const firstDayWeekday = firstDayOfMonth.getDay();
       const weekNum = Math.min(Math.ceil((day + firstDayWeekday) / 7), 4);
 
-      const acquisitions: Omit<Acquisition, 'id'>[] = products
-        .filter(p => p.is_active)
-        .map(product => ({
-          member_id: member.id,
-          date,
-          week: weekNum,
-          product_key: product.product_key,
-          quantity: inputData[product.product_key] || 0
-        }));
+      const acquisitions: Omit<Acquisition, 'id'>[] = [];
+
+      products.filter(p => p.is_active).forEach(product => {
+        if (product.category === 'CREDIT') {
+          // For CREDIT: each entry becomes a separate row
+          const entries = creditAcquisitions[product.product_key] || [];
+          entries.forEach(entry => {
+            if (entry.nominal > 0) {
+              acquisitions.push({
+                member_id: member.id,
+                date,
+                week: weekNum,
+                product_key: product.product_key,
+                quantity: 1,  // Always 1 per entry
+                nominal: entry.nominal
+              });
+            }
+          });
+        } else {
+          // For FUNDING/TRANSACTION: single row with quantity
+          const qty = quantityData[product.product_key] || 0;
+          if (qty > 0) {
+            acquisitions.push({
+              member_id: member.id,
+              date,
+              week: weekNum,
+              product_key: product.product_key,
+              quantity: qty
+            });
+          }
+        }
+      });
 
       await onSave(acquisitions);
       setSaveStatus('success');
@@ -117,30 +219,6 @@ export default function AcquisitionAssignModal({
       setSaveStatus('error');
     } finally {
       setIsSaving(false);
-    }
-  };
-
-  const handleDeleteSingle = async (productKey: string) => {
-    const existing = existingAcquisitions.find(a => a.product_key === productKey);
-    if (!existing?.id) return;
-
-    const product = products.find(p => p.product_key === productKey);
-    if (!window.confirm(`Hapus ${product?.product_name || productKey}?`)) return;
-
-    setDeletingId(existing.id);
-    try {
-      await onDelete(existing.id);
-      // Remove from input data
-      setInputData(prev => {
-        const newData = { ...prev };
-        delete newData[productKey];
-        return newData;
-      });
-    } catch (err: any) {
-      console.error('Failed to delete acquisition:', err);
-      setError(err.message);
-    } finally {
-      setDeletingId(null);
     }
   };
 
@@ -224,58 +302,98 @@ export default function AcquisitionAssignModal({
             <label className="text-xs font-black text-slate-500 uppercase tracking-widest block mb-3">
               Input Produk
             </label>
-            <div className="space-y-3">
+            <div className="space-y-4">
               {products.filter(p => p.is_active).map(product => {
-                const existingQty = inputData[product.product_key] || 0;
+                const isCredit = product.category === 'CREDIT';
+                const entries = isCredit ? (creditAcquisitions[product.product_key] || []) : [];
+                const quantity = quantityData[product.product_key] || 0;
                 const hasExistingData = existingAcquisitions.some(a => a.product_key === product.product_key);
-                
+                const totalNominal = entries.reduce((sum, e) => sum + e.nominal, 0);
+
                 return (
                   <div
                     key={product.id}
-                    className={`flex items-center gap-4 p-4 rounded-xl border transition-all ${
-                      hasExistingData && existingQty > 0
+                    className={`p-4 rounded-xl border transition-all ${
+                      hasExistingData && (isCredit ? entries.length > 0 : quantity > 0)
                         ? 'bg-purple-50 border-purple-200'
                         : 'bg-slate-50 border-slate-100'
                     }`}
                   >
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="font-bold text-slate-800">{product.product_name}</span>
-                        <span className={`px-2 py-0.5 rounded-full text-xs font-black border ${getCategoryColor(product.category)}`}>
-                          {product.category}
-                        </span>
-                      </div>
-                      <div className="text-xs text-slate-500">
-                        Target: {product.weekly_target} {product.unit} •
-                        {product.is_tiered ? ' Tiered' : ` ${product.flat_points} pts/${product.unit}`}
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="font-bold text-slate-800">{product.product_name}</span>
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-black border ${getCategoryColor(product.category)}`}>
+                            {product.category}
+                          </span>
+                        </div>
+                        <div className="text-xs text-slate-500">
+                          Target: {product.weekly_target} {product.unit} •
+                          {product.is_tiered ? ' Tiered' : ` ${product.flat_points} pts/${product.unit}`}
+                        </div>
                       </div>
                     </div>
-                    
-                    <div className="flex items-center gap-3">
-                      <input
-                        type="number"
-                        min="0"
-                        value={inputData[product.product_key] || 0}
-                        onChange={(e) => handleInputChange(product.product_key, e.target.value)}
-                        placeholder="0"
-                        className="w-24 bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm font-bold text-center outline-none focus:ring-2 focus:ring-purple-200 focus:border-purple-400"
-                      />
-                      <span className="text-xs text-slate-500 w-16">{product.unit}</span>
-                      
-                      {hasExistingData && existingQty > 0 && (
+
+                    {isCredit ? (
+                      <div className="space-y-2">
+                        {/* List of acquisition entries */}
+                        {entries.map((entry, index) => (
+                          <div key={index} className="flex items-center gap-2">
+                            <div className="flex-1 flex items-center gap-2 bg-white rounded-xl border border-slate-200 px-3 py-2">
+                              <span className="text-xs font-black text-slate-400">#{index + 1}</span>
+                              <input
+                                type="number"
+                                min="0"
+                                value={entry.nominal}
+                                onChange={(e) => updateCreditAcquisition(product.product_key, index, parseInt(e.target.value) || 0)}
+                                placeholder="Nominal (Juta)"
+                                className="flex-1 text-sm font-bold text-center outline-none"
+                              />
+                              <span className="text-xs font-bold text-slate-500">Juta</span>
+                            </div>
+                            <button
+                              onClick={() => deleteCreditAcquisition(product.product_key, index)}
+                              disabled={deletingId === entry.id}
+                              className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors disabled:opacity-50"
+                            >
+                              {deletingId === entry.id ? (
+                                <GridLoader pattern="edge-cw" size="sm" color="#dc2626" mode="stagger" />
+                              ) : (
+                                <Trash2 className="w-4 h-4" />
+                              )}
+                            </button>
+                          </div>
+                        ))}
+
+                        {/* Add more button */}
                         <button
-                          onClick={() => handleDeleteSingle(product.product_key)}
-                          disabled={deletingId === existingAcquisitions.find(a => a.product_key === product.product_key)?.id}
-                          className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors disabled:opacity-50"
+                          onClick={() => addCreditAcquisition(product.product_key)}
+                          className="w-full py-2.5 border-2 border-dashed border-purple-300 rounded-xl text-sm font-black text-purple-600 hover:bg-purple-50 transition-all flex items-center justify-center gap-2"
                         >
-                          {deletingId ? (
-                            <GridLoader pattern="edge-cw" size="sm" color="#dc2626" mode="stagger" />
-                          ) : (
-                            <Trash2 className="w-4 h-4" />
-                          )}
+                          <Plus className="w-4 h-4" /> + Tambah Akuisisi
                         </button>
-                      )}
-                    </div>
+
+                        {/* Summary */}
+                        {entries.length > 0 && (
+                          <div className="bg-purple-100 rounded-xl px-3 py-2 text-xs font-black text-purple-700 flex justify-between">
+                            <span>Total:</span>
+                            <span>{entries.length} Akuisisi | {totalNominal} Juta</span>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="number"
+                          min="0"
+                          value={quantity}
+                          onChange={(e) => handleQuantityChange(product.product_key, e.target.value)}
+                          placeholder="0"
+                          className="w-24 bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm font-bold text-center outline-none focus:ring-2 focus:ring-purple-200 focus:border-purple-400"
+                        />
+                        <span className="text-xs text-slate-500">{product.unit}</span>
+                      </div>
+                    )}
                   </div>
                 );
               })}

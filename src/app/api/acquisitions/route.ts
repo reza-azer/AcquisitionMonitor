@@ -40,7 +40,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { bulk, records, member_id, week, date, product_key, quantity } = body;
+    const { bulk, records, member_id, week, date, product_key, quantity, nominal } = body;
 
     // Handle bulk operations
     if (bulk && Array.isArray(records)) {
@@ -56,6 +56,7 @@ export async function POST(request: Request) {
           date: inputDate,
           product_key: record.product_key,
           quantity: record.quantity,
+          nominal: record.nominal || 0,
           updated_at: new Date().toISOString()
         };
       });
@@ -80,7 +81,7 @@ export async function POST(request: Request) {
     }
 
     // Handle single record
-    console.log('[Acquisitions API] POST received:', { member_id, week, date, product_key, quantity });
+    console.log('[Acquisitions API] POST received:', { member_id, week, date, product_key, quantity, nominal });
 
     // Use today's date if not provided
     const inputDate = date || new Date().toISOString().split('T')[0];
@@ -96,6 +97,7 @@ export async function POST(request: Request) {
       date: inputDate,
       product_key,
       quantity,
+      nominal: nominal || 0,
       updated_at: new Date().toISOString()
     };
 

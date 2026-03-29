@@ -66,7 +66,7 @@ interface Member {
   name: string;
   position: string;
   avatar_url: string | null;
-  weeklyAcquisitions?: Record<number, Record<string, number>>;
+  weeklyAcquisitions?: Record<number, Record<string, { quantity: number; nominal?: number } | number>>;
 }
 
 interface Acquisition {
@@ -75,6 +75,7 @@ interface Acquisition {
   week: number;
   product_key: string;
   quantity: number;
+  nominal?: number;  // For CREDIT products: nominal in millions
 }
 
 interface Product {
@@ -271,9 +272,26 @@ export default function App() {
             ...member,
             weeklyAcquisitions: acquisitionsData
               .filter((a: Acquisition) => a.member_id === member.id)
-              .reduce((acc: Record<number, Record<string, number>>, a: Acquisition) => {
+              .reduce((acc: Record<number, Record<string, { quantity: number; nominal?: number } | number>>, a: Acquisition) => {
+                const product = productsData.find((p: Product) => p.product_key === a.product_key);
+                const isCredit = product?.category === 'CREDIT';
+                
                 if (!acc[a.week]) acc[a.week] = {};
-                acc[a.week][a.product_key] = a.quantity;
+                
+                if (isCredit) {
+                  // For CREDIT: accumulate quantity and nominal from multiple rows
+                  const existing = acc[a.week][a.product_key];
+                  const currentQty = typeof existing === 'object' ? existing.quantity : (existing || 0);
+                  const currentNominal = typeof existing === 'object' ? (existing.nominal || 0) : 0;
+                  
+                  acc[a.week][a.product_key] = {
+                    quantity: currentQty + a.quantity,
+                    nominal: currentNominal + (a.nominal || 0)
+                  };
+                } else {
+                  // For FUNDING/TRANSACTION: just quantity
+                  acc[a.week][a.product_key] = a.quantity;
+                }
                 return acc;
               }, {})
           }))
@@ -293,20 +311,28 @@ export default function App() {
     fetchData(selectedMonth, selectedYear);
   }, [selectedMonth, selectedYear, fetchData]);
 
-  const getMemberPoints = useCallback((acquisitions: Record<string, number> | undefined) => {
+  const getMemberPoints = useCallback((acquisitions: Record<string, { quantity: number; nominal?: number } | number> | undefined) => {
     let total = 0;
     if (!acquisitions || products.length === 0) return 0;
 
     Object.keys(acquisitions).forEach(key => {
-      const qty = acquisitions[key];
+      const data = acquisitions[key];
       const product = products.find(p => p.product_key === key);
       if (!product || !product.is_active) return;
 
-      if (product.is_tiered && product.tier_config) {
-        const tier = product.tier_config.find(t => qty <= t.limit) || product.tier_config[product.tier_config.length - 1];
-        total += qty * tier.points;
+      if (product.category === 'CREDIT') {
+        // CREDIT: points based on nominal (juta)
+        const nominal = typeof data === 'object' ? (data.nominal || 0) : 0;
+        total += nominal * (product.flat_points || 0);
       } else {
-        total += qty * (product.flat_points || 0);
+        // FUNDING/TRANSACTION: points based on quantity
+        const qty = typeof data === 'object' ? data.quantity : (data || 0);
+        if (product.is_tiered && product.tier_config) {
+          const tier = product.tier_config.find(t => qty <= t.limit) || product.tier_config[product.tier_config.length - 1];
+          total += qty * tier.points;
+        } else {
+          total += qty * (product.flat_points || 0);
+        }
       }
     });
     return total;
@@ -314,17 +340,43 @@ export default function App() {
 
   const teamStats = useMemo(() => {
     return teams.map(team => {
-      const combined: Record<string, number> = {};
+      const combined: Record<string, { quantity: number; nominal?: number } | number> = {};
       (team.members || []).forEach(m => {
         if (dashboardViewMode === 'monthly') {
           // Accumulate all weeks for monthly view
           Object.values(m.weeklyAcquisitions || {}).forEach(weekAcq => {
-            Object.keys(weekAcq).forEach(p => combined[p] = (combined[p] || 0) + weekAcq[p]);
+            Object.keys(weekAcq).forEach(p => {
+              const existing = combined[p];
+              const current = weekAcq[p];
+              if (typeof current === 'object') {
+                // CREDIT: accumulate quantity and nominal
+                const existingObj = typeof existing === 'object' ? existing : { quantity: 0, nominal: 0 };
+                combined[p] = {
+                  quantity: (existingObj.quantity || 0) + (current.quantity || 0),
+                  nominal: (existingObj.nominal || 0) + (current.nominal || 0)
+                };
+              } else {
+                // FUNDING/TRANSACTION: accumulate quantity only
+                combined[p] = (typeof existing === 'object' ? existing.quantity : (existing || 0)) + (current || 0);
+              }
+            });
           });
         } else {
           // Weekly view - use activeWeek
           const currentAqc = (m.weeklyAcquisitions || {})[activeWeek] || {};
-          Object.keys(currentAqc).forEach(p => combined[p] = (combined[p] || 0) + currentAqc[p]);
+          Object.keys(currentAqc).forEach(p => {
+            const existing = combined[p];
+            const current = currentAqc[p];
+            if (typeof current === 'object') {
+              const existingObj = typeof existing === 'object' ? existing : { quantity: 0, nominal: 0 };
+              combined[p] = {
+                quantity: (existingObj.quantity || 0) + (current.quantity || 0),
+                nominal: (existingObj.nominal || 0) + (current.nominal || 0)
+              };
+            } else {
+              combined[p] = (typeof existing === 'object' ? existing.quantity : (existing || 0)) + (current || 0);
+            }
+          });
         }
       });
       return { ...team, stats: combined, totalPoints: getMemberPoints(combined) };
@@ -356,21 +408,31 @@ export default function App() {
             // Calculate score based on filtered products
             Object.keys(memberAcq).forEach(productKey => {
               if (!chartFilters.selectedProducts.includes(productKey)) return;
-              const qty = memberAcq[productKey];
+              const data = memberAcq[productKey];
               const product = products.find(p => p.product_key === productKey);
               if (!product) return;
-              if (product.is_tiered && product.tier_config) {
-                const tier = product.tier_config.find(tier => qty <= tier.limit) || product.tier_config[product.tier_config.length - 1];
-                metricValue += qty * tier.points;
+              
+              if (product.category === 'CREDIT') {
+                // CREDIT: points based on nominal
+                const nominal = typeof data === 'object' ? (data.nominal || 0) : 0;
+                metricValue += nominal * (product.flat_points || 0);
               } else {
-                metricValue += qty * (product.flat_points || 0);
+                // FUNDING/TRANSACTION: points based on quantity
+                const qty = typeof data === 'object' ? data.quantity : (data || 0);
+                if (product.is_tiered && product.tier_config) {
+                  const tier = product.tier_config.find(tier => qty <= tier.limit) || product.tier_config[product.tier_config.length - 1];
+                  metricValue += qty * tier.points;
+                } else {
+                  metricValue += qty * (product.flat_points || 0);
+                }
               }
             });
           } else {
             // Calculate quantity based on filtered products
             Object.keys(memberAcq).forEach(productKey => {
               if (!chartFilters.selectedProducts.includes(productKey)) return;
-              metricValue += memberAcq[productKey];
+              const data = memberAcq[productKey];
+              metricValue += typeof data === 'object' ? data.quantity : (data || 0);
             });
           }
         });
@@ -380,10 +442,10 @@ export default function App() {
 
       return dataPoint;
     });
-  }, [teams, chartFilters]);
+  }, [teams, chartFilters, products]);
 
   const globalMemberRankings = useMemo(() => {
-    const allMembers: (Member & { teamName: string, totalPoints: number, acquisitions: Record<string, number> })[] = [];
+    const allMembers: (Member & { teamName: string, totalPoints: number, acquisitions: Record<string, { quantity: number; nominal?: number } | number> })[] = [];
     teams.forEach(t => {
       (t.members || []).forEach(m => {
         const currentAqc = (m.weeklyAcquisitions || {})[activeWeek] || {};
@@ -571,7 +633,8 @@ export default function App() {
               "Total Poin": getMemberPoints(acq)
             };
             activeProducts.forEach(p => {
-              row[p.product_key] = acq[p.product_key] || 0;
+              const data = acq[p.product_key];
+              row[p.product_key] = typeof data === 'object' ? data.quantity : (data || 0);
             });
             finalData.push(row);
           });
@@ -582,11 +645,20 @@ export default function App() {
       const monthName = new Date(parseInt(selectedYear), parseInt(selectedMonth) - 1).toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
       teams.forEach(t => {
         (t.members || []).forEach(m => {
-          let totalAcq: Record<string, number> = {};
+          let totalAcq: Record<string, { quantity: number; nominal?: number } | number> = {};
           [1, 2, 3, 4].forEach(weekNum => {
             const weekAcq = (m.weeklyAcquisitions || {})[weekNum] || {};
             Object.entries(weekAcq).forEach(([key, value]) => {
-              totalAcq[key] = (totalAcq[key] || 0) + value;
+              const existing = totalAcq[key];
+              if (typeof value === 'object') {
+                const existingObj = typeof existing === 'object' ? existing : { quantity: 0, nominal: 0 };
+                totalAcq[key] = {
+                  quantity: (existingObj.quantity || 0) + (value.quantity || 0),
+                  nominal: (existingObj.nominal || 0) + (value.nominal || 0)
+                };
+              } else {
+                totalAcq[key] = (typeof existing === 'object' ? existing.quantity : (existing || 0)) + (value || 0);
+              }
             });
           });
           const row: Record<string, string | number> = {
@@ -597,7 +669,8 @@ export default function App() {
             "Total Poin": getMemberPoints(totalAcq)
           };
           activeProducts.forEach(p => {
-            row[p.product_key] = totalAcq[p.product_key] || 0;
+            const data = totalAcq[p.product_key];
+            row[p.product_key] = typeof data === 'object' ? data.quantity : (data || 0);
           });
           finalData.push(row);
         });
@@ -606,11 +679,20 @@ export default function App() {
     } else if (exportMode === 'all') {
       teams.forEach(t => {
         (t.members || []).forEach(m => {
-          let totalAcq: Record<string, number> = {};
+          let totalAcq: Record<string, { quantity: number; nominal?: number } | number> = {};
           [1, 2, 3, 4].forEach(weekNum => {
             const weekAcq = (m.weeklyAcquisitions || {})[weekNum] || {};
             Object.entries(weekAcq).forEach(([key, value]) => {
-              totalAcq[key] = (totalAcq[key] || 0) + value;
+              const existing = totalAcq[key];
+              if (typeof value === 'object') {
+                const existingObj = typeof existing === 'object' ? existing : { quantity: 0, nominal: 0 };
+                totalAcq[key] = {
+                  quantity: (existingObj.quantity || 0) + (value.quantity || 0),
+                  nominal: (existingObj.nominal || 0) + (value.nominal || 0)
+                };
+              } else {
+                totalAcq[key] = (typeof existing === 'object' ? existing.quantity : (existing || 0)) + (value || 0);
+              }
             });
           });
           const row: Record<string, string | number> = {
@@ -621,7 +703,8 @@ export default function App() {
             "Total Poin": getMemberPoints(totalAcq)
           };
           activeProducts.forEach(p => {
-            row[p.product_key] = totalAcq[p.product_key] || 0;
+            const data = totalAcq[p.product_key];
+            row[p.product_key] = typeof data === 'object' ? data.quantity : (data || 0);
           });
           finalData.push(row);
         });
@@ -960,7 +1043,10 @@ export default function App() {
                       {(() => {
                         const total = Object.values(selectedMember.member.weeklyAcquisitions || {})
                           .flatMap(week => Object.values(week))
-                          .reduce((sum, qty) => sum + qty, 0);
+                          .reduce((sum: number, data) => {
+                            const qty = typeof data === 'object' ? data.quantity : (data || 0);
+                            return sum + qty;
+                          }, 0);
                         return total;
                       })()}
                     </div>
@@ -1111,7 +1197,10 @@ export default function App() {
                       {[1, 2, 3, 4].map(week => {
                         const weekAcq = (selectedMember.member.weeklyAcquisitions || {})[week] || {};
                         const weekScore = getMemberPoints(weekAcq);
-                        const weekTotal = Object.values(weekAcq).reduce((sum: number, qty: number) => sum + qty, 0);
+                        const weekTotal = Object.values(weekAcq).reduce((sum: number, data) => {
+                          const qty = typeof data === 'object' ? data.quantity : (data || 0);
+                          return sum + qty;
+                        }, 0);
                         const hasData = weekTotal > 0;
 
                         return (
@@ -1136,8 +1225,12 @@ export default function App() {
                             {hasData && (
                               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                                 {Object.entries(weekAcq)
-                                  .filter(([_, qty]) => qty > 0)
-                                  .map(([product, qty]) => {
+                                  .filter(([_, data]) => {
+                                    const qty = typeof data === 'object' ? data.quantity : (data || 0);
+                                    return qty > 0;
+                                  })
+                                  .map(([product, data]) => {
+                                    const qty = typeof data === 'object' ? data.quantity : (data || 0);
                                     const productConfig = products.find(p => p.product_key === product);
                                     let pointsEarned = 0;
                                     if (productConfig) {
@@ -1170,13 +1263,25 @@ export default function App() {
                   {memberViewMode === 'monthly' && (
                     <div className="space-y-3">
                       {(() => {
-                        const monthlyAcq: Record<string, number> = {};
+                        const monthlyAcq: Record<string, { quantity: number; nominal?: number } | number> = {};
                         Object.values(selectedMember.member.weeklyAcquisitions || {}).forEach(weekAcq => {
-                          Object.entries(weekAcq).forEach(([productKey, qty]) => {
-                            monthlyAcq[productKey] = (monthlyAcq[productKey] || 0) + qty;
+                          Object.entries(weekAcq).forEach(([productKey, data]) => {
+                            const existing = monthlyAcq[productKey];
+                            if (typeof data === 'object') {
+                              const existingObj = typeof existing === 'object' ? existing : { quantity: 0, nominal: 0 };
+                              monthlyAcq[productKey] = {
+                                quantity: (existingObj.quantity || 0) + (data.quantity || 0),
+                                nominal: (existingObj.nominal || 0) + (data.nominal || 0)
+                              };
+                            } else {
+                              monthlyAcq[productKey] = (typeof existing === 'object' ? existing.quantity : (existing || 0)) + (data || 0);
+                            }
                           });
                         });
-                        const monthlyTotal = Object.values(monthlyAcq).reduce((sum, qty) => sum + qty, 0);
+                        const monthlyTotal = Object.values(monthlyAcq).reduce((sum: number, data) => {
+                          const qty = typeof data === 'object' ? data.quantity : (data || 0);
+                          return sum + qty;
+                        }, 0);
                         const monthlyScore = getMemberPoints(monthlyAcq);
                         const hasData = monthlyTotal > 0;
 
@@ -1201,8 +1306,12 @@ export default function App() {
                             {hasData && (
                               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                                 {Object.entries(monthlyAcq)
-                                  .filter(([_, qty]) => qty > 0)
-                                  .map(([product, qty]) => {
+                                  .filter(([_, data]) => {
+                                    const qty = typeof data === 'object' ? data.quantity : (data || 0);
+                                    return qty > 0;
+                                  })
+                                  .map(([product, data]) => {
+                                    const qty = typeof data === 'object' ? data.quantity : (data || 0);
                                     const productConfig = products.find(p => p.product_key === product);
                                     let pointsEarned = 0;
                                     if (productConfig) {
@@ -1582,22 +1691,27 @@ export default function App() {
                             <TrendingUp className="w-3 h-3 text-blue-600" /> Dashboard Target
                           </span>
                           <span className="text-[10px] font-bold text-blue-700 px-2 py-1 bg-blue-100 rounded-md">
-                            {products.filter(p => p.is_active && (team.stats[p.product_key] || 0) >= p.weekly_target).length} Goal
+                            {products.filter(p => {
+                              const current = team.stats[p.product_key];
+                              const qty = typeof current === 'object' ? current.quantity : (current || 0);
+                              return p.is_active && qty >= p.weekly_target;
+                            }).length} Goal
                           </span>
                         </div>
                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                           {products.filter(p => p.is_active).map(p => {
-                            const current = team.stats[p.product_key] || 0;
+                            const current = team.stats[p.product_key];
+                            const qty = typeof current === 'object' ? current.quantity : (current || 0);
                             const target = p.weekly_target;
-                            const isDone = current >= target;
+                            const isDone = qty >= target;
                             return (
-                              <div key={p.product_key} className={`p-2 rounded-xl border transition-all ${isDone ? 'bg-green-50/80 border-green-100' : current > 0 ? 'bg-white/80 border-blue-100' : 'bg-white/40 border-slate-100/50'}`}>
+                              <div key={p.product_key} className={`p-2 rounded-xl border transition-all ${isDone ? 'bg-green-50/80 border-green-100' : qty > 0 ? 'bg-white/80 border-blue-100' : 'bg-white/40 border-slate-100/50'}`}>
                                 <div className="flex justify-between items-start mb-1">
                                   <span className={`text-[9px] font-black ${isDone ? 'text-green-700' : 'text-slate-400'}`}>{p.product_key}</span>
                                   {isDone && <Check className="w-2.5 h-2.5 text-green-600" />}
                                 </div>
                                 <div className="flex items-end gap-1">
-                                  <span className={`text-sm font-black leading-none ${isDone ? 'text-green-700' : current > 0 ? 'text-blue-900' : 'text-slate-300'}`}>{current}</span>
+                                  <span className={`text-sm font-black leading-none ${isDone ? 'text-green-700' : qty > 0 ? 'text-blue-900' : 'text-slate-300'}`}>{qty}</span>
                                   <span className="text-[8px] font-bold text-slate-300 mb-0.5">/ {target}</span>
                                 </div>
                               </div>
@@ -1658,7 +1772,11 @@ export default function App() {
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-8 relative z-10">
                 {products.filter(p => p.is_active).map(p => {
-                  const totalAchieved = teamStats.reduce((acc, t) => acc + (t.stats[p.product_key] || 0), 0);
+                  const totalAchieved = teamStats.reduce((acc: number, t) => {
+                    const current = t.stats[p.product_key];
+                    const qty = typeof current === 'object' ? current.quantity : (current || 0);
+                    return acc + qty;
+                  }, 0);
                   const dynamicTarget = p.weekly_target * (teams.length || 1);
                   const progress = Math.min((totalAchieved / dynamicTarget) * 100, 100);
                   return (
