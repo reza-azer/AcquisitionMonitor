@@ -92,7 +92,7 @@ interface Product {
 
 export default function App() {
   const [viewMode, setViewMode] = useState('dashboard');
-  const [manageSubTab, setManageSubTab] = useState<'products' | 'teams' | 'members'>('products');
+  const [manageSubTab, setManageSubTab] = useState<'products' | 'team'>('products');
   const [activeWeek, setActiveWeek] = useState(1);
   const [isExcelReady, setIsExcelReady] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
@@ -112,7 +112,7 @@ export default function App() {
 
   // Form states
   const [newTeam, setNewTeam] = useState({ name: '', image_url: '' });
-  const [tempMember, setTempMember] = useState({ name: '', position: '', avatar_url: '' });
+  const [tempMembers, setTempMembers] = useState<Record<string, { name: string, position: string, avatar_url: string }>>({});
   const [editingTeam, setEditingTeam] = useState<Team | null>(null);
   const [editingMember, setEditingMember] = useState<{ teamId: string, memberId: string, name: string, position: string, avatar_url: string | null } | null>(null);
 
@@ -446,20 +446,25 @@ export default function App() {
   };
 
   const addMemberToTeam = async (teamId: string) => {
-    if (!tempMember.name || !tempMember.position) return;
+    const memberData = tempMembers[teamId];
+    if (!memberData?.name || !memberData?.position) return;
     try {
       const res = await fetch('/api/members', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           team_id: teamId,
-          name: tempMember.name,
-          position: tempMember.position,
-          avatar_url: tempMember.avatar_url || null
+          name: memberData.name,
+          position: memberData.position,
+          avatar_url: memberData.avatar_url || null
         })
       });
       if (res.ok) {
-        setTempMember({ name: '', position: '', avatar_url: '' });
+        setTempMembers(prev => {
+          const newState = { ...prev };
+          delete newState[teamId];
+          return newState;
+        });
         fetchData();
       }
     } catch (error) {
@@ -1689,24 +1694,14 @@ export default function App() {
                   <Package className="w-4 h-4" /> Manage Products
                 </button>
                 <button
-                  onClick={() => setManageSubTab('teams')}
+                  onClick={() => setManageSubTab('team')}
                   className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-[20px] text-sm font-black transition-all ${
-                    manageSubTab === 'teams'
+                    manageSubTab === 'team'
                       ? 'bg-blue-600 text-white shadow-md'
                       : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
                   }`}
                 >
-                  <Users className="w-4 h-4" /> Manage Teams
-                </button>
-                <button
-                  onClick={() => setManageSubTab('members')}
-                  className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-[20px] text-sm font-black transition-all ${
-                    manageSubTab === 'members'
-                      ? 'bg-blue-600 text-white shadow-md'
-                      : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
-                  }`}
-                >
-                  <User className="w-4 h-4" /> Manage Team Members
+                  <Users className="w-4 h-4" /> Manage Team
                 </button>
               </div>
             </div>
@@ -1719,143 +1714,264 @@ export default function App() {
             )}
 
             {/* Team Management */}
-            {manageSubTab === 'teams' && (
-              <div className="bg-[#003d79] p-10 rounded-[40px] text-white shadow-2xl flex flex-col items-center gap-8 border-b-[12px] border-[#FDB813] relative overflow-hidden">
-                <div className="flex-1 text-center w-full relative z-10">
-                  <h2 className="text-3xl font-black mb-2 tracking-tight">Management Center</h2>
-                  <p className="text-blue-200 text-sm font-medium">Kelola tim dan anggota <span className="text-[#FDB813] font-black underline underline-offset-4">di sini</span></p>
-                </div>
-                <div className="w-full grid grid-cols-1 md:grid-cols-3 gap-4 relative z-10">
-                  <div className="md:col-span-2 space-y-1"><label className="text-[10px] font-black text-blue-300 ml-4 uppercase tracking-widest">Nama Tim Baru</label><input type="text" value={newTeam.name} onChange={(e) => setNewTeam({ ...newTeam, name: e.target.value })} placeholder="Contoh: Tim Rajawali" className="w-full bg-white/10 border border-white/20 rounded-full px-6 py-4 text-sm outline-none focus:bg-white/20 focus:ring-2 focus:ring-[#FDB813]" /></div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-black text-blue-300 ml-4 uppercase tracking-widest block mb-2">Sampul Tim</label>
-                    <ImageUploader
-                      value={newTeam.image_url}
-                      onChange={(url) => setNewTeam({ ...newTeam, image_url: url || '' })}
-                      label="Team Cover"
-                      folder="teams"
-                      aspectRatio="16/10"
-                    />
+            {manageSubTab === 'team' && (
+              <div className="space-y-8">
+                {/* Team Creation Form */}
+                <div className="bg-white rounded-[30px] p-6 border border-slate-200 shadow-sm">
+                  <h3 className="text-lg font-black text-slate-800 mb-4 flex items-center gap-2">
+                    <Plus className="w-5 h-5" /> Buat Tim Baru
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+                    <div className="md:col-span-4">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2 mb-2 block">Nama Tim</label>
+                      <input
+                        type="text"
+                        value={newTeam.name}
+                        onChange={(e) => setNewTeam({ ...newTeam, name: e.target.value })}
+                        placeholder="Contoh: Tim Rajawali"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-sm font-semibold outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-300 transition-all"
+                      />
+                    </div>
+                    <div className="md:col-span-5">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2 mb-2 block">Sampul Tim</label>
+                      <ImageUploader
+                        value={newTeam.image_url}
+                        onChange={(url) => setNewTeam({ ...newTeam, image_url: url || '' })}
+                        label="Team Cover"
+                        folder="teams"
+                        aspectRatio="16/10"
+                      />
+                    </div>
+                    <div className="md:col-span-3 flex items-end">
+                      <button
+                        onClick={addTeam}
+                        className="w-full bg-[#003d79] text-white h-[56px] rounded-2xl font-black text-sm hover:bg-[#002d5a] transition-all flex items-center justify-center gap-2 shadow-lg hover:shadow-xl"
+                      >
+                        <Plus className="w-5 h-5" /> BUAT
+                      </button>
+                    </div>
                   </div>
-                  <div className="md:col-span-3 flex items-end"><button onClick={addTeam} className="w-full bg-[#FDB813] text-blue-900 h-[54px] rounded-full font-black text-sm hover:scale-[1.02] transition-all flex items-center justify-center gap-2"><Plus className="w-5 h-5" /> DAFTAR TIM</button></div>
                 </div>
-              </div>
-            )}
 
-            {/* Team Members Management */}
-            {manageSubTab === 'members' && (
-              <div className="grid grid-cols-1 gap-12">
-                {teams.map(team => (
-                  <div key={team.id} className="bg-white rounded-[40px] border border-slate-200 overflow-hidden shadow-sm">
-                    <div className="bg-slate-50 px-8 py-6 border-b border-slate-100 flex justify-between items-center">
-                      <div className="flex items-center gap-4 flex-1">
-                        <div className="w-12 h-10 rounded-xl bg-blue-100 border border-blue-200 overflow-hidden flex-shrink-0 shadow-inner">
-                          {team.image_url ? <img src={team.image_url} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center"><ImageIcon className="w-4 h-4 text-blue-300" /></div>}
+                {/* Teams Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {teams.map(team => (
+                    <div key={team.id} className="bg-white rounded-[30px] border border-slate-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow flex flex-col">
+                      {/* Team Header */}
+                      <div className="bg-gradient-to-r from-slate-50 to-white px-5 py-4 border-b border-slate-100 flex justify-between items-center">
+                        <div className="flex items-center gap-3 flex-1 min-w-0">
+                          <div className="w-12 h-10 rounded-xl bg-blue-100 border border-blue-200 overflow-hidden flex-shrink-0 shadow-inner">
+                            {team.image_url ? (
+                              <img src={team.image_url} className="w-full h-full object-cover" alt={team.name} />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center">
+                                <ImageIcon className="w-4 h-4 text-blue-300" />
+                              </div>
+                            )}
+                          </div>
+                          {editingTeam?.id === team.id ? (
+                            <div className="flex flex-col items-center gap-2 flex-1 bg-white p-2 rounded-xl shadow-md border border-blue-100">
+                              <input
+                                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-sm font-black outline-none focus:ring-2 focus:ring-blue-200"
+                                value={editingTeam.name}
+                                onChange={(e) => setEditingTeam({ ...editingTeam, name: e.target.value })}
+                                placeholder="Nama tim..."
+                              />
+                              <div className="w-full">
+                                <ImageUploader
+                                  value={editingTeam.image_url}
+                                  onChange={(url) => setEditingTeam({ ...editingTeam, image_url: url })}
+                                  label="Cover"
+                                  folder="teams"
+                                  entityId={editingTeam.id}
+                                  aspectRatio="16/10"
+                                />
+                              </div>
+                              <div className="flex gap-1.5 w-full">
+                                <button onClick={updateTeam} className="flex-1 p-2 bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors">
+                                  <Check className="w-3.5 h-3.5" />
+                                </button>
+                                <button onClick={() => setEditingTeam(null)} className="flex-1 p-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg transition-colors">
+                                  <X className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2 flex-1 min-w-0">
+                              <h3 className="font-black text-[#003d79] text-base uppercase tracking-tight truncate">{team.name}</h3>
+                              <button
+                                onClick={() => setEditingTeam({ id: team.id, name: team.name, image_url: team.image_url, accent_color: team.accent_color })}
+                                className="p-1.5 text-slate-300 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all flex-shrink-0"
+                              >
+                                <Edit2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          )}
                         </div>
-                        {editingTeam?.id === team.id ? (
-                          <div className="flex flex-col md:flex-row items-center gap-3 w-full max-w-2xl bg-white p-3 rounded-2xl shadow-md border border-blue-100">
-                            <input className="flex-1 w-full bg-slate-50 border border-slate-100 rounded-lg px-3 py-2 text-sm font-black outline-none" value={editingTeam.name} onChange={(e) => setEditingTeam({ ...editingTeam, name: e.target.value })} placeholder="Nama tim..." />
-                            <div className="flex-1">
+                        <button
+                          onClick={() => deleteTeam(team.id)}
+                          className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all flex-shrink-0"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+
+                      {/* Members Section */}
+                      <div className="p-5 flex-1 flex flex-col">
+                        {/* Add Member Form */}
+                        <div className="bg-slate-50 rounded-2xl p-4 mb-4 border border-slate-100">
+                          <div className="flex items-center gap-2 mb-3">
+                            <UserPlus className="w-3.5 h-3.5 text-slate-400" />
+                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Tambah Anggota</span>
+                          </div>
+                          <div className="space-y-2">
+                            <input
+                              type="text"
+                              value={tempMembers[team.id]?.name || ''}
+                              onChange={(e) => setTempMembers({ ...tempMembers, [team.id]: { ...tempMembers[team.id], name: e.target.value } })}
+                              placeholder="Nama Lengkap"
+                              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-300"
+                            />
+                            <input
+                              type="text"
+                              value={tempMembers[team.id]?.position || ''}
+                              onChange={(e) => setTempMembers({ ...tempMembers, [team.id]: { ...tempMembers[team.id], position: e.target.value } })}
+                              placeholder="Jabatan"
+                              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-300"
+                            />
+                            <div className="grid grid-cols-2 gap-2">
                               <ImageUploader
-                                value={editingTeam.image_url}
-                                onChange={(url) => setEditingTeam({ ...editingTeam, image_url: url })}
-                                label="Team Cover"
-                                folder="teams"
-                                entityId={editingTeam.id}
-                                aspectRatio="16/10"
+                                value={tempMembers[team.id]?.avatar_url || null}
+                                onChange={(url) => setTempMembers({ ...tempMembers, [team.id]: { ...tempMembers[team.id], avatar_url: url || '' } })}
+                                label="Upload"
+                                folder="members"
+                                aspectRatio="1/1"
+                              />
+                              <ImageUploader
+                                value={tempMembers[team.id]?.avatar_url || null}
+                                onChange={(url) => setTempMembers({ ...tempMembers, [team.id]: { ...tempMembers[team.id], avatar_url: url || '' } })}
+                                label="Paste URL"
+                                folder="members"
+                                aspectRatio="1/1"
                               />
                             </div>
-                            <div className="flex gap-2"><button onClick={updateTeam} className="p-3 bg-green-500 text-white rounded-xl"><Check className="w-5 h-5" /></button><button onClick={() => setEditingTeam(null)} className="p-3 bg-slate-100 text-slate-500 rounded-xl"><X className="w-5 h-5" /></button></div>
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-3"><h3 className="font-black text-[#003d79] text-xl uppercase tracking-tight">{team.name}</h3><button onClick={() => setEditingTeam({ id: team.id, name: team.name, image_url: team.image_url, accent_color: team.accent_color })} className="p-1.5 text-slate-300 hover:text-blue-600 transition-all"><Edit2 className="w-4 h-4" /></button></div>
-                        )}
-                      </div>
-                      <button onClick={() => deleteTeam(team.id)} className="p-2 text-slate-300 hover:text-red-500 transition-all"><Trash2 className="w-5 h-5" /></button>
-                    </div>
-
-                    <div className="p-10 space-y-16">
-                      <div className="bg-slate-50/50 p-8 rounded-[32px] border border-slate-100">
-                        <h4 className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-6 flex items-center gap-2"><UserPlus className="w-4 h-4" /> Tambah Anggota Tim</h4>
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                          <div className="md:col-span-2">
-                            <input type="text" value={tempMember.name} onChange={(e) => setTempMember({ ...tempMember, name: e.target.value })} placeholder="Nama Lengkap" className="w-full bg-white border border-slate-200 rounded-full px-5 py-3 text-sm outline-none focus:ring-2 focus:ring-blue-200" />
-                          </div>
-                          <div>
-                            <input type="text" value={tempMember.position} onChange={(e) => setTempMember({ ...tempMember, position: e.target.value })} placeholder="Jabatan" className="w-full bg-white border border-slate-200 rounded-full px-5 py-3 text-sm outline-none focus:ring-2 focus:ring-blue-200" />
-                          </div>
-                          <div>
-                            <ImageUploader
-                              value={tempMember.avatar_url}
-                              onChange={(url) => setTempMember({ ...tempMember, avatar_url: url || '' })}
-                              label="Member Avatar"
-                              folder="members"
-                              aspectRatio="1/1"
-                            />
-                          </div>
-                          <div className="md:col-span-4">
-                            <button onClick={() => addMemberToTeam(team.id)} className="w-full bg-[#003d79] text-white h-[48px] rounded-full font-black text-xs">TAMBAH</button>
+                            <button
+                              onClick={() => addMemberToTeam(team.id)}
+                              className="w-full bg-[#003d79] text-white py-2.5 rounded-xl font-black text-xs hover:bg-[#002d5a] transition-all flex items-center justify-center gap-1.5"
+                            >
+                              <Plus className="w-3.5 h-3.5" /> TAMBAH
+                            </button>
                           </div>
                         </div>
-                      </div>
 
-                      <div className="space-y-14">
-                        {(team.members || []).map(member => (
-                          <div key={member.id} className="relative group border-b border-slate-50 pb-10 last:border-0 last:pb-0">
-                            <div className="flex flex-col md:flex-row md:items-start gap-6 mb-8">
-                              <div className="flex items-center gap-5 flex-1 min-w-0">
-                                <div className="w-16 h-16 rounded-full overflow-hidden bg-[#003d79] text-[#FDB813] flex items-center justify-center font-black text-lg shadow-lg border-4 border-white flex-shrink-0">
-                                  {member.avatar_url ? <img src={member.avatar_url} className="w-full h-full object-cover" onError={(e) => e.currentTarget.src = "https://via.placeholder.com/150"} /> : member.name?.[0]}
-                                </div>
-                                <div className="truncate flex-1">
+                        {/* Members List */}
+                        {(team.members && team.members.length > 0) ? (
+                          <div className="space-y-2 flex-1">
+                            <div className="flex items-center justify-between px-2 py-1.5">
+                              <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Anggota ({team.members.length})</span>
+                              <span className="text-[9px] font-black text-yellow-600 uppercase tracking-widest">Minggu {activeWeek}</span>
+                            </div>
+                            {(team.members || []).map(member => (
+                              <div key={member.id} className="group bg-slate-50 hover:bg-blue-50 rounded-xl p-3 border border-slate-100 transition-colors">
+                                <div className="flex items-center gap-3">
+                                  <div className="w-9 h-9 rounded-full overflow-hidden bg-[#003d79] text-[#FDB813] flex items-center justify-center font-black text-xs shadow-md border-2 border-white flex-shrink-0">
+                                    {member.avatar_url ? (
+                                      <img src={member.avatar_url} className="w-full h-full object-cover" onError={(e) => e.currentTarget.src = "https://via.placeholder.com/150"} />
+                                    ) : (
+                                      member.name?.[0]?.toUpperCase()
+                                    )}
+                                  </div>
                                   {editingMember?.memberId === member.id ? (
-                                    <div className="flex flex-col gap-3 p-4 bg-blue-50 rounded-2xl border border-blue-100 w-full max-w-xl">
-                                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                                        <div className="flex flex-col"><label className="text-[8px] font-black text-blue-400 uppercase tracking-widest ml-1 mb-1">Nama</label><input className="text-sm font-black p-2 rounded-lg border border-blue-200 outline-none" value={editingMember.name} onChange={(e) => setEditingMember({ ...editingMember, name: e.target.value })} /></div>
-                                        <div className="flex flex-col"><label className="text-[8px] font-black text-blue-400 uppercase tracking-widest ml-1 mb-1">Jabatan</label><input className="text-sm font-black p-2 rounded-lg border border-blue-200 outline-none" value={editingMember.position} onChange={(e) => setEditingMember({ ...editingMember, position: e.target.value })} /></div>
-                                      </div>
-                                      <div className="flex flex-col"><label className="text-[8px] font-black text-blue-400 uppercase tracking-widest ml-1 mb-1">Avatar</label>
+                                    <div className="flex-1 space-y-2">
+                                      <input
+                                        className="w-full text-sm font-black p-1.5 rounded-lg border border-blue-200 outline-none focus:ring-2 focus:ring-blue-200"
+                                        value={editingMember.name}
+                                        onChange={(e) => setEditingMember({ ...editingMember, name: e.target.value })}
+                                        placeholder="Nama"
+                                      />
+                                      <div className="grid grid-cols-2 gap-2">
+                                        <input
+                                          className="text-xs font-black p-1.5 rounded-lg border border-blue-200 outline-none focus:ring-2 focus:ring-blue-200"
+                                          value={editingMember.position}
+                                          onChange={(e) => setEditingMember({ ...editingMember, position: e.target.value })}
+                                          placeholder="Jabatan"
+                                        />
                                         <ImageUploader
                                           value={editingMember.avatar_url}
                                           onChange={(url) => setEditingMember({ ...editingMember, avatar_url: url })}
-                                          label="Member Avatar"
+                                          label="Avatar"
                                           folder="members"
                                           entityId={editingMember.memberId}
                                           aspectRatio="1/1"
                                         />
                                       </div>
-                                      <div className="flex gap-2"><button onClick={updateMember} className="flex-1 py-2 bg-green-500 text-white rounded-lg text-[10px] font-black uppercase flex items-center justify-center gap-2"><Check className="w-3 h-3" /> Simpan</button><button onClick={() => setEditingMember(null)} className="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg text-[10px] font-black uppercase">Batal</button></div>
+                                      <div className="flex gap-1.5">
+                                        <button
+                                          onClick={updateMember}
+                                          className="flex-1 py-1.5 bg-green-500 hover:bg-green-600 text-white rounded-lg text-xs font-black transition-colors"
+                                        >
+                                          Simpan
+                                        </button>
+                                        <button
+                                          onClick={() => setEditingMember(null)}
+                                          className="flex-1 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg text-xs font-black transition-colors"
+                                        >
+                                          Batal
+                                        </button>
+                                      </div>
                                     </div>
                                   ) : (
                                     <>
-                                      <div className="flex items-center gap-2">
-                                        <h5 className="font-black text-slate-800 text-lg leading-none truncate">{member.name}</h5>
-                                        <button onClick={() => setEditingMember({ teamId: team.id, memberId: member.id, name: member.name, position: member.position, avatar_url: member.avatar_url })} className="p-1 text-slate-300 hover:text-blue-500 transition-colors"><Edit2 className="w-3.5 h-3.5" /></button>
-                                        <button onClick={() => deleteMember(team.id, member.id)} className="p-1 text-slate-300 hover:text-red-500 transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
-                                        <button
-                                          onClick={() => setMigratingMember({ member, team })}
-                                          className="p-1 text-slate-300 hover:text-purple-500 transition-colors"
-                                          title="Pindahkan ke tim lain"
-                                        >
-                                          <UserPlus className="w-3.5 h-3.5" />
-                                        </button>
+                                      <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-2">
+                                          <p className="font-black text-slate-800 text-sm truncate">{member.name}</p>
+                                          <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <button
+                                              onClick={() => setEditingMember({ teamId: team.id, memberId: member.id, name: member.name, position: member.position, avatar_url: member.avatar_url })}
+                                              className="p-1 text-slate-300 hover:text-blue-500 hover:bg-blue-100 rounded transition-all"
+                                              title="Edit"
+                                            >
+                                              <Edit2 className="w-3 h-3" />
+                                            </button>
+                                            <button
+                                              onClick={() => deleteMember(team.id, member.id)}
+                                              className="p-1 text-slate-300 hover:text-red-500 hover:bg-red-100 rounded transition-all"
+                                              title="Hapus"
+                                            >
+                                              <Trash2 className="w-3 h-3" />
+                                            </button>
+                                            <button
+                                              onClick={() => setMigratingMember({ member, team })}
+                                              className="p-1 text-slate-300 hover:text-purple-500 hover:bg-purple-100 rounded transition-all"
+                                              title="Pindahkan"
+                                            >
+                                              <UserPlus className="w-3 h-3" />
+                                            </button>
+                                          </div>
+                                        </div>
+                                        <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest truncate">{member.position}</p>
                                       </div>
-                                      <p className="text-[10px] text-slate-400 font-bold uppercase mt-2 tracking-widest">{member.position}</p>
+                                      <div className="bg-yellow-50 px-3 py-1.5 rounded-lg border border-yellow-100 text-center flex-shrink-0">
+                                        <p className="text-base font-black text-yellow-800 leading-none">{getMemberPoints((member.weeklyAcquisitions || {})[activeWeek])}</p>
+                                      </div>
                                     </>
                                   )}
                                 </div>
                               </div>
-                              <div className="bg-yellow-50 px-6 py-3 rounded-2xl border border-yellow-100 flex-shrink-0 self-start text-center shadow-sm">
-                                <p className="text-[9px] font-black text-yellow-700 uppercase tracking-widest mb-1">Poin Minggu {activeWeek}</p>
-                                <p className="text-2xl font-black text-yellow-800 leading-none">{getMemberPoints((member.weeklyAcquisitions || {})[activeWeek])}</p>
-                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="text-center py-8 text-slate-400 flex-1 flex items-center justify-center">
+                            <div className="flex flex-col items-center gap-2">
+                              <Users className="w-10 h-10 opacity-20" />
+                              <p className="text-xs font-bold">Belum ada anggota</p>
                             </div>
                           </div>
-                        ))}
+                        )}
                       </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
             )}
           </div>
