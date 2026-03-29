@@ -661,7 +661,9 @@ export default function App() {
         <header className="bg-[#003d79] text-white sticky top-0 z-50 shadow-lg border-b-4 border-[#FDB813]">
           <div className="max-w-[95%] lg:max-w-7xl mx-auto px-3 sm:px-4 md:px-6 h-14 sm:h-16 flex items-center justify-between">
             <div className="flex items-center gap-2 sm:gap-4">
-              <Skeleton variant="rectangular" width="120px" height="24px" />
+              <MandiriLogo />
+              <div className="h-6 sm:h-8 w-px bg-white/20 mx-1 hidden sm:block"></div>
+              <h1 className="text-base sm:text-lg font-bold tracking-tight">Acquisition Monitor</h1>
             </div>
           </div>
         </header>
