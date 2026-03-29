@@ -1721,35 +1721,36 @@ export default function App() {
                   <h3 className="text-lg font-black text-slate-800 mb-4 flex items-center gap-2">
                     <Plus className="w-5 h-5" /> Buat Tim Baru
                   </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
-                    <div className="md:col-span-4">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2 mb-2 block">Nama Tim</label>
-                      <input
-                        type="text"
-                        value={newTeam.name}
-                        onChange={(e) => setNewTeam({ ...newTeam, name: e.target.value })}
-                        placeholder="Contoh: Tim Rajawali"
-                        className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-sm font-semibold outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-300 transition-all"
-                      />
-                    </div>
-                    <div className="md:col-span-5">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2 mb-2 block">Sampul Tim</label>
+                  <div className="space-y-3">
+                    <input
+                      type="text"
+                      value={newTeam.name}
+                      onChange={(e) => setNewTeam({ ...newTeam, name: e.target.value })}
+                      placeholder="Nama Tim"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-sm font-semibold outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-300 transition-all"
+                    />
+                    <div className="grid grid-cols-2 gap-3">
                       <ImageUploader
                         value={newTeam.image_url}
                         onChange={(url) => setNewTeam({ ...newTeam, image_url: url || '' })}
-                        label="Team Cover"
+                        label="Upload"
+                        folder="teams"
+                        aspectRatio="16/10"
+                      />
+                      <ImageUploader
+                        value={newTeam.image_url}
+                        onChange={(url) => setNewTeam({ ...newTeam, image_url: url || '' })}
+                        label="Paste URL"
                         folder="teams"
                         aspectRatio="16/10"
                       />
                     </div>
-                    <div className="md:col-span-3 flex items-end">
-                      <button
-                        onClick={addTeam}
-                        className="w-full bg-[#003d79] text-white h-[56px] rounded-2xl font-black text-sm hover:bg-[#002d5a] transition-all flex items-center justify-center gap-2 shadow-lg hover:shadow-xl"
-                      >
-                        <Plus className="w-5 h-5" /> BUAT
-                      </button>
-                    </div>
+                    <button
+                      onClick={addTeam}
+                      className="w-full bg-[#003d79] text-white py-4 rounded-2xl font-black text-sm hover:bg-[#002d5a] transition-all flex items-center justify-center gap-2 shadow-lg hover:shadow-xl"
+                    >
+                      <Plus className="w-5 h-5" /> BUAT TIM
+                    </button>
                   </div>
                 </div>
 
@@ -1770,18 +1771,26 @@ export default function App() {
                             )}
                           </div>
                           {editingTeam?.id === team.id ? (
-                            <div className="flex flex-col items-center gap-2 flex-1 bg-white p-2 rounded-xl shadow-md border border-blue-100">
+                            <div className="flex flex-col gap-2 flex-1 bg-white p-2 rounded-xl shadow-md border border-blue-100">
                               <input
                                 className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-sm font-black outline-none focus:ring-2 focus:ring-blue-200"
                                 value={editingTeam.name}
                                 onChange={(e) => setEditingTeam({ ...editingTeam, name: e.target.value })}
                                 placeholder="Nama tim..."
                               />
-                              <div className="w-full">
+                              <div className="grid grid-cols-2 gap-2">
                                 <ImageUploader
                                   value={editingTeam.image_url}
                                   onChange={(url) => setEditingTeam({ ...editingTeam, image_url: url })}
-                                  label="Cover"
+                                  label="Upload"
+                                  folder="teams"
+                                  entityId={editingTeam.id}
+                                  aspectRatio="16/10"
+                                />
+                                <ImageUploader
+                                  value={editingTeam.image_url}
+                                  onChange={(url) => setEditingTeam({ ...editingTeam, image_url: url })}
+                                  label="Paste URL"
                                   folder="teams"
                                   entityId={editingTeam.id}
                                   aspectRatio="16/10"
@@ -1889,17 +1898,25 @@ export default function App() {
                                         onChange={(e) => setEditingMember({ ...editingMember, name: e.target.value })}
                                         placeholder="Nama"
                                       />
+                                      <input
+                                        className="w-full text-xs font-black p-1.5 rounded-lg border border-blue-200 outline-none focus:ring-2 focus:ring-blue-200"
+                                        value={editingMember.position}
+                                        onChange={(e) => setEditingMember({ ...editingMember, position: e.target.value })}
+                                        placeholder="Jabatan"
+                                      />
                                       <div className="grid grid-cols-2 gap-2">
-                                        <input
-                                          className="text-xs font-black p-1.5 rounded-lg border border-blue-200 outline-none focus:ring-2 focus:ring-blue-200"
-                                          value={editingMember.position}
-                                          onChange={(e) => setEditingMember({ ...editingMember, position: e.target.value })}
-                                          placeholder="Jabatan"
+                                        <ImageUploader
+                                          value={editingMember.avatar_url}
+                                          onChange={(url) => setEditingMember({ ...editingMember, avatar_url: url })}
+                                          label="Upload"
+                                          folder="members"
+                                          entityId={editingMember.memberId}
+                                          aspectRatio="1/1"
                                         />
                                         <ImageUploader
                                           value={editingMember.avatar_url}
                                           onChange={(url) => setEditingMember({ ...editingMember, avatar_url: url })}
-                                          label="Avatar"
+                                          label="Paste URL"
                                           folder="members"
                                           entityId={editingMember.memberId}
                                           aspectRatio="1/1"
