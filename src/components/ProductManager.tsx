@@ -433,46 +433,28 @@ export default function ProductManager({ products, onSaveProducts, isLoading = f
                 />
               </div>
 
-              {/* Product Type */}
-              <div>
-                <label className="block text-xs font-black text-slate-600 uppercase mb-2">
-                  Points Type
-                </label>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() =>
-                      setEditingProduct({ ...editingProduct, is_tiered: false, tier_config: undefined })
+              {/* CREDIT: Only show Nominal per Point */}
+              {editingProduct.category === 'CREDIT' ? (
+                <div>
+                  <label className="block text-xs font-black text-slate-600 uppercase mb-2">
+                    Nominal per Point (Juta)
+                  </label>
+                  <input
+                    type="number"
+                    value={editingProduct.credit_nominal_per_point || 100}
+                    onChange={(e) =>
+                      setEditingProduct({ ...editingProduct, credit_nominal_per_point: parseInt(e.target.value) || 100 })
                     }
-                    className={`flex-1 py-2.5 rounded-xl text-xs font-black transition-all ${
-                      !editingProduct.is_tiered
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
-                    }`}
-                  >
-                    Flat Points
-                  </button>
-                  <button
-                    onClick={() =>
-                      setEditingProduct({
-                        ...editingProduct,
-                        is_tiered: true,
-                        tier_config: editingProduct.tier_config || [{ limit: 0, points: 0 }],
-                      })
-                    }
-                    className={`flex-1 py-2.5 rounded-xl text-xs font-black transition-all ${
-                      editingProduct.is_tiered
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
-                    }`}
-                  >
-                    Tiered Points
-                  </button>
+                    placeholder="100"
+                    className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400"
+                  />
+                  <p className="text-[10px] text-slate-400 mt-1">
+                    Contoh: 100 = 1 poin per 100 juta, 50 = 1 poin per 50 juta
+                  </p>
                 </div>
-              </div>
-
-              {/* Points Configuration */}
-              {!editingProduct.is_tiered ? (
+              ) : (
                 <>
+                  {/* Points Configuration for FUNDING/TRANSACTION */}
                   <div>
                     <label className="block text-xs font-black text-slate-600 uppercase mb-2">
                       Points per Acquisition
@@ -487,69 +469,87 @@ export default function ProductManager({ products, onSaveProducts, isLoading = f
                     />
                   </div>
                   
-                  {/* CREDIT-specific: Nominal per Point */}
-                  {editingProduct.category === 'CREDIT' && (
-                    <div>
-                      <label className="block text-xs font-black text-slate-600 uppercase mb-2">
-                        Nominal per Point (Juta)
-                      </label>
-                      <input
-                        type="number"
-                        value={editingProduct.credit_nominal_per_point || 100}
-                        onChange={(e) =>
-                          setEditingProduct({ ...editingProduct, credit_nominal_per_point: parseInt(e.target.value) || 100 })
-                        }
-                        placeholder="100"
-                        className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400"
-                      />
-                      <p className="text-[10px] text-slate-400 mt-1">
-                        Contoh: 100 = 1 poin per 100 juta, 50 = 1 poin per 50 juta
-                      </p>
-                    </div>
-                  )}
-                </>
-              ) : (
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <label className="block text-xs font-black text-slate-600 uppercase">
-                      Tier Configuration
+                  <div>
+                    <label className="block text-xs font-black text-slate-600 uppercase mb-2">
+                      Points Type
                     </label>
-                    <button
-                      onClick={addTier}
-                      className="text-xs font-black text-blue-600 hover:text-blue-700 flex items-center gap-1"
-                    >
-                      <Plus className="w-3 h-3" /> Add Tier
-                    </button>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() =>
+                          setEditingProduct({ ...editingProduct, is_tiered: false, tier_config: undefined })
+                        }
+                        className={`flex-1 py-2.5 rounded-xl text-xs font-black transition-all ${
+                          !editingProduct.is_tiered
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                        }`}
+                      >
+                        Flat Points
+                      </button>
+                      <button
+                        onClick={() =>
+                          setEditingProduct({
+                            ...editingProduct,
+                            is_tiered: true,
+                            tier_config: editingProduct.tier_config || [{ limit: 0, points: 0 }],
+                          })
+                        }
+                        className={`flex-1 py-2.5 rounded-xl text-xs font-black transition-all ${
+                          editingProduct.is_tiered
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                        }`}
+                      >
+                        Tiered Points
+                      </button>
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    {editingProduct.tier_config?.map((tier, index) => (
-                      <div key={index} className="flex items-center gap-2">
-                        <span className="text-xs font-bold text-slate-500 w-6">#{index + 1}</span>
-                        <input
-                          type="number"
-                          value={tier.limit}
-                          onChange={(e) => updateTier(index, 'limit', parseInt(e.target.value) || 0)}
-                          placeholder="Limit"
-                          className="flex-1 bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400"
-                        />
-                        <span className="text-xs text-slate-400">→</span>
-                        <input
-                          type="number"
-                          value={tier.points}
-                          onChange={(e) => updateTier(index, 'points', parseInt(e.target.value) || 0)}
-                          placeholder="Points"
-                          className="flex-1 bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400"
-                        />
+
+                  {/* Tier Configuration */}
+                  {editingProduct.is_tiered ? (
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <label className="block text-xs font-black text-slate-600 uppercase">
+                          Tier Configuration
+                        </label>
                         <button
-                          onClick={() => removeTier(index)}
-                          className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                          onClick={addTier}
+                          className="text-xs font-black text-blue-600 hover:text-blue-700 flex items-center gap-1"
                         >
-                          <X className="w-4 h-4" />
+                          <Plus className="w-3 h-3" /> Add Tier
                         </button>
                       </div>
-                    ))}
-                  </div>
-                </div>
+                      <div className="space-y-2">
+                        {editingProduct.tier_config?.map((tier, index) => (
+                          <div key={index} className="flex items-center gap-2">
+                            <span className="text-xs font-bold text-slate-500 w-6">#{index + 1}</span>
+                            <input
+                              type="number"
+                              value={tier.limit}
+                              onChange={(e) => updateTier(index, 'limit', parseInt(e.target.value) || 0)}
+                              placeholder="Limit"
+                              className="flex-1 bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400"
+                            />
+                            <span className="text-xs text-slate-400">→</span>
+                            <input
+                              type="number"
+                              value={tier.points}
+                              onChange={(e) => updateTier(index, 'points', parseInt(e.target.value) || 0)}
+                              placeholder="Points"
+                              className="flex-1 bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400"
+                            />
+                            <button
+                              onClick={() => removeTier(index)}
+                              className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+                </>
               )}
             </div>
 
