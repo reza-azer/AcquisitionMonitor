@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { X, CheckCircle, Clock, FileText, XCircle, Save, Users, Calendar, Package } from 'lucide-react';
 import GridLoader from './GridLoader';
+import { formatNumber, parseNumber } from '@/lib/formatters';
 
 interface Member {
   id: string;
@@ -441,10 +442,10 @@ export default function BulkEditModal({
                   4. Jumlah
                 </label>
                 <input
-                  type="number"
-                  min="0"
-                  value={quantity}
-                  onChange={(e) => setQuantity(parseInt(e.target.value) || 0)}
+                  type="text"
+                  inputMode="numeric"
+                  value={formatNumber(quantity)}
+                  onChange={(e) => setQuantity(parseNumber(e.target.value))}
                   className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:ring-2 focus:ring-purple-200"
                   placeholder="0"
                 />
@@ -488,10 +489,10 @@ export default function BulkEditModal({
                     Menit Terlambat
                   </label>
                   <input
-                    type="number"
-                    min="0"
-                    value={lateMinutes}
-                    onChange={(e) => setLateMinutes(parseInt(e.target.value) || 0)}
+                    type="text"
+                    inputMode="numeric"
+                    value={formatNumber(lateMinutes)}
+                    onChange={(e) => setLateMinutes(parseNumber(e.target.value))}
                     className="w-full bg-white border border-yellow-300 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:ring-2 focus:ring-yellow-200"
                     placeholder="0"
                   />

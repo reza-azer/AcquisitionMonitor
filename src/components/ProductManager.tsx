@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import GridLoader from '@/components/GridLoader';
 import Skeleton from '@/components/Skeleton';
+import { formatNumber, parseNumber, formatCompact } from '@/lib/formatters';
 
 interface Product {
   id?: string;
@@ -289,7 +290,7 @@ export default function ProductManager({ products, onSaveProducts, isLoading = f
                     <td className="text-center px-4 py-3">
                       <span className="inline-flex items-center gap-1 text-sm font-bold text-slate-700">
                         <Target className="w-4 h-4 text-slate-400" />
-                        {product.weekly_target}
+                        {formatCompact(product.weekly_target)}
                       </span>
                     </td>
                     <td className="text-center px-4 py-3">
@@ -424,10 +425,11 @@ export default function ProductManager({ products, onSaveProducts, isLoading = f
                   Weekly Target
                 </label>
                 <input
-                  type="number"
-                  value={editingProduct.weekly_target}
+                  type="text"
+                  inputMode="numeric"
+                  value={formatNumber(editingProduct.weekly_target)}
                   onChange={(e) =>
-                    setEditingProduct({ ...editingProduct, weekly_target: parseInt(e.target.value) || 0 })
+                    setEditingProduct({ ...editingProduct, weekly_target: parseNumber(e.target.value) })
                   }
                   className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400"
                 />
@@ -440,10 +442,11 @@ export default function ProductManager({ products, onSaveProducts, isLoading = f
                     Nominal per Point (Juta)
                   </label>
                   <input
-                    type="number"
-                    value={editingProduct.credit_nominal_per_point || 100}
+                    type="text"
+                    inputMode="numeric"
+                    value={formatNumber(editingProduct.credit_nominal_per_point || 0)}
                     onChange={(e) =>
-                      setEditingProduct({ ...editingProduct, credit_nominal_per_point: parseInt(e.target.value) || 100 })
+                      setEditingProduct({ ...editingProduct, credit_nominal_per_point: parseNumber(e.target.value) })
                     }
                     placeholder="100"
                     className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400"
@@ -460,10 +463,11 @@ export default function ProductManager({ products, onSaveProducts, isLoading = f
                       Points per Acquisition
                     </label>
                     <input
-                      type="number"
-                      value={editingProduct.flat_points || 0}
+                      type="text"
+                      inputMode="numeric"
+                      value={formatNumber(editingProduct.flat_points || 0)}
                       onChange={(e) =>
-                        setEditingProduct({ ...editingProduct, flat_points: parseInt(e.target.value) || 0 })
+                        setEditingProduct({ ...editingProduct, flat_points: parseNumber(e.target.value) })
                       }
                       className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400"
                     />
@@ -524,17 +528,19 @@ export default function ProductManager({ products, onSaveProducts, isLoading = f
                           <div key={index} className="flex items-center gap-2">
                             <span className="text-xs font-bold text-slate-500 w-6">#{index + 1}</span>
                             <input
-                              type="number"
-                              value={tier.limit}
-                              onChange={(e) => updateTier(index, 'limit', parseInt(e.target.value) || 0)}
+                              type="text"
+                              inputMode="numeric"
+                              value={formatNumber(tier.limit)}
+                              onChange={(e) => updateTier(index, 'limit', parseNumber(e.target.value))}
                               placeholder="Limit"
                               className="flex-1 bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400"
                             />
                             <span className="text-xs text-slate-400">→</span>
                             <input
-                              type="number"
-                              value={tier.points}
-                              onChange={(e) => updateTier(index, 'points', parseInt(e.target.value) || 0)}
+                              type="text"
+                              inputMode="numeric"
+                              value={formatNumber(tier.points)}
+                              onChange={(e) => updateTier(index, 'points', parseNumber(e.target.value))}
                               placeholder="Points"
                               className="flex-1 bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400"
                             />

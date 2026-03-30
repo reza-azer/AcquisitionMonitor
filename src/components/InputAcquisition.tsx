@@ -24,6 +24,7 @@ import AcquisitionAssignModal from './AcquisitionAssignModal';
 import AttendanceCalendar from './AttendanceCalendar';
 import AttendanceAssignModal from './AttendanceAssignModal';
 import BulkEditModal from './BulkEditModal';
+import { formatNumber, parseNumber } from '@/lib/formatters';
 
 interface Product {
   id?: string;
@@ -942,10 +943,10 @@ export default function InputAcquisition({ products, teams, members }: InputAcqu
                           {isEditing ? (
                             <div className="flex items-center gap-2 justify-end">
                               <input
-                                type="number"
-                                min="0"
-                                value={editQuantity}
-                                onChange={(e) => setEditQuantity(parseInt(e.target.value) || 0)}
+                                type="text"
+                                inputMode="numeric"
+                                value={formatNumber(editQuantity)}
+                                onChange={(e) => setEditQuantity(parseNumber(e.target.value))}
                                 className="w-20 bg-white border border-blue-300 rounded-lg px-2 py-1 text-sm font-bold text-center outline-none focus:ring-2 focus:ring-blue-200"
                               />
                               <span className="text-xs text-slate-500">{product?.unit}</span>

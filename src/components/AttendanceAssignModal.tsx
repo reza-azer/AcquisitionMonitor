@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, CheckCircle, Clock, FileText, XCircle, Save, Trash2 } from 'lucide-react';
 import GridLoader from './GridLoader';
+import { formatNumber, parseNumber } from '@/lib/formatters';
 
 interface Attendance {
   id?: string;
@@ -194,10 +195,10 @@ export default function AttendanceAssignModal({
                 Menit Terlambat
               </label>
               <input
-                type="number"
-                min="0"
-                value={lateMinutes}
-                onChange={(e) => setLateMinutes(parseInt(e.target.value) || 0)}
+                type="text"
+                inputMode="numeric"
+                value={formatNumber(lateMinutes)}
+                onChange={(e) => setLateMinutes(parseNumber(e.target.value))}
                 className="w-full bg-white border border-yellow-300 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:ring-2 focus:ring-yellow-200"
                 placeholder="0"
               />
