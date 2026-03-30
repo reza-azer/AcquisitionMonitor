@@ -1246,7 +1246,8 @@ export default function App() {
                                         const tier = productConfig.tier_config.find(t => qty <= t.limit) || productConfig.tier_config[productConfig.tier_config.length - 1];
                                         pointsEarned = qty * tier.points;
                                       } else {
-                                        pointsEarned = isCredit ? nominal * (productConfig.flat_points || 0) : qty * (productConfig.flat_points || 0);
+                                        // CREDIT: 1 poin per 100 juta (floor)
+                                        pointsEarned = isCredit ? Math.floor(nominal / 100000000) : qty * (productConfig.flat_points || 0);
                                       }
                                     }
                                     return (
@@ -1265,9 +1266,9 @@ export default function App() {
                                         <div className="flex justify-between items-center mt-1">
                                           <div className="flex flex-col">
                                             <span className="text-sm font-bold text-slate-700">{qty} {productConfig?.unit}</span>
-                                            {isCredit && <span className="text-[9px] font-black text-purple-600">{nominal} Juta</span>}
+                                            {isCredit && <span className="text-[9px] font-black text-purple-600">{formatToIDR(nominal)} Rp</span>}
                                           </div>
-                                          <span className="text-xs font-black text-green-600">+{pointsEarned}</span>
+                                          <span className="text-xs font-black text-green-600">+{isCredit ? Math.floor(nominal / 100000000) : pointsEarned}</span>
                                         </div>
                                       </div>
                                     );
@@ -1299,11 +1300,17 @@ export default function App() {
                             }
                           });
                         });
-                        const monthlyTotal = Object.values(monthlyAcq).reduce((sum: number, data) => {
+                        const monthlyScore = getMemberPoints(monthlyAcq);
+                        const monthlyTotal = Object.entries(monthlyAcq).reduce((sum: number, [productKey, data]) => {
+                          const product = products.find(p => p.product_key === productKey);
+                          const isCredit = product?.category === 'CREDIT';
+                          // For CREDIT: count number of entries (quantity), for others: sum quantity
+                          if (isCredit && typeof data === 'object') {
+                            return sum + data.quantity;
+                          }
                           const qty = typeof data === 'object' ? data.quantity : (data || 0);
                           return sum + qty;
                         }, 0);
-                        const monthlyScore = getMemberPoints(monthlyAcq);
                         const hasData = monthlyTotal > 0;
 
                         return (
@@ -1363,7 +1370,7 @@ export default function App() {
                                             <span className="text-sm font-bold text-slate-700">{qty} {productConfig?.unit}</span>
                                             {isCredit && <span className="text-[9px] font-black text-purple-600">{formatToIDR(nominal)} Rp</span>}
                                           </div>
-                                          <span className="text-xs font-black text-green-600">+{pointsEarned}</span>
+                                          <span className="text-xs font-black text-green-600">+{isCredit ? Math.floor(nominal / 100000000) : pointsEarned}</span>
                                         </div>
                                       </div>
                                     );
