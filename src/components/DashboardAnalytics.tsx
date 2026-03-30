@@ -98,6 +98,8 @@ interface Summary {
 
 interface AnalyticsData {
   weeklyTrends: WeeklyTrend[];
+  weeklyTrendsCredit: WeeklyTrend[];
+  weeklyTrendsNonCredit: WeeklyTrend[];
   teamWeeklyTrends: TeamWeeklyTrend[];
   teamPerformance: TeamPerformance[];
   memberRankings: MemberRanking[];
@@ -950,31 +952,61 @@ export default function DashboardAnalytics() {
         </div>
       </div>
 
-      {/* Weekly Trend Chart */}
-      <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm">
-        <div className="flex items-center gap-3 mb-6">
-          <div className="w-10 h-10 rounded-2xl bg-indigo-50 flex items-center justify-center">
-            <TrendingUp className="w-5 h-5 text-indigo-600" />
+      {/* Weekly Trend Chart - Non-CREDIT */}
+      {data.weeklyTrendsNonCredit && data.weeklyTrendsNonCredit.length > 0 && (
+        <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-10 h-10 rounded-2xl bg-indigo-50 flex items-center justify-center">
+              <TrendingUp className="w-5 h-5 text-indigo-600" />
+            </div>
+            <div>
+              <h3 className="font-black text-slate-800">Weekly Performance Trend - Non-CREDIT</h3>
+              <p className="text-xs font-bold text-slate-400">FUNDING & TRANSACTION - Points progression across weeks</p>
+            </div>
           </div>
-          <div>
-            <h3 className="font-black text-slate-800">Weekly Performance Trend</h3>
-            <p className="text-xs font-bold text-slate-400">Points progression across weeks</p>
+          <div className="h-80">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={data.weeklyTrendsNonCredit}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                <XAxis dataKey="week" tickFormatter={(v) => `W${v}`} stroke="#64748b" fontSize={12} />
+                <YAxis stroke="#64748b" fontSize={12} />
+                <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} labelFormatter={(v) => `Week ${v}`} />
+                <Legend />
+                <Line type="monotone" dataKey="totalPoints" name="Total Points" stroke="#003d79" strokeWidth={3} dot={{ fill: '#003d79', strokeWidth: 2, r: 6 }} activeDot={{ r: 8 }} />
+                <Line type="monotone" dataKey="totalQuantity" name="Total Quantity" stroke="#FDB813" strokeWidth={3} dot={{ fill: '#FDB813', strokeWidth: 2, r: 6 }} />
+              </LineChart>
+            </ResponsiveContainer>
           </div>
         </div>
-        <div className="h-80">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={weeklyTrends}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-              <XAxis dataKey="week" tickFormatter={(v) => `W${v}`} stroke="#64748b" fontSize={12} />
-              <YAxis stroke="#64748b" fontSize={12} />
-              <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} labelFormatter={(v) => `Week ${v}`} />
-              <Legend />
-              <Line type="monotone" dataKey="totalPoints" name="Total Points" stroke="#003d79" strokeWidth={3} dot={{ fill: '#003d79', strokeWidth: 2, r: 6 }} activeDot={{ r: 8 }} />
-              <Line type="monotone" dataKey="totalQuantity" name="Total Quantity" stroke="#FDB813" strokeWidth={3} dot={{ fill: '#FDB813', strokeWidth: 2, r: 6 }} />
-            </LineChart>
-          </ResponsiveContainer>
+      )}
+
+      {/* Weekly Trend Chart - CREDIT */}
+      {data.weeklyTrendsCredit && data.weeklyTrendsCredit.length > 0 && (
+        <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm mt-8">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-10 h-10 rounded-2xl bg-purple-50 flex items-center justify-center">
+              <TrendingUp className="w-5 h-5 text-purple-600" />
+            </div>
+            <div>
+              <h3 className="font-black text-slate-800">Weekly Performance Trend - CREDIT</h3>
+              <p className="text-xs font-bold text-slate-400">CREDIT - Points progression across weeks</p>
+            </div>
+          </div>
+          <div className="h-80">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={data.weeklyTrendsCredit}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                <XAxis dataKey="week" tickFormatter={(v) => `W${v}`} stroke="#64748b" fontSize={12} />
+                <YAxis stroke="#64748b" fontSize={12} />
+                <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} labelFormatter={(v) => `Week ${v}`} />
+                <Legend />
+                <Line type="monotone" dataKey="totalPoints" name="Total Points" stroke="#7c3aed" strokeWidth={3} dot={{ fill: '#7c3aed', strokeWidth: 2, r: 6 }} activeDot={{ r: 8 }} />
+                <Line type="monotone" dataKey="totalQuantity" name="Total Acquisitions" stroke="#FDB813" strokeWidth={3} dot={{ fill: '#FDB813', strokeWidth: 2, r: 6 }} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Team Weekly Trends Chart */}
       {data.teamWeeklyTrends && data.teamWeeklyTrends.length > 0 && (
@@ -1093,104 +1125,201 @@ export default function DashboardAnalytics() {
         </div>
       </div>
 
-      {/* Category Performance with Targets */}
-      <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm">
-        <div className="flex items-center gap-3 mb-6">
-          <div className="w-10 h-10 rounded-2xl bg-green-50 flex items-center justify-center">
-            <Target className="w-5 h-5 text-green-600" />
-          </div>
-          <div>
-            <h3 className="font-black text-slate-800">Product Target Achievement</h3>
-            <p className="text-xs font-bold text-slate-400">Progress toward weekly goals</p>
-          </div>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {categoryPerformance.map((product, index) => (
-            <div key={product.productKey} className="bg-slate-50 rounded-2xl p-5 border border-slate-100">
-              <div className="flex justify-between items-start mb-3">
-                <div>
-                  <div className="text-xs font-black text-slate-400 uppercase tracking-wider">{product.category}</div>
-                  <div className="font-black text-slate-800">{product.productName}</div>
-                </div>
-                <div
-                  className={`px-2 py-1 rounded-lg text-xs font-black ${
-                    product.achievementRate >= 100
-                      ? 'bg-green-100 text-green-700'
-                      : product.achievementRate >= 50
-                      ? 'bg-amber-100 text-amber-700'
-                      : 'bg-red-100 text-red-700'
-                  }`}
-                >
-                  {product.achievementRate}%
-                </div>
-              </div>
-              <div className="mb-2">
-                <div className="flex justify-between text-xs font-bold text-slate-500 mb-1">
-                  <span>
-                    {product.category === 'CREDIT' 
-                      ? `${formatToJuta(product.totalNominal || 0)} / ${formatToJuta(product.weeklyTarget)} ${product.unit}`
-                      : `${product.totalQuantity} / ${product.weeklyTarget} ${product.unit}`
-                    }
-                  </span>
-                </div>
-                <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
-                  <div
-                    className="h-full rounded-full transition-all"
-                    style={{ width: `${Math.min(product.achievementRate, 100)}%`, backgroundColor: COLORS[index % COLORS.length] }}
-                  />
-                </div>
-              </div>
-              <div className="text-xs font-bold text-slate-400">{product.totalPoints} points earned</div>
+      {/* Category Performance with Targets - Non-CREDIT */}
+      {categoryPerformance.filter(p => p.category !== 'CREDIT').length > 0 && (
+        <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-10 h-10 rounded-2xl bg-green-50 flex items-center justify-center">
+              <Target className="w-5 h-5 text-green-600" />
             </div>
-          ))}
+            <div>
+              <h3 className="font-black text-slate-800">Product Target Achievement - Non-CREDIT</h3>
+              <p className="text-xs font-bold text-slate-400">FUNDING & TRANSACTION - Progress toward weekly goals</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {categoryPerformance.filter(p => p.category !== 'CREDIT').map((product, index) => (
+              <div key={product.productKey} className="bg-slate-50 rounded-2xl p-5 border border-slate-100">
+                <div className="flex justify-between items-start mb-3">
+                  <div>
+                    <div className="text-xs font-black text-slate-400 uppercase tracking-wider">{product.category}</div>
+                    <div className="font-black text-slate-800">{product.productName}</div>
+                  </div>
+                  <div
+                    className={`px-2 py-1 rounded-lg text-xs font-black ${
+                      product.achievementRate >= 100
+                        ? 'bg-green-100 text-green-700'
+                        : product.achievementRate >= 50
+                        ? 'bg-amber-100 text-amber-700'
+                        : 'bg-red-100 text-red-700'
+                    }`}
+                  >
+                    {product.achievementRate}%
+                  </div>
+                </div>
+                <div className="mb-2">
+                  <div className="flex justify-between text-xs font-bold text-slate-500 mb-1">
+                    <span>{product.totalQuantity} / {product.weeklyTarget} {product.unit}</span>
+                  </div>
+                  <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
+                    <div
+                      className="h-full rounded-full transition-all"
+                      style={{ width: `${Math.min(product.achievementRate, 100)}%`, backgroundColor: COLORS[index % COLORS.length] }}
+                    />
+                  </div>
+                </div>
+                <div className="text-xs font-bold text-slate-400">{product.totalPoints} points earned</div>
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* Product Performance Bar Chart */}
-      <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm">
-        <div className="flex items-center gap-3 mb-6">
-          <div className="w-10 h-10 rounded-2xl bg-green-50 flex items-center justify-center">
-            <PieChartIcon className="w-5 h-5 text-green-600" />
+      {/* Category Performance with Targets - CREDIT */}
+      {categoryPerformance.filter(p => p.category === 'CREDIT').length > 0 && (
+        <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-10 h-10 rounded-2xl bg-purple-50 flex items-center justify-center">
+              <Target className="w-5 h-5 text-purple-600" />
+            </div>
+            <div>
+              <h3 className="font-black text-slate-800">Product Target Achievement - CREDIT</h3>
+              <p className="text-xs font-bold text-slate-400">CREDIT products - Progress toward weekly nominal goals</p>
+            </div>
           </div>
-          <div>
-            <h3 className="font-black text-slate-800">Product Performance</h3>
-            <p className="text-xs font-bold text-slate-400">Achievement by product</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {categoryPerformance.filter(p => p.category === 'CREDIT').map((product, index) => (
+              <div key={product.productKey} className="bg-slate-50 rounded-2xl p-5 border border-slate-100">
+                <div className="flex justify-between items-start mb-3">
+                  <div>
+                    <div className="text-xs font-black text-slate-400 uppercase tracking-wider">{product.category}</div>
+                    <div className="font-black text-slate-800">{product.productName}</div>
+                  </div>
+                  <div
+                    className={`px-2 py-1 rounded-lg text-xs font-black ${
+                      product.achievementRate >= 100
+                        ? 'bg-green-100 text-green-700'
+                        : product.achievementRate >= 50
+                        ? 'bg-amber-100 text-amber-700'
+                        : 'bg-red-100 text-red-700'
+                    }`}
+                  >
+                    {product.achievementRate}%
+                  </div>
+                </div>
+                <div className="mb-2">
+                  <div className="flex justify-between text-xs font-bold text-slate-500 mb-1">
+                    <span>
+                      {formatToJuta(product.totalNominal || 0)} / {formatToJuta(product.weeklyTarget)} {product.unit}
+                    </span>
+                  </div>
+                  <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
+                    <div
+                      className="h-full rounded-full transition-all"
+                      style={{ width: `${Math.min(product.achievementRate, 100)}%`, backgroundColor: COLORS[index % COLORS.length] }}
+                    />
+                  </div>
+                </div>
+                <div className="text-xs font-bold text-slate-400">{product.totalPoints} points earned</div>
+              </div>
+            ))}
           </div>
         </div>
-        <div className="h-80">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={categoryPerformance}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-              <XAxis dataKey="productKey" stroke="#64748b" fontSize={12} />
-              <YAxis stroke="#64748b" fontSize={12} />
-              <Tooltip 
-                contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                content={({ active, payload, label }) => {
-                  if (active && payload && payload[0]) {
-                    const data = payload[0].payload;
-                    const isCredit = data.category === 'CREDIT';
-                    return (
-                      <div style={{ padding: '12px', background: 'white', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}>
-                        <p style={{ margin: '0 0 8px 0', fontWeight: 'bold' }}>{data.productName}</p>
-                        <p style={{ margin: '4px 0', fontSize: '12px' }}>
-                          Actual: {isCredit ? formatToJuta(data.totalNominal || 0) : data.totalQuantity}
-                        </p>
-                        <p style={{ margin: '4px 0', fontSize: '12px' }}>
-                          Target: {isCredit ? formatToJuta(data.weeklyTarget) : data.weeklyTarget}
-                        </p>
-                      </div>
-                    );
-                  }
-                  return null;
-                }}
-              />
-              <Legend />
-              <Bar dataKey="totalQuantity" name="Actual" fill="#003d79" radius={[8, 8, 0, 0]} />
-              <Bar dataKey="weeklyTarget" name="Target" fill="#FDB813" radius={[8, 8, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
+      )}
+
+      {/* Product Performance Bar Chart - Non-CREDIT */}
+      {categoryPerformance.filter(p => p.category !== 'CREDIT').length > 0 && (
+        <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-10 h-10 rounded-2xl bg-green-50 flex items-center justify-center">
+              <PieChartIcon className="w-5 h-5 text-green-600" />
+            </div>
+            <div>
+              <h3 className="font-black text-slate-800">Product Performance - Non-CREDIT</h3>
+              <p className="text-xs font-bold text-slate-400">FUNDING & TRANSACTION - Achievement by product</p>
+            </div>
+          </div>
+          <div className="h-80">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={categoryPerformance.filter(p => p.category !== 'CREDIT')}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                <XAxis dataKey="productKey" stroke="#64748b" fontSize={12} />
+                <YAxis stroke="#64748b" fontSize={12} />
+                <Tooltip
+                  contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                  content={({ active, payload, label }) => {
+                    if (active && payload && payload[0]) {
+                      const data = payload[0].payload;
+                      return (
+                        <div style={{ padding: '12px', background: 'white', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}>
+                          <p style={{ margin: '0 0 8px 0', fontWeight: 'bold' }}>{data.productName}</p>
+                          <p style={{ margin: '4px 0', fontSize: '12px' }}>
+                            Actual: {data.totalQuantity}
+                          </p>
+                          <p style={{ margin: '4px 0', fontSize: '12px' }}>
+                            Target: {data.weeklyTarget}
+                          </p>
+                        </div>
+                      );
+                    }
+                    return null;
+                  }}
+                />
+                <Legend />
+                <Bar dataKey="totalQuantity" name="Actual" fill="#003d79" radius={[8, 8, 0, 0]} />
+                <Bar dataKey="weeklyTarget" name="Target" fill="#FDB813" radius={[8, 8, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* Product Performance Bar Chart - CREDIT */}
+      {categoryPerformance.filter(p => p.category === 'CREDIT').length > 0 && (
+        <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm mt-8">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-10 h-10 rounded-2xl bg-purple-50 flex items-center justify-center">
+              <PieChartIcon className="w-5 h-5 text-purple-600" />
+            </div>
+            <div>
+              <h3 className="font-black text-slate-800">Product Performance - CREDIT</h3>
+              <p className="text-xs font-bold text-slate-400">CREDIT products - Achievement by nominal</p>
+            </div>
+          </div>
+          <div className="h-80">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={categoryPerformance.filter(p => p.category === 'CREDIT')}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                <XAxis dataKey="productKey" stroke="#64748b" fontSize={12} />
+                <YAxis stroke="#64748b" fontSize={12} />
+                <Tooltip
+                  contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                  content={({ active, payload, label }) => {
+                    if (active && payload && payload[0]) {
+                      const data = payload[0].payload;
+                      return (
+                        <div style={{ padding: '12px', background: 'white', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}>
+                          <p style={{ margin: '0 0 8px 0', fontWeight: 'bold' }}>{data.productName}</p>
+                          <p style={{ margin: '4px 0', fontSize: '12px' }}>
+                            Actual: {formatToJuta(data.totalNominal || 0)}
+                          </p>
+                          <p style={{ margin: '4px 0', fontSize: '12px' }}>
+                            Target: {formatToJuta(data.weeklyTarget)}
+                          </p>
+                        </div>
+                      );
+                    }
+                    return null;
+                  }}
+                />
+                <Legend />
+                <Bar dataKey="totalNominal" name="Actual (Nominal)" fill="#7c3aed" radius={[8, 8, 0, 0]} />
+                <Bar dataKey="weeklyTarget" name="Target" fill="#FDB813" radius={[8, 8, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      )}
 
       {/* Attendance vs Performance Correlation */}
       <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm">

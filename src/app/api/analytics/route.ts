@@ -180,33 +180,44 @@ export async function GET(request: Request) {
     }));
 
     // Calculate weekly trends (all 4 weeks) - overall
+    // Separate CREDIT and Non-CREDIT for better chart visualization
     const weeklyTrends: { week: number; totalPoints: number; totalQuantity: number }[] = [];
+    const weeklyTrendsCredit: { week: number; totalPoints: number; totalQuantity: number }[] = [];
+    const weeklyTrendsNonCredit: { week: number; totalPoints: number; totalQuantity: number }[] = [];
+    
     for (let w = 1; w <= 4; w++) {
       const weekAcq = normalizedAcquisitions.filter(a => a.week === w);
       let totalPoints = 0;
       let totalQuantity = 0;
+      let creditPoints = 0;
+      let creditQuantity = 0;
+      let nonCreditPoints = 0;
+      let nonCreditQuantity = 0;
+      
       weekAcq.forEach(a => {
         const product = products.find(p => p.product_key === a.product_key);
         if (!product) return;
-        
+
         if (product.category === 'CREDIT') {
           // CREDIT: points based on configurable nominal per point
-          // Formula: Math.floor(nominal / 1000000 / credit_nominal_per_point)
-          totalQuantity += 1;
           const nominalPerPoint = product.credit_nominal_per_point || 100;
-          totalPoints += Math.floor(((a.nominal || 0) / 1000000) / nominalPerPoint);
+          creditQuantity += 1;
+          creditPoints += Math.floor(((a.nominal || 0) / 1000000) / nominalPerPoint);
         } else {
           // FUNDING/TRANSACTION: use quantity directly
-          totalQuantity += a.quantity;
+          nonCreditQuantity += a.quantity;
           if (product.is_tiered && product.tier_config) {
             const tier = product.tier_config.find((t: { limit: number }) => a.quantity <= t.limit) || product.tier_config[product.tier_config.length - 1];
-            totalPoints += a.quantity * tier.points;
+            nonCreditPoints += a.quantity * tier.points;
           } else {
-            totalPoints += a.quantity * (product.flat_points || 0);
+            nonCreditPoints += a.quantity * (product.flat_points || 0);
           }
         }
       });
-      weeklyTrends.push({ week: w, totalPoints, totalQuantity });
+      
+      weeklyTrends.push({ week: w, totalPoints: creditPoints + nonCreditPoints, totalQuantity: creditQuantity + nonCreditQuantity });
+      weeklyTrendsCredit.push({ week: w, totalPoints: creditPoints, totalQuantity: creditQuantity });
+      weeklyTrendsNonCredit.push({ week: w, totalPoints: nonCreditPoints, totalQuantity: nonCreditQuantity });
     }
 
     // Calculate weekly trends per team
@@ -446,6 +457,8 @@ export async function GET(request: Request) {
 
     return NextResponse.json({
       weeklyTrends,
+      weeklyTrendsCredit,
+      weeklyTrendsNonCredit,
       teamWeeklyTrends,
       teamPerformance,
       memberRankings,
