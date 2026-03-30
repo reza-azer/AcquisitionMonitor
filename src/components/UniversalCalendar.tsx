@@ -21,12 +21,14 @@ interface Acquisition {
   date: string;
   product_key: string;
   quantity: number;
+  nominal?: number;
 }
 
 interface Product {
   product_key: string;
   product_name: string;
   unit: string;
+  category?: string;
 }
 
 // ============ CALENDAR MODES ============
@@ -268,11 +270,14 @@ export default function UniversalCalendar({
               <div className="text-[9px] sm:text-[10px] font-black text-purple-700 uppercase">
                 {productCount} Produk
               </div>
-              {filledAcquisitions.slice(0, 3).map(acq => {
+              {filledAcquisitions.slice(0, 3).map((acq, index) => {
                 const product = products.find(p => p.product_key === acq.product_key);
+                const isCredit = product?.category === 'CREDIT';
+                const displayValue = isCredit ? (acq.nominal || 0) : acq.quantity;
+                const displayUnit = isCredit ? 'Juta' : (product?.unit || '');
                 return (
-                  <div key={acq.product_key} className="text-[7px] sm:text-[8px] font-bold text-slate-600 truncate">
-                    {acq.product_key}: {acq.quantity} {product?.unit}
+                  <div key={`${acq.product_key}-${acq.id || index}`} className="text-[7px] sm:text-[8px] font-bold text-slate-600 truncate">
+                    {acq.product_key}: {displayValue} {displayUnit}
                   </div>
                 );
               })}

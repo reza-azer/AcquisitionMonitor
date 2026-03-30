@@ -40,14 +40,15 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { bulk, records, member_id, week, date, product_key, quantity, nominal } = body;
+    const { bulk, records, member_id, week, date, product_key, quantity, nominal, is_credit_entry } = body;
 
     // Handle bulk operations
     if (bulk && Array.isArray(records)) {
       console.log('[Acquisitions API] Bulk POST received:', records.length, 'records');
+      console.log('[Acquisitions API] First record:', records[0]);
 
       // Prepare records with week calculation and updated_at
-      const upsertRecords = records.map((record: any) => {
+      const insertRecords = records.map((record: any) => {
         const inputDate = record.date || new Date().toISOString().split('T')[0];
         const inputWeek = record.week || getWeekOfMonth(new Date(inputDate));
         return {
@@ -61,23 +62,95 @@ export async function POST(request: Request) {
         };
       });
 
-      console.log('[Acquisitions API] Bulk upserting:', upsertRecords.length, 'records');
+      // Check if any records are CREDIT entries
+      const hasCreditEntries = records.some((r: any) => r.is_credit_entry === true);
+      console.log('[Acquisitions API] Has credit entries:', hasCreditEntries);
 
-      // Bulk upsert using .upsert() with array
-      const { data, error } = await supabase
-        .from('acquisitions')
-        .upsert(upsertRecords, {
-          onConflict: 'member_id,date,product_key'
-        })
-        .select();
+      if (hasCreditEntries) {
+        // For CREDIT: delete existing entries first, then insert
+        const sampleRecord = records[0];
+        console.log('[Acquisitions API] Deleting existing entries for:', {
+          member_id: sampleRecord.member_id,
+          date: sampleRecord.date,
+          product_key: sampleRecord.product_key
+        });
 
-      if (error) {
-        console.error('[Acquisitions API] Bulk upsert error:', error);
-        throw error;
+        // First, check what exists
+        const { data: existingData } = await supabase
+          .from('acquisitions')
+          .select('id, quantity, nominal')
+          .eq('member_id', sampleRecord.member_id)
+          .eq('date', sampleRecord.date)
+          .eq('product_key', sampleRecord.product_key);
+
+        console.log('[Acquisitions API] Existing records before delete:', existingData);
+
+        // Delete existing entries for the same member/date/product
+        const { error: deleteError, count: deletedCount } = await supabase
+          .from('acquisitions')
+          .delete()
+          .eq('member_id', sampleRecord.member_id)
+          .eq('date', sampleRecord.date)
+          .eq('product_key', sampleRecord.product_key)
+          .select();
+
+        if (deleteError) {
+          console.error('[Acquisitions API] Delete error:', deleteError);
+          throw deleteError;
+        }
+
+        console.log('[Acquisitions API] Deleted records:', deleteError);
+
+        // Verify delete worked
+        const { data: afterDeleteData } = await supabase
+          .from('acquisitions')
+          .select('id')
+          .eq('member_id', sampleRecord.member_id)
+          .eq('date', sampleRecord.date)
+          .eq('product_key', sampleRecord.product_key);
+
+        console.log('[Acquisitions API] Records after delete:', afterDeleteData?.length || 0);
+
+        // Insert new records
+        const { data, error } = await supabase
+          .from('acquisitions')
+          .insert(insertRecords)
+          .select();
+
+        if (error) {
+          console.error('[Acquisitions API] Insert error:', error);
+          // Check what's in the table now
+          const { data: conflictData } = await supabase
+            .from('acquisitions')
+            .select('id, member_id, date, product_key, quantity, nominal')
+            .eq('member_id', sampleRecord.member_id)
+            .eq('date', sampleRecord.date)
+            .eq('product_key', sampleRecord.product_key);
+          console.error('[Acquisitions API] Conflict - current records:', conflictData);
+          throw error;
+        }
+
+        console.log('[Acquisitions API] Bulk insert success:', data?.length, 'records');
+        return NextResponse.json({ success: true, count: data?.length || 0, data }, { status: 201 });
+      } else {
+        // For FUNDING/TRANSACTION: use upsert (existing behavior)
+        console.log('[Acquisitions API] Bulk upserting:', insertRecords.length, 'records');
+
+        const { data, error } = await supabase
+          .from('acquisitions')
+          .upsert(insertRecords, {
+            onConflict: 'member_id,date,product_key'
+          })
+          .select();
+
+        if (error) {
+          console.error('[Acquisitions API] Bulk upsert error:', error);
+          throw error;
+        }
+
+        console.log('[Acquisitions API] Bulk upsert success:', data?.length, 'records');
+        return NextResponse.json({ success: true, count: data?.length || 0, data }, { status: 201 });
       }
-
-      console.log('[Acquisitions API] Bulk upsert success:', data?.length, 'records');
-      return NextResponse.json({ success: true, count: data?.length || 0, data }, { status: 201 });
     }
 
     // Handle single record

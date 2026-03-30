@@ -353,18 +353,57 @@ export default function InputAcquisition({ products, teams, members }: InputAcqu
   // Save acquisitions (bulk)
   const handleSaveAcquisitions = async (acquisitions: Omit<Acquisition, 'id'>[]) => {
     try {
-      const savePromises = acquisitions.map(acq =>
-        fetch('/api/acquisitions', {
+      // Check if any acquisitions are CREDIT products
+      const hasCredit = acquisitions.some(acq => {
+        const product = products.find(p => p.product_key === acq.product_key);
+        return product?.category === 'CREDIT';
+      });
+
+      console.log('[InputAcquisition] Save acquisitions:', acquisitions);
+      console.log('[InputAcquisition] Has credit:', hasCredit);
+
+      if (hasCredit) {
+        // For CREDIT: send as bulk request to handle multiple entries properly
+        const records = acquisitions.map(acq => {
+          const product = products.find(p => p.product_key === acq.product_key);
+          return {
+            member_id: acq.member_id,
+            date: acq.date,
+            week: acq.week,
+            product_key: acq.product_key,
+            quantity: acq.quantity,
+            nominal: acq.nominal || 0,
+            is_credit_entry: product?.category === 'CREDIT'
+          };
+        });
+
+        console.log('[InputAcquisition] Sending bulk records:', records);
+
+        const response = await fetch('/api/acquisitions', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(acq),
-        })
-      );
+          body: JSON.stringify({
+            bulk: true,
+            records
+          }),
+        });
 
-      const results = await Promise.all(savePromises);
-      const failed = results.some(r => !r.ok);
+        if (!response.ok) throw new Error('Failed to save');
+      } else {
+        // For FUNDING/TRANSACTION: send individual requests (existing behavior)
+        const savePromises = acquisitions.map(acq =>
+          fetch('/api/acquisitions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(acq),
+          })
+        );
 
-      if (failed) throw new Error('Some requests failed');
+        const results = await Promise.all(savePromises);
+        const failed = results.some(r => !r.ok);
+
+        if (failed) throw new Error('Some requests failed');
+      }
 
       // Create audit logs for changed values
       const timestamp = new Date().toISOString();
@@ -378,10 +417,10 @@ export default function InputAcquisition({ products, teams, members }: InputAcqu
           return { oldQty, newQty, acq };
         })
         .filter(({ oldQty, newQty }) => oldQty !== newQty)
-        .map(({ oldQty, newQty, acq }) => {
+        .map(({ oldQty, newQty, acq }, idx) => {
           const product = products.find(p => p.product_key === acq.product_key);
           return {
-            id: `audit-${Date.now()}-${acq.product_key}`,
+            id: `audit-${Date.now()}-${acq.product_key}-${idx}-${acq.nominal || acq.quantity}`,
             member_id: acq.member_id,
             member_name: memberName,
             date: acq.date,

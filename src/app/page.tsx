@@ -131,6 +131,7 @@ export default function App() {
   const [selectedMember, setSelectedMember] = useState<{ member: Member, team: Team } | null>(null);
   const [memberViewMode, setMemberViewMode] = useState<'weekly' | 'monthly'>('weekly');
   const [memberAttendance, setMemberAttendance] = useState<any>(null);
+  const [creditDetailModal, setCreditDetailModal] = useState<{ isOpen: boolean; productKey: string; productName: string; week?: number; data: { quantity: number; nominal?: number } | null } | null>(null);
 
   // Migration modal state
   const [migratingMember, setMigratingMember] = useState<{ member: Member, team: Team } | null>(null);
@@ -273,17 +274,17 @@ export default function App() {
             weeklyAcquisitions: acquisitionsData
               .filter((a: Acquisition) => a.member_id === member.id)
               .reduce((acc: Record<number, Record<string, { quantity: number; nominal?: number } | number>>, a: Acquisition) => {
-                const product = productsData.find((p: Product) => p.product_key === a.product_key);
+                const product = productsData.data?.find((p: Product) => p.product_key === a.product_key);
                 const isCredit = product?.category === 'CREDIT';
-                
+
                 if (!acc[a.week]) acc[a.week] = {};
-                
+
                 if (isCredit) {
                   // For CREDIT: accumulate quantity and nominal from multiple rows
                   const existing = acc[a.week][a.product_key];
                   const currentQty = typeof existing === 'object' ? existing.quantity : (existing || 0);
                   const currentNominal = typeof existing === 'object' ? (existing.nominal || 0) : 0;
-                  
+
                   acc[a.week][a.product_key] = {
                     quantity: currentQty + a.quantity,
                     nominal: currentNominal + (a.nominal || 0)
@@ -1230,22 +1231,37 @@ export default function App() {
                                     return qty > 0;
                                   })
                                   .map(([product, data]) => {
-                                    const qty = typeof data === 'object' ? data.quantity : (data || 0);
                                     const productConfig = products.find(p => p.product_key === product);
+                                    const isCredit = productConfig?.category === 'CREDIT';
+                                    const qty = typeof data === 'object' ? data.quantity : (data || 0);
+                                    const nominal = typeof data === 'object' ? (data.nominal || 0) : 0;
                                     let pointsEarned = 0;
                                     if (productConfig) {
                                       if (productConfig.is_tiered && productConfig.tier_config) {
                                         const tier = productConfig.tier_config.find(t => qty <= t.limit) || productConfig.tier_config[productConfig.tier_config.length - 1];
                                         pointsEarned = qty * tier.points;
                                       } else {
-                                        pointsEarned = qty * (productConfig.flat_points || 0);
+                                        pointsEarned = isCredit ? nominal * (productConfig.flat_points || 0) : qty * (productConfig.flat_points || 0);
                                       }
                                     }
                                     return (
-                                      <div key={product} className="bg-slate-50 rounded-xl p-2.5 border border-slate-100">
+                                      <div
+                                        key={product}
+                                        onClick={() => isCredit && setCreditDetailModal({
+                                          isOpen: true,
+                                          productKey: product,
+                                          productName: productConfig?.product_name || product,
+                                          week,
+                                          data: typeof data === 'object' ? data : null
+                                        })}
+                                        className={`bg-slate-50 rounded-xl p-2.5 border border-slate-100 transition-all ${isCredit ? 'cursor-pointer hover:bg-purple-50 hover:border-purple-200' : ''}`}
+                                      >
                                         <div className="text-[9px] font-black text-slate-400 uppercase">{product}</div>
                                         <div className="flex justify-between items-center mt-1">
-                                          <span className="text-sm font-bold text-slate-700">{qty} {productConfig?.unit}</span>
+                                          <div className="flex flex-col">
+                                            <span className="text-sm font-bold text-slate-700">{qty} {productConfig?.unit}</span>
+                                            {isCredit && <span className="text-[9px] font-black text-purple-600">{nominal} Juta</span>}
+                                          </div>
                                           <span className="text-xs font-black text-green-600">+{pointsEarned}</span>
                                         </div>
                                       </div>
@@ -1311,22 +1327,36 @@ export default function App() {
                                     return qty > 0;
                                   })
                                   .map(([product, data]) => {
-                                    const qty = typeof data === 'object' ? data.quantity : (data || 0);
                                     const productConfig = products.find(p => p.product_key === product);
+                                    const isCredit = productConfig?.category === 'CREDIT';
+                                    const qty = typeof data === 'object' ? data.quantity : (data || 0);
+                                    const nominal = typeof data === 'object' ? (data.nominal || 0) : 0;
                                     let pointsEarned = 0;
                                     if (productConfig) {
                                       if (productConfig.is_tiered && productConfig.tier_config) {
                                         const tier = productConfig.tier_config.find(t => qty <= t.limit) || productConfig.tier_config[productConfig.tier_config.length - 1];
                                         pointsEarned = qty * tier.points;
                                       } else {
-                                        pointsEarned = qty * (productConfig.flat_points || 0);
+                                        pointsEarned = isCredit ? nominal * (productConfig.flat_points || 0) : qty * (productConfig.flat_points || 0);
                                       }
                                     }
                                     return (
-                                      <div key={product} className="bg-slate-50 rounded-xl p-2.5 border border-slate-100">
+                                      <div
+                                        key={product}
+                                        onClick={() => isCredit && setCreditDetailModal({
+                                          isOpen: true,
+                                          productKey: product,
+                                          productName: productConfig?.product_name || product,
+                                          data: typeof data === 'object' ? data : null
+                                        })}
+                                        className={`bg-slate-50 rounded-xl p-2.5 border border-slate-100 transition-all ${isCredit ? 'cursor-pointer hover:bg-purple-50 hover:border-purple-200' : ''}`}
+                                      >
                                         <div className="text-[9px] font-black text-slate-400 uppercase">{product}</div>
                                         <div className="flex justify-between items-center mt-1">
-                                          <span className="text-sm font-bold text-slate-700">{qty} {productConfig?.unit}</span>
+                                          <div className="flex flex-col">
+                                            <span className="text-sm font-bold text-slate-700">{qty} {productConfig?.unit}</span>
+                                            {isCredit && <span className="text-[9px] font-black text-purple-600">{nominal} Juta</span>}
+                                          </div>
                                           <span className="text-xs font-black text-green-600">+{pointsEarned}</span>
                                         </div>
                                       </div>
@@ -1355,6 +1385,69 @@ export default function App() {
                         return `Total kumulatif: ${totalScore} poin dari semua minggu`;
                       })()}
                     </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* --- CREDIT DETAIL MODAL --- */}
+        {creditDetailModal && creditDetailModal.isOpen && (
+          <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 overflow-y-auto" style={{ scrollBehavior: 'auto' }}>
+            <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setCreditDetailModal(null)}></div>
+            <div className="bg-white w-full max-w-md rounded-[40px] shadow-2xl relative z-10 animate-in zoom-in-95 duration-200 border border-slate-200 my-auto max-h-[80vh] overflow-y-auto scrollbar-hide">
+              {/* Header */}
+              <div className="bg-gradient-to-r from-purple-600 to-purple-700 text-white p-6 rounded-t-[40px]">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h3 className="font-black text-xl">{creditDetailModal.productName}</h3>
+                    <p className="text-xs font-bold text-purple-100 mt-1">
+                      Minggu {creditDetailModal.week} • CREDIT
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setCreditDetailModal(null)}
+                    className="p-2 hover:bg-white/20 rounded-2xl transition-colors"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Content */}
+              <div className="p-6">
+                {/* Summary */}
+                <div className="bg-purple-50 rounded-2xl p-4 border border-purple-200 mb-4">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <div className="text-[9px] font-black text-purple-600 uppercase tracking-widest">Total</div>
+                      <div className="text-2xl font-black text-purple-900">
+                        {creditDetailModal.data && typeof creditDetailModal.data === 'object' ? creditDetailModal.data.quantity : 0} Akuisisi
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-[9px] font-black text-purple-600 uppercase tracking-widest">Nominal</div>
+                      <div className="text-2xl font-black text-purple-900">
+                        {creditDetailModal.data && typeof creditDetailModal.data === 'object' ? (creditDetailModal.data.nominal || 0) : 0} Juta
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Note */}
+                <div className="bg-slate-50 rounded-xl p-4 border border-slate-100">
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center flex-shrink-0">
+                      <Package className="w-4 h-4 text-purple-600" />
+                    </div>
+                    <div>
+                      <div className="text-xs font-bold text-slate-600 mb-1">Detail Akuisisi</div>
+                      <p className="text-[10px] text-slate-500 font-bold leading-relaxed">
+                        Setiap akuisisi produk kredit dihitung berdasarkan nominal (dalam juta). 
+                        Total poin dihitung dari total nominal × poin per juta.
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
