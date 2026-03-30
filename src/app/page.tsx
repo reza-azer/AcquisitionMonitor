@@ -75,7 +75,7 @@ interface Acquisition {
   week: number;
   product_key: string;
   quantity: number;
-  nominal?: number;  // For CREDIT products: nominal in millions
+  nominal?: number;  // For CREDIT products: nominal in Rupiah
 }
 
 interface Product {
@@ -88,6 +88,7 @@ interface Product {
   is_tiered: boolean;
   tier_config?: { limit: number; points: number }[];
   flat_points?: number;
+  credit_nominal_per_point?: number;  // For CREDIT: how many millions for 1 point
   is_active: boolean;
 }
 
@@ -316,6 +317,15 @@ export default function App() {
     return new Intl.NumberFormat('id-ID').format(value);
   };
 
+  // Format nominal to compact display (e.g., 36.000.000 → 36jt)
+  const formatToJuta = (value: number): string => {
+    const juta = value / 1000000;
+    if (juta >= 1000) {
+      return `${(juta / 1000).toFixed(1)}M`; // 1.5M for 1.5 milyar
+    }
+    return `${juta}jt`; // 36jt for 36 juta
+  };
+
   const getMemberPoints = useCallback((acquisitions: Record<string, { quantity: number; nominal?: number } | number> | undefined) => {
     let total = 0;
     if (!acquisitions || products.length === 0) return 0;
@@ -326,10 +336,12 @@ export default function App() {
       if (!product || !product.is_active) return;
 
       if (product.category === 'CREDIT') {
-        // CREDIT: 1 poin per 100 juta (floor, tanpa koma)
-        // 309jt = 3 poin, 50jt = 0 poin, 199jt = 1 poin
+        // CREDIT: points based on configurable nominal per point
+        // Formula: Math.floor(nominal / 1000000 / credit_nominal_per_point)
+        // Example: nominal=309jt, credit_nominal_per_point=100 → Math.floor(309/100) = 3 poin
         const nominal = typeof data === 'object' ? (data.nominal || 0) : 0;
-        total += Math.floor(nominal / 100000000);
+        const nominalPerPoint = product.credit_nominal_per_point || 100; // Default 100jt per point
+        total += Math.floor((nominal / 1000000) / nominalPerPoint);
       } else {
         // FUNDING/TRANSACTION: points based on quantity
         const qty = typeof data === 'object' ? data.quantity : (data || 0);
@@ -1246,8 +1258,9 @@ export default function App() {
                                         const tier = productConfig.tier_config.find(t => qty <= t.limit) || productConfig.tier_config[productConfig.tier_config.length - 1];
                                         pointsEarned = qty * tier.points;
                                       } else {
-                                        // CREDIT: 1 poin per 100 juta (floor)
-                                        pointsEarned = isCredit ? Math.floor(nominal / 100000000) : qty * (productConfig.flat_points || 0);
+                                        // CREDIT: points based on configurable nominal per point
+                                        const nominalPerPoint = productConfig.credit_nominal_per_point || 100;
+                                        pointsEarned = isCredit ? Math.floor((nominal / 1000000) / nominalPerPoint) : qty * (productConfig.flat_points || 0);
                                       }
                                     }
                                     return (
@@ -1268,7 +1281,7 @@ export default function App() {
                                             <span className="text-sm font-bold text-slate-700">{qty} {productConfig?.unit}</span>
                                             {isCredit && <span className="text-[9px] font-black text-purple-600">{formatToIDR(nominal)} Rp</span>}
                                           </div>
-                                          <span className="text-xs font-black text-green-600">+{isCredit ? Math.floor(nominal / 100000000) : pointsEarned}</span>
+                                          <span className="text-xs font-black text-green-600">+{isCredit ? Math.floor((nominal / 1000000) / (productConfig.credit_nominal_per_point || 100)) : pointsEarned}</span>
                                         </div>
                                       </div>
                                     );
@@ -1349,8 +1362,9 @@ export default function App() {
                                         const tier = productConfig.tier_config.find(t => qty <= t.limit) || productConfig.tier_config[productConfig.tier_config.length - 1];
                                         pointsEarned = qty * tier.points;
                                       } else {
-                                        // CREDIT: 1 poin per 100 juta (floor, tanpa koma)
-                                        pointsEarned = isCredit ? Math.floor(nominal / 100000000) : qty * (productConfig.flat_points || 0);
+                                        // CREDIT: points based on configurable nominal per point
+                                        const nominalPerPoint = productConfig.credit_nominal_per_point || 100;
+                                        pointsEarned = isCredit ? Math.floor((nominal / 1000000) / nominalPerPoint) : qty * (productConfig.flat_points || 0);
                                       }
                                     }
                                     return (
@@ -1370,7 +1384,7 @@ export default function App() {
                                             <span className="text-sm font-bold text-slate-700">{qty} {productConfig?.unit}</span>
                                             {isCredit && <span className="text-[9px] font-black text-purple-600">{formatToIDR(nominal)} Rp</span>}
                                           </div>
-                                          <span className="text-xs font-black text-green-600">+{isCredit ? Math.floor(nominal / 100000000) : pointsEarned}</span>
+                                          <span className="text-xs font-black text-green-600">+{isCredit ? Math.floor((nominal / 1000000) / (productConfig.credit_nominal_per_point || 100)) : pointsEarned}</span>
                                         </div>
                                       </div>
                                     );
@@ -1457,8 +1471,8 @@ export default function App() {
                     <div>
                       <div className="text-xs font-bold text-slate-600 mb-1">Detail Akuisisi</div>
                       <p className="text-[10px] text-slate-500 font-bold leading-relaxed">
-                        Setiap akuisisi produk kredit dihitung 1 poin per 100 juta (pembulatan ke bawah).
-                        Contoh: 309jt = 3 poin, 50jt = 0 poin, 199jt = 1 poin.
+                        Poin dihitung berdasarkan konfigurasi nominal per poin (default: 1 poin per 100 juta).
+                        Rumus: floor(nominal / 1.000.000 / nominal_per_poin).
                       </p>
                     </div>
                   </div>
@@ -1799,26 +1813,35 @@ export default function App() {
                           <span className="text-[10px] font-bold text-blue-700 px-2 py-1 bg-blue-100 rounded-md">
                             {products.filter(p => {
                               const current = team.stats[p.product_key];
-                              const qty = typeof current === 'object' ? current.quantity : (current || 0);
-                              return p.is_active && qty >= p.weekly_target;
+                              const isCredit = p.category === 'CREDIT';
+                              const currentValue = isCredit && typeof current === 'object' 
+                                ? current.nominal || 0 
+                                : (typeof current === 'object' ? current.quantity : (current || 0));
+                              return p.is_active && currentValue >= p.weekly_target;
                             }).length} Goal
                           </span>
                         </div>
                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                           {products.filter(p => p.is_active).map(p => {
                             const current = team.stats[p.product_key];
-                            const qty = typeof current === 'object' ? current.quantity : (current || 0);
+                            const isCredit = p.category === 'CREDIT';
+                            // For CREDIT: get total nominal, for others: get quantity
+                            const currentValue = isCredit && typeof current === 'object' 
+                              ? current.nominal || 0 
+                              : (typeof current === 'object' ? current.quantity : (current || 0));
                             const target = p.weekly_target;
-                            const isDone = qty >= target;
+                            const isDone = isCredit ? currentValue >= target : currentValue >= target;
                             return (
-                              <div key={p.product_key} className={`p-2 rounded-xl border transition-all ${isDone ? 'bg-green-50/80 border-green-100' : qty > 0 ? 'bg-white/80 border-blue-100' : 'bg-white/40 border-slate-100/50'}`}>
+                              <div key={p.product_key} className={`p-2 rounded-xl border transition-all ${isDone ? 'bg-green-50/80 border-green-100' : currentValue > 0 ? 'bg-white/80 border-blue-100' : 'bg-white/40 border-slate-100/50'}`}>
                                 <div className="flex justify-between items-start mb-1">
                                   <span className={`text-[9px] font-black ${isDone ? 'text-green-700' : 'text-slate-400'}`}>{p.product_key}</span>
                                   {isDone && <Check className="w-2.5 h-2.5 text-green-600" />}
                                 </div>
                                 <div className="flex items-end gap-1">
-                                  <span className={`text-sm font-black leading-none ${isDone ? 'text-green-700' : qty > 0 ? 'text-blue-900' : 'text-slate-300'}`}>{qty}</span>
-                                  <span className="text-[8px] font-bold text-slate-300 mb-0.5">/ {target}</span>
+                                  <span className={`text-sm font-black leading-none ${isDone ? 'text-green-700' : currentValue > 0 ? 'text-blue-900' : 'text-slate-300'}`}>
+                                    {isCredit ? formatToJuta(currentValue) : currentValue}
+                                  </span>
+                                  <span className="text-[8px] font-bold text-slate-300 mb-0.5">/ {isCredit ? formatToJuta(target) : target}</span>
                                 </div>
                               </div>
                             );

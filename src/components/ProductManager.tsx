@@ -27,6 +27,7 @@ interface Product {
   is_tiered: boolean;
   tier_config?: { limit: number; points: number }[];
   flat_points?: number;
+  credit_nominal_per_point?: number;  // For CREDIT: how many millions for 1 point
   is_active: boolean;
 }
 
@@ -57,6 +58,7 @@ export default function ProductManager({ products, onSaveProducts, isLoading = f
     weekly_target: 0,
     is_tiered: false,
     flat_points: 0,
+    credit_nominal_per_point: 100,
     is_active: true,
   };
 
@@ -295,6 +297,10 @@ export default function ProductManager({ products, onSaveProducts, isLoading = f
                         <div className="text-xs text-slate-500">
                           Tiered ({product.tier_config?.length} tiers)
                         </div>
+                      ) : product.category === 'CREDIT' ? (
+                        <div className="text-xs font-bold text-slate-700">
+                          1 pt per {product.credit_nominal_per_point || 100}jt
+                        </div>
                       ) : (
                         <span className="inline-flex items-center gap-1 text-sm font-bold text-slate-700">
                           <Award className="w-4 h-4 text-slate-400" />
@@ -466,19 +472,42 @@ export default function ProductManager({ products, onSaveProducts, isLoading = f
 
               {/* Points Configuration */}
               {!editingProduct.is_tiered ? (
-                <div>
-                  <label className="block text-xs font-black text-slate-600 uppercase mb-2">
-                    Points per Acquisition
-                  </label>
-                  <input
-                    type="number"
-                    value={editingProduct.flat_points || 0}
-                    onChange={(e) =>
-                      setEditingProduct({ ...editingProduct, flat_points: parseInt(e.target.value) || 0 })
-                    }
-                    className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400"
-                  />
-                </div>
+                <>
+                  <div>
+                    <label className="block text-xs font-black text-slate-600 uppercase mb-2">
+                      Points per Acquisition
+                    </label>
+                    <input
+                      type="number"
+                      value={editingProduct.flat_points || 0}
+                      onChange={(e) =>
+                        setEditingProduct({ ...editingProduct, flat_points: parseInt(e.target.value) || 0 })
+                      }
+                      className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400"
+                    />
+                  </div>
+                  
+                  {/* CREDIT-specific: Nominal per Point */}
+                  {editingProduct.category === 'CREDIT' && (
+                    <div>
+                      <label className="block text-xs font-black text-slate-600 uppercase mb-2">
+                        Nominal per Point (Juta)
+                      </label>
+                      <input
+                        type="number"
+                        value={editingProduct.credit_nominal_per_point || 100}
+                        onChange={(e) =>
+                          setEditingProduct({ ...editingProduct, credit_nominal_per_point: parseInt(e.target.value) || 100 })
+                        }
+                        placeholder="100"
+                        className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400"
+                      />
+                      <p className="text-[10px] text-slate-400 mt-1">
+                        Contoh: 100 = 1 poin per 100 juta, 50 = 1 poin per 50 juta
+                      </p>
+                    </div>
+                  )}
+                </>
               ) : (
                 <div>
                   <div className="flex items-center justify-between mb-2">

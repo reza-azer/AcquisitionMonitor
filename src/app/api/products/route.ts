@@ -42,6 +42,7 @@ export async function POST(request: NextRequest) {
       is_tiered,
       tier_config,
       flat_points,
+      credit_nominal_per_point,
       is_active,
     } = body;
 
@@ -98,6 +99,7 @@ export async function POST(request: NextRequest) {
       is_tiered: is_tiered || false,
       tier_config: is_tiered ? tier_config : null,
       flat_points: is_tiered ? null : flat_points,
+      credit_nominal_per_point: category === 'CREDIT' ? (credit_nominal_per_point || 100) : null,
       is_active: is_active !== undefined ? is_active : true,
     };
 

@@ -62,7 +62,7 @@ interface Acquisition {
   week?: number;
   product_key: string;
   quantity: number;
-  nominal?: number;  // For CREDIT products: nominal in millions
+  nominal?: number;  // For CREDIT products: nominal in Rupiah
   updated_at?: string;
 }
 

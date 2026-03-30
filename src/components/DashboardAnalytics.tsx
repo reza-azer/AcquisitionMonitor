@@ -62,6 +62,7 @@ interface CategoryPerformance {
   category: string;
   unit: string;
   totalQuantity: number;
+  totalNominal?: number;  // For CREDIT products
   totalPoints: number;
   weeklyTarget: number;
   achievementRate: number;
@@ -140,6 +141,15 @@ export default function DashboardAnalytics() {
   const [attendanceMonth, setAttendanceMonth] = useState<string>(String(new Date().getMonth() + 1));
   const [attendanceYear, setAttendanceYear] = useState<string>(String(new Date().getFullYear()));
   const [attendanceStatusFilter, setAttendanceStatusFilter] = useState<'all' | 'late' | 'leave' | 'alpha'>('all');
+
+  // Format nominal to compact display (e.g., 36.000.000 → 36jt)
+  const formatToJuta = (value: number): string => {
+    const juta = value / 1000000;
+    if (juta >= 1000) {
+      return `${(juta / 1000).toFixed(1)}M`;
+    }
+    return `${juta}jt`;
+  };
 
   useEffect(() => {
     fetchAnalytics();
@@ -1116,7 +1126,12 @@ export default function DashboardAnalytics() {
               </div>
               <div className="mb-2">
                 <div className="flex justify-between text-xs font-bold text-slate-500 mb-1">
-                  <span>{product.totalQuantity} / {product.weeklyTarget} {product.unit}</span>
+                  <span>
+                    {product.category === 'CREDIT' 
+                      ? `${formatToJuta(product.totalNominal || 0)} / ${formatToJuta(product.weeklyTarget)} ${product.unit}`
+                      : `${product.totalQuantity} / ${product.weeklyTarget} ${product.unit}`
+                    }
+                  </span>
                 </div>
                 <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
                   <div
@@ -1148,7 +1163,27 @@ export default function DashboardAnalytics() {
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
               <XAxis dataKey="productKey" stroke="#64748b" fontSize={12} />
               <YAxis stroke="#64748b" fontSize={12} />
-              <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
+              <Tooltip 
+                contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                content={({ active, payload, label }) => {
+                  if (active && payload && payload[0]) {
+                    const data = payload[0].payload;
+                    const isCredit = data.category === 'CREDIT';
+                    return (
+                      <div style={{ padding: '12px', background: 'white', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}>
+                        <p style={{ margin: '0 0 8px 0', fontWeight: 'bold' }}>{data.productName}</p>
+                        <p style={{ margin: '4px 0', fontSize: '12px' }}>
+                          Actual: {isCredit ? formatToJuta(data.totalNominal || 0) : data.totalQuantity}
+                        </p>
+                        <p style={{ margin: '4px 0', fontSize: '12px' }}>
+                          Target: {isCredit ? formatToJuta(data.weeklyTarget) : data.weeklyTarget}
+                        </p>
+                      </div>
+                    );
+                  }
+                  return null;
+                }}
+              />
               <Legend />
               <Bar dataKey="totalQuantity" name="Actual" fill="#003d79" radius={[8, 8, 0, 0]} />
               <Bar dataKey="weeklyTarget" name="Target" fill="#FDB813" radius={[8, 8, 0, 0]} />
