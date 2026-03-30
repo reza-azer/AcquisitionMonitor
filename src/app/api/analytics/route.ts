@@ -190,10 +190,9 @@ export async function GET(request: Request) {
         if (!product) return;
         
         if (product.category === 'CREDIT') {
-          // CREDIT: quantity = 1 per entry, points based on nominal (in juta)
-          totalQuantity += 1; // Count as 1 acquisition entry
-          const nominalInJuta = (a.nominal || 0) / 1000000;
-          totalPoints += nominalInJuta * (product.flat_points || 0);
+          // CREDIT: 1 poin per 100 juta (floor, tanpa koma)
+          totalQuantity += 1;
+          totalPoints += Math.floor((a.nominal || 0) / 100000000);
         } else {
           // FUNDING/TRANSACTION: use quantity directly
           totalQuantity += a.quantity;
@@ -223,9 +222,8 @@ export async function GET(request: Request) {
           if (!product) return;
           
           if (product.category === 'CREDIT') {
-            // CREDIT: points based on nominal (in juta)
-            const nominalInJuta = (a.nominal || 0) / 1000000;
-            totalPoints += nominalInJuta * (product.flat_points || 0);
+            // CREDIT: 1 poin per 100 juta (floor, tanpa koma)
+            totalPoints += Math.floor((a.nominal || 0) / 100000000);
           } else {
             // FUNDING/TRANSACTION: use quantity directly
             if (product.is_tiered && product.tier_config) {
@@ -255,11 +253,10 @@ export async function GET(request: Request) {
         if (!product) return;
         
         if (product.category === 'CREDIT') {
-          // CREDIT: count as 1 acquisition entry, points based on nominal (in juta)
+          // CREDIT: count as 1 acquisition entry, 1 poin per 100 juta (floor)
           totalQuantity += 1;
           productBreakdown[a.product_key] = (productBreakdown[a.product_key] || 0) + 1;
-          const nominalInJuta = (a.nominal || 0) / 1000000;
-          totalPoints += nominalInJuta * (product.flat_points || 0);
+          totalPoints += Math.floor((a.nominal || 0) / 100000000);
         } else {
           // FUNDING/TRANSACTION: use quantity directly
           totalQuantity += a.quantity;
@@ -310,11 +307,10 @@ export async function GET(request: Request) {
         if (!product) return;
         
         if (product.category === 'CREDIT') {
-          // CREDIT: count as 1 acquisition entry, points based on nominal (in juta)
+          // CREDIT: count as 1 acquisition entry, 1 poin per 100 juta (floor)
           totalQuantity += 1;
           productBreakdown[a.product_key] = (productBreakdown[a.product_key] || 0) + 1;
-          const nominalInJuta = (a.nominal || 0) / 1000000;
-          totalPoints += nominalInJuta * (product.flat_points || 0);
+          totalPoints += Math.floor((a.nominal || 0) / 100000000);
         } else {
           // FUNDING/TRANSACTION: use quantity directly
           totalQuantity += a.quantity;
@@ -366,9 +362,8 @@ export async function GET(request: Request) {
       let totalPoints = 0;
       productAcquisitions.forEach(a => {
         if (product.category === 'CREDIT') {
-          // CREDIT: points based on nominal (in juta)
-          const nominalInJuta = (a.nominal || 0) / 1000000;
-          totalPoints += nominalInJuta * (product.flat_points || 0);
+          // CREDIT: 1 poin per 100 juta (floor, tanpa koma)
+          totalPoints += Math.floor((a.nominal || 0) / 100000000);
         } else if (product.is_tiered && product.tier_config) {
           const tier = product.tier_config.find((t: { limit: number }) => a.quantity <= t.limit) || product.tier_config[product.tier_config.length - 1];
           totalPoints += a.quantity * tier.points;

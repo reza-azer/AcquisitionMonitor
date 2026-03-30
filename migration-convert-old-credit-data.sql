@@ -14,8 +14,20 @@ WHERE
   AND nominal = 0 
   AND quantity > 0;
 
+-- Update product points configuration for CREDIT products
+-- 1 poin per 100 juta (flat_points = 1, divisor = 100.000.000)
+UPDATE products 
+SET 
+  flat_points = 1,
+  unit = 'Rp',
+  updated_at = NOW()
+WHERE product_key IN ('KPR', 'KSM', 'KUM', 'KUR');
+
 -- Verify the migration
 -- SELECT product_key, COUNT(*) as count, SUM(nominal) as total_nominal, AVG(quantity) as avg_quantity
 -- FROM acquisitions
 -- WHERE product_key IN ('KPR', 'KSM', 'KUM', 'KUR')
 -- GROUP BY product_key;
+
+-- Verify products configuration
+-- SELECT product_key, product_name, unit, flat_points FROM products WHERE product_key IN ('KPR', 'KSM', 'KUM', 'KUR');

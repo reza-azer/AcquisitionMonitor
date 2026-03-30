@@ -32,10 +32,10 @@ const PRODUCT_POINTS: Record<string, ProductConfig> = {
   KOPRA: { name: 'Kopra', unit: 'Aplikasi', p: 2 },
   MTR: { name: 'Mandiri Tabungan Rencana', unit: 'Rekening', p: 2 },
   CC: { name: 'Credit Card', unit: 'Aplikasi', p: 2 },
-  KPR: { name: 'KPR', unit: 'Juta', p: 4 },
-  KSM: { name: 'KSM', unit: 'Juta', p: 4 },
-  KUM: { name: 'KUM', unit: 'Juta', p: 2 },
-  KUR: { name: 'KUR', unit: 'Juta', p: 2 },
+  KPR: { name: 'KPR', unit: 'Rp', p: 1 },
+  KSM: { name: 'KSM', unit: 'Rp', p: 1 },
+  KUM: { name: 'KUM', unit: 'Rp', p: 1 },
+  KUR: { name: 'KUR', unit: 'Rp', p: 1 },
   LVMUREG: { name: 'LVM Ureg', unit: 'Aplikasi', p: 1 },
   LVMUSAC: { name: 'LVM Usac', unit: 'Aplikasi', p: 1 },
   GMM: { name: 'GMM', unit: 'Rekening', p: 1 },
@@ -326,10 +326,10 @@ export default function App() {
       if (!product || !product.is_active) return;
 
       if (product.category === 'CREDIT') {
-        // CREDIT: points based on nominal (nominal / 1.000.000 × points_per_juta)
+        // CREDIT: 1 poin per 100 juta (floor, tanpa koma)
+        // 309jt = 3 poin, 50jt = 0 poin, 199jt = 1 poin
         const nominal = typeof data === 'object' ? (data.nominal || 0) : 0;
-        const nominalInJuta = nominal / 1000000;
-        total += nominalInJuta * (product.flat_points || 0);
+        total += Math.floor(nominal / 100000000);
       } else {
         // FUNDING/TRANSACTION: points based on quantity
         const qty = typeof data === 'object' ? data.quantity : (data || 0);
@@ -1342,7 +1342,8 @@ export default function App() {
                                         const tier = productConfig.tier_config.find(t => qty <= t.limit) || productConfig.tier_config[productConfig.tier_config.length - 1];
                                         pointsEarned = qty * tier.points;
                                       } else {
-                                        pointsEarned = isCredit ? (nominal / 1000000) * (productConfig.flat_points || 0) : qty * (productConfig.flat_points || 0);
+                                        // CREDIT: 1 poin per 100 juta (floor, tanpa koma)
+                                        pointsEarned = isCredit ? Math.floor(nominal / 100000000) : qty * (productConfig.flat_points || 0);
                                       }
                                     }
                                     return (
@@ -1449,8 +1450,8 @@ export default function App() {
                     <div>
                       <div className="text-xs font-bold text-slate-600 mb-1">Detail Akuisisi</div>
                       <p className="text-[10px] text-slate-500 font-bold leading-relaxed">
-                        Setiap akuisisi produk kredit dihitung berdasarkan nominal (dalam Rupiah).
-                        Total poin dihitung dari total nominal / 1.000.000 × poin per juta.
+                        Setiap akuisisi produk kredit dihitung 1 poin per 100 juta (pembulatan ke bawah).
+                        Contoh: 309jt = 3 poin, 50jt = 0 poin, 199jt = 1 poin.
                       </p>
                     </div>
                   </div>
