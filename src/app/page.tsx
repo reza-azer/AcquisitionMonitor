@@ -1882,46 +1882,6 @@ export default function App() {
                 );
               })}
             </div>
-
-            {/* Global Progress */}
-            <div className="bg-white rounded-[40px] p-8 border border-slate-200 shadow-sm relative overflow-hidden">
-              <div className="relative z-10 mb-10">
-                <h2 className="font-black text-xl flex items-center gap-3 text-slate-800 mb-1">
-                  <div className="w-10 h-10 rounded-2xl bg-blue-100 flex items-center justify-center">
-                    <Target className="text-blue-600 w-6 h-6" />
-                  </div>
-                  Total Capaian {dashboardViewMode === 'monthly' ? 'Bulanan' : 'Mingguan'} Seluruh Tim
-                </h2>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-14">
-                  {dashboardViewMode === 'monthly'
-                    ? `Akumulasi seluruh tim periode ${new Date(parseInt(selectedYear), parseInt(selectedMonth) - 1).toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}`
-                    : `Akumulasi seluruh tim periode Week ${activeWeek}`
-                  }
-                </p>
-              </div>
-              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-8 relative z-10">
-                {products.filter(p => p.is_active).map(p => {
-                  const totalAchieved = teamStats.reduce((acc: number, t) => {
-                    const current = t.stats[p.product_key];
-                    const qty = typeof current === 'object' ? current.quantity : (current || 0);
-                    return acc + qty;
-                  }, 0);
-                  const dynamicTarget = p.weekly_target * (teams.length || 1);
-                  const progress = Math.min((totalAchieved / dynamicTarget) * 100, 100);
-                  return (
-                    <div key={p.product_key} className="flex flex-col items-center">
-                      <div className="w-16 h-16 rounded-full border-4 border-slate-50 flex flex-col items-center justify-center relative mb-3 bg-white shadow-sm overflow-hidden">
-                        <div className={`absolute bottom-0 w-full transition-all duration-1000 ${totalAchieved >= dynamicTarget ? 'bg-green-100' : 'bg-blue-50'}`} style={{ height: `${progress}%` }}></div>
-                        <span className={`relative text-[10px] font-black ${totalAchieved >= dynamicTarget ? 'text-green-600' : 'text-blue-900'}`}>{totalAchieved}</span>
-                        <div className="relative h-px w-6 bg-slate-200 my-1"></div>
-                        <span className="relative text-[9px] font-bold text-slate-400">{dynamicTarget}</span>
-                      </div>
-                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">{p.product_key}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
           </div>
         )}
 
