@@ -312,6 +312,10 @@ export default function App() {
     fetchData(selectedMonth, selectedYear);
   }, [selectedMonth, selectedYear, fetchData]);
 
+  const formatToIDR = (value: number): string => {
+    return new Intl.NumberFormat('id-ID').format(value);
+  };
+
   const getMemberPoints = useCallback((acquisitions: Record<string, { quantity: number; nominal?: number } | number> | undefined) => {
     let total = 0;
     if (!acquisitions || products.length === 0) return 0;
@@ -322,9 +326,10 @@ export default function App() {
       if (!product || !product.is_active) return;
 
       if (product.category === 'CREDIT') {
-        // CREDIT: points based on nominal (juta)
+        // CREDIT: points based on nominal (nominal / 1.000.000 × points_per_juta)
         const nominal = typeof data === 'object' ? (data.nominal || 0) : 0;
-        total += nominal * (product.flat_points || 0);
+        const nominalInJuta = nominal / 1000000;
+        total += nominalInJuta * (product.flat_points || 0);
       } else {
         // FUNDING/TRANSACTION: points based on quantity
         const qty = typeof data === 'object' ? data.quantity : (data || 0);
@@ -1337,7 +1342,7 @@ export default function App() {
                                         const tier = productConfig.tier_config.find(t => qty <= t.limit) || productConfig.tier_config[productConfig.tier_config.length - 1];
                                         pointsEarned = qty * tier.points;
                                       } else {
-                                        pointsEarned = isCredit ? nominal * (productConfig.flat_points || 0) : qty * (productConfig.flat_points || 0);
+                                        pointsEarned = isCredit ? (nominal / 1000000) * (productConfig.flat_points || 0) : qty * (productConfig.flat_points || 0);
                                       }
                                     }
                                     return (
@@ -1355,7 +1360,7 @@ export default function App() {
                                         <div className="flex justify-between items-center mt-1">
                                           <div className="flex flex-col">
                                             <span className="text-sm font-bold text-slate-700">{qty} {productConfig?.unit}</span>
-                                            {isCredit && <span className="text-[9px] font-black text-purple-600">{nominal} Juta</span>}
+                                            {isCredit && <span className="text-[9px] font-black text-purple-600">{formatToIDR(nominal)} Rp</span>}
                                           </div>
                                           <span className="text-xs font-black text-green-600">+{pointsEarned}</span>
                                         </div>
@@ -1429,7 +1434,7 @@ export default function App() {
                     <div className="text-right">
                       <div className="text-[9px] font-black text-purple-600 uppercase tracking-widest">Nominal</div>
                       <div className="text-2xl font-black text-purple-900">
-                        {creditDetailModal.data && typeof creditDetailModal.data === 'object' ? (creditDetailModal.data.nominal || 0) : 0} Juta
+                        {creditDetailModal.data && typeof creditDetailModal.data === 'object' ? formatToIDR(creditDetailModal.data.nominal || 0) + ' Rp' : '0 Rp'}
                       </div>
                     </div>
                   </div>
@@ -1444,8 +1449,8 @@ export default function App() {
                     <div>
                       <div className="text-xs font-bold text-slate-600 mb-1">Detail Akuisisi</div>
                       <p className="text-[10px] text-slate-500 font-bold leading-relaxed">
-                        Setiap akuisisi produk kredit dihitung berdasarkan nominal (dalam juta). 
-                        Total poin dihitung dari total nominal × poin per juta.
+                        Setiap akuisisi produk kredit dihitung berdasarkan nominal (dalam Rupiah).
+                        Total poin dihitung dari total nominal / 1.000.000 × poin per juta.
                       </p>
                     </div>
                   </div>

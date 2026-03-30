@@ -188,12 +188,21 @@ export async function GET(request: Request) {
       weekAcq.forEach(a => {
         const product = products.find(p => p.product_key === a.product_key);
         if (!product) return;
-        totalQuantity += a.quantity;
-        if (product.is_tiered && product.tier_config) {
-          const tier = product.tier_config.find((t: { limit: number }) => a.quantity <= t.limit) || product.tier_config[product.tier_config.length - 1];
-          totalPoints += a.quantity * tier.points;
+        
+        if (product.category === 'CREDIT') {
+          // CREDIT: quantity = 1 per entry, points based on nominal (in juta)
+          totalQuantity += 1; // Count as 1 acquisition entry
+          const nominalInJuta = (a.nominal || 0) / 1000000;
+          totalPoints += nominalInJuta * (product.flat_points || 0);
         } else {
-          totalPoints += a.quantity * (product.flat_points || 0);
+          // FUNDING/TRANSACTION: use quantity directly
+          totalQuantity += a.quantity;
+          if (product.is_tiered && product.tier_config) {
+            const tier = product.tier_config.find((t: { limit: number }) => a.quantity <= t.limit) || product.tier_config[product.tier_config.length - 1];
+            totalPoints += a.quantity * tier.points;
+          } else {
+            totalPoints += a.quantity * (product.flat_points || 0);
+          }
         }
       });
       weeklyTrends.push({ week: w, totalPoints, totalQuantity });
@@ -212,11 +221,19 @@ export async function GET(request: Request) {
         weekAcq.forEach(a => {
           const product = products.find(p => p.product_key === a.product_key);
           if (!product) return;
-          if (product.is_tiered && product.tier_config) {
-            const tier = product.tier_config.find((t: { limit: number }) => a.quantity <= t.limit) || product.tier_config[product.tier_config.length - 1];
-            totalPoints += a.quantity * tier.points;
+          
+          if (product.category === 'CREDIT') {
+            // CREDIT: points based on nominal (in juta)
+            const nominalInJuta = (a.nominal || 0) / 1000000;
+            totalPoints += nominalInJuta * (product.flat_points || 0);
           } else {
-            totalPoints += a.quantity * (product.flat_points || 0);
+            // FUNDING/TRANSACTION: use quantity directly
+            if (product.is_tiered && product.tier_config) {
+              const tier = product.tier_config.find((t: { limit: number }) => a.quantity <= t.limit) || product.tier_config[product.tier_config.length - 1];
+              totalPoints += a.quantity * tier.points;
+            } else {
+              totalPoints += a.quantity * (product.flat_points || 0);
+            }
           }
         });
         weeklyData.push({ week: w, [team.name]: totalPoints });
@@ -236,13 +253,23 @@ export async function GET(request: Request) {
       teamAcquisitions.forEach(a => {
         const product = products.find(p => p.product_key === a.product_key);
         if (!product) return;
-        totalQuantity += a.quantity;
-        productBreakdown[a.product_key] = (productBreakdown[a.product_key] || 0) + a.quantity;
-        if (product.is_tiered && product.tier_config) {
-          const tier = product.tier_config.find((t: { limit: number }) => a.quantity <= t.limit) || product.tier_config[product.tier_config.length - 1];
-          totalPoints += a.quantity * tier.points;
+        
+        if (product.category === 'CREDIT') {
+          // CREDIT: count as 1 acquisition entry, points based on nominal (in juta)
+          totalQuantity += 1;
+          productBreakdown[a.product_key] = (productBreakdown[a.product_key] || 0) + 1;
+          const nominalInJuta = (a.nominal || 0) / 1000000;
+          totalPoints += nominalInJuta * (product.flat_points || 0);
         } else {
-          totalPoints += a.quantity * (product.flat_points || 0);
+          // FUNDING/TRANSACTION: use quantity directly
+          totalQuantity += a.quantity;
+          productBreakdown[a.product_key] = (productBreakdown[a.product_key] || 0) + a.quantity;
+          if (product.is_tiered && product.tier_config) {
+            const tier = product.tier_config.find((t: { limit: number }) => a.quantity <= t.limit) || product.tier_config[product.tier_config.length - 1];
+            totalPoints += a.quantity * tier.points;
+          } else {
+            totalPoints += a.quantity * (product.flat_points || 0);
+          }
         }
       });
       const totalDays = teamAttendances.length;
@@ -281,13 +308,23 @@ export async function GET(request: Request) {
       memberAcquisitions.forEach(a => {
         const product = products.find(p => p.product_key === a.product_key);
         if (!product) return;
-        totalQuantity += a.quantity;
-        productBreakdown[a.product_key] = (productBreakdown[a.product_key] || 0) + a.quantity;
-        if (product.is_tiered && product.tier_config) {
-          const tier = product.tier_config.find((t: { limit: number }) => a.quantity <= t.limit) || product.tier_config[product.tier_config.length - 1];
-          totalPoints += a.quantity * tier.points;
+        
+        if (product.category === 'CREDIT') {
+          // CREDIT: count as 1 acquisition entry, points based on nominal (in juta)
+          totalQuantity += 1;
+          productBreakdown[a.product_key] = (productBreakdown[a.product_key] || 0) + 1;
+          const nominalInJuta = (a.nominal || 0) / 1000000;
+          totalPoints += nominalInJuta * (product.flat_points || 0);
         } else {
-          totalPoints += a.quantity * (product.flat_points || 0);
+          // FUNDING/TRANSACTION: use quantity directly
+          totalQuantity += a.quantity;
+          productBreakdown[a.product_key] = (productBreakdown[a.product_key] || 0) + a.quantity;
+          if (product.is_tiered && product.tier_config) {
+            const tier = product.tier_config.find((t: { limit: number }) => a.quantity <= t.limit) || product.tier_config[product.tier_config.length - 1];
+            totalPoints += a.quantity * tier.points;
+          } else {
+            totalPoints += a.quantity * (product.flat_points || 0);
+          }
         }
       });
       const totalDays = memberAttendances.length;
@@ -322,10 +359,17 @@ export async function GET(request: Request) {
     // Calculate category/product performance
     const categoryPerformance = products.map(product => {
       const productAcquisitions = filteredAcquisitions.filter(a => a.product_key === product.product_key);
-      const totalQuantity = productAcquisitions.reduce((sum, a) => sum + a.quantity, 0);
+      const totalQuantity = productAcquisitions.reduce((sum, a) => {
+        // For CREDIT: count each entry as 1, for others use quantity
+        return sum + (product.category === 'CREDIT' ? 1 : a.quantity);
+      }, 0);
       let totalPoints = 0;
       productAcquisitions.forEach(a => {
-        if (product.is_tiered && product.tier_config) {
+        if (product.category === 'CREDIT') {
+          // CREDIT: points based on nominal (in juta)
+          const nominalInJuta = (a.nominal || 0) / 1000000;
+          totalPoints += nominalInJuta * (product.flat_points || 0);
+        } else if (product.is_tiered && product.tier_config) {
           const tier = product.tier_config.find((t: { limit: number }) => a.quantity <= t.limit) || product.tier_config[product.tier_config.length - 1];
           totalPoints += a.quantity * tier.points;
         } else {

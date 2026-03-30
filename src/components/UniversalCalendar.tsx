@@ -96,6 +96,11 @@ export default function UniversalCalendar({
   acquisitions = [],
   products = [],
 }: UniversalCalendarProps) {
+  // Format number to IDR currency
+  const formatToIDR = (value: number): string => {
+    return new Intl.NumberFormat('id-ID').format(value);
+  };
+
   const getDaysInMonth = (date: Date) => {
     const year = date.getFullYear();
     const month = date.getMonth();
@@ -273,8 +278,8 @@ export default function UniversalCalendar({
               {filledAcquisitions.slice(0, 3).map((acq, index) => {
                 const product = products.find(p => p.product_key === acq.product_key);
                 const isCredit = product?.category === 'CREDIT';
-                const displayValue = isCredit ? (acq.nominal || 0) : acq.quantity;
-                const displayUnit = isCredit ? 'Juta' : (product?.unit || '');
+                const displayValue = isCredit ? formatToIDR(acq.nominal || 0) : acq.quantity;
+                const displayUnit = isCredit ? 'Rp' : (product?.unit || '');
                 return (
                   <div key={`${acq.product_key}-${acq.id || index}`} className="text-[7px] sm:text-[8px] font-bold text-slate-600 truncate">
                     {acq.product_key}: {displayValue} {displayUnit}

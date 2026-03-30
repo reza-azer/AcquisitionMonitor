@@ -124,7 +124,34 @@ export default function AcquisitionAssignModal({
   const updateCreditAcquisition = (productKey: string, index: number, nominal: number) => {
     setCreditAcquisitions(prev => ({
       ...prev,
-      [productKey]: prev[productKey]?.map((entry, i) => 
+      [productKey]: prev[productKey]?.map((entry, i) =>
+        i === index ? { ...entry, nominal } : entry
+      ) || []
+    }));
+    setSaveStatus('idle');
+    setError(null);
+  };
+
+  // Format number to IDR currency
+  const formatToIDR = (value: number): string => {
+    return new Intl.NumberFormat('id-ID').format(value);
+  };
+
+  // Parse formatted IDR string to number
+  const parseFromIDR = (value: string): number => {
+    const cleaned = value.replace(/[^0-9]/g, '');
+    return parseInt(cleaned) || 0;
+  };
+
+  // Handle nominal input change with auto-formatting
+  const handleNominalChange = (productKey: string, index: number, value: string) => {
+    // Remove all non-numeric characters
+    const cleaned = value.replace(/[^0-9]/g, '');
+    const nominal = parseInt(cleaned) || 0;
+    
+    setCreditAcquisitions(prev => ({
+      ...prev,
+      [productKey]: prev[productKey]?.map((entry, i) =>
         i === index ? { ...entry, nominal } : entry
       ) || []
     }));
@@ -145,7 +172,7 @@ export default function AcquisitionAssignModal({
     }
 
     const product = products.find(p => p.product_key === productKey);
-    if (!window.confirm(`Hapus akuisisi ${product?.product_name || productKey} sebesar ${entry.nominal} Juta?`)) return;
+    if (!window.confirm(`Hapus akuisisi ${product?.product_name || productKey} sebesar ${formatToIDR(entry.nominal)} Rp?`)) return;
 
     setDeletingId(entry.id);
     try {
@@ -342,14 +369,14 @@ export default function AcquisitionAssignModal({
                             <div className="flex-1 flex items-center gap-2 bg-white rounded-xl border border-slate-200 px-3 py-2">
                               <span className="text-xs font-black text-slate-400">#{index + 1}</span>
                               <input
-                                type="number"
-                                min="0"
-                                value={entry.nominal}
-                                onChange={(e) => updateCreditAcquisition(product.product_key, index, parseInt(e.target.value) || 0)}
-                                placeholder="Nominal (Juta)"
-                                className="flex-1 text-sm font-bold text-center outline-none"
+                                type="text"
+                                inputMode="numeric"
+                                value={formatToIDR(entry.nominal)}
+                                onChange={(e) => handleNominalChange(product.product_key, index, e.target.value)}
+                                placeholder="0"
+                                className="flex-1 text-sm font-bold text-center outline-none text-right"
                               />
-                              <span className="text-xs font-bold text-slate-500">Juta</span>
+                              <span className="text-xs font-bold text-slate-500 whitespace-nowrap">Rp</span>
                             </div>
                             <button
                               onClick={() => deleteCreditAcquisition(product.product_key, index)}
@@ -377,7 +404,7 @@ export default function AcquisitionAssignModal({
                         {entries.length > 0 && (
                           <div className="bg-purple-100 rounded-xl px-3 py-2 text-xs font-black text-purple-700 flex justify-between">
                             <span>Total:</span>
-                            <span>{entries.length} Akuisisi | {totalNominal} Juta</span>
+                            <span>{entries.length} Akuisisi | {formatToIDR(totalNominal)} Rp</span>
                           </div>
                         )}
                       </div>
