@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Acquisition Monitor",
+  title: "Bintang Kejora Jagasatru",
   description: "Central Overview Sales System",
 };
 

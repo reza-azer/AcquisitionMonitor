@@ -631,7 +631,7 @@ export default function App() {
             <div className="flex items-center gap-2 sm:gap-4">
               <MandiriLogo />
               <div className="h-6 sm:h-8 w-px bg-white/20 mx-1 hidden sm:block"></div>
-              <h1 className="text-base sm:text-lg font-bold tracking-tight">Acquisition Monitor</h1>
+              <h1 className="text-sm sm:text-base md:text-lg font-bold tracking-tight whitespace-nowrap">Bintang Kejora Jagasatru</h1>
             </div>
           </div>
         </header>
@@ -772,7 +772,7 @@ export default function App() {
           <div className="flex items-center gap-2 sm:gap-4">
             <MandiriLogo />
             <div className="h-6 sm:h-8 w-px bg-white/20 mx-1 hidden sm:block"></div>
-            <h1 className="text-base sm:text-lg font-bold tracking-tight">Acquisition Monitor</h1>
+            <h1 className="text-sm sm:text-base md:text-lg font-bold tracking-tight whitespace-nowrap">Bintang Kejora Jagasatru</h1>
           </div>
           <GradientMenu activeTab={viewMode} onTabChange={setViewMode} />
         </div>
