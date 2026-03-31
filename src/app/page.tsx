@@ -1,6 +1,6 @@
 'use client'
 import {
-  BarChart3, Calendar, Check, ChevronDown, ChevronUp, Clock, Database, Edit2,
+  BarChart3, Calendar, Check, ChevronDown, ChevronUp, Clock, Database, Edit2, FileText, Megaphone,
   ImageIcon, LineChart as LineChartIcon, Loader2, Medal,
   Package, Plus, Save, Settings, Star, Target, Trash2, TrendingUp, Trophy, User, UserPlus, X, Activity, Users
 } from 'lucide-react';
@@ -18,6 +18,8 @@ import { useAutoSave } from '@/hooks/useAutoSave';
 import DashboardAnalytics from '@/components/DashboardAnalytics';
 import DataBackup from '@/components/DataBackup';
 import GradientMenu from '@/components/ui/GradientMenu';
+import { Banner } from '@/components/ui/Banner';
+import BasicModal from '@/components/ui/BasicModal';
 import InputAcquisition from '@/components/InputAcquisition';
 import Skeleton, { SkeletonCard, SkeletonStatsCard, SkeletonTable, SkeletonAvatar, SkeletonText } from '@/components/Skeleton';
 import { CountUp, AnimatedContent } from '@/components/animations';
@@ -102,6 +104,9 @@ export default function App() {
   const [selectedMonth, setSelectedMonth] = useState<string>(String(new Date().getMonth() + 1));
   const [selectedYear, setSelectedYear] = useState<string>(String(new Date().getFullYear()));
   const [dashboardViewMode, setDashboardViewMode] = useState<'weekly' | 'monthly'>('weekly');
+
+  // Update banner modal state
+  const [showUpdateModal, setShowUpdateModal] = useState(false);
 
   // Data state
   const [teams, setTeams] = useState<Team[]>([]);
@@ -772,6 +777,32 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-900 pb-20">
+      {/* Update Banner */}
+      <div
+        onClick={() => setShowUpdateModal(true)}
+        className="cursor-pointer"
+      >
+        <Banner
+          id="update-banner"
+          variant="rainbow"
+          className="shadow-lg bg-white dark:bg-transparent"
+          rainbowColors={[
+            "rgba(0,149,255,0.6)",
+            "rgba(231,77,255,0.8)",
+            "transparent",
+            "rgba(0,149,255,0.6)",
+            "transparent",
+            "rgba(231,77,255,0.8)",
+            "transparent",
+          ]}
+          height="2.5rem"
+        >
+          <span className="text-sm">
+            🚀 <strong>Update v2.0.0:</strong> Sistem Major Update, Bintang Kejora Jagasatru <i> formerly Branch Acquisition Monitor</i> sekarang kembali online! Klik untuk melihat detail update.
+          </span>
+        </Banner>
+      </div>
+
       <header className="bg-[#003d79] text-white sticky top-0 z-50 shadow-lg border-b-4 border-[#FDB813]">
         <div className="max-w-[95%] lg:max-w-7xl mx-auto px-3 sm:px-4 md:px-6 h-14 sm:h-16 flex items-center justify-between">
           <div className="flex items-center gap-2 sm:gap-4">
@@ -1940,7 +1971,7 @@ export default function App() {
                       <Users className="w-6 h-6" /> Buat Tim Baru
                     </h3>
                   </div>
-                  
+
                   {/* Content */}
                   <div className="p-6 space-y-4">
                     <div>
@@ -1954,7 +1985,7 @@ export default function App() {
                         autoFocus
                       />
                     </div>
-                    
+
                     <div>
                       <label className="text-xs font-black text-slate-500 uppercase tracking-widest block mb-2">Gambar Tim</label>
                       <div className="grid grid-cols-2 gap-3">
@@ -1974,7 +2005,7 @@ export default function App() {
                         />
                       </div>
                     </div>
-                    
+
                     {/* Actions */}
                     <div className="flex gap-3 pt-4">
                       <button
@@ -2010,7 +2041,7 @@ export default function App() {
                       <UserPlus className="w-6 h-6" /> Tambah Anggota - {showAddMemberModal.teamName}
                     </h3>
                   </div>
-                  
+
                   {/* Content */}
                   <div className="p-6 space-y-4">
                     <div>
@@ -2024,7 +2055,7 @@ export default function App() {
                         autoFocus
                       />
                     </div>
-                    
+
                     <div>
                       <label className="text-xs font-black text-slate-500 uppercase tracking-widest block mb-2">Jabatan</label>
                       <input
@@ -2035,7 +2066,7 @@ export default function App() {
                         className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-sm font-semibold outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-300 transition-all"
                       />
                     </div>
-                    
+
                     <div>
                       <label className="text-xs font-black text-slate-500 uppercase tracking-widest block mb-2">Foto Anggota</label>
                       <div className="grid grid-cols-2 gap-3">
@@ -2055,7 +2086,7 @@ export default function App() {
                         />
                       </div>
                     </div>
-                    
+
                     {/* Actions */}
                     <div className="flex gap-3 pt-4">
                       <button
@@ -2107,6 +2138,81 @@ export default function App() {
           </div>
         )}
       </main>
+
+      {/* Update System Modal */}
+      <BasicModal
+        isOpen={showUpdateModal}
+        onClose={() => setShowUpdateModal(false)}
+        title="📢 Announcement System Update"
+        size="md"
+      >
+        <div className="space-y-4">
+          {/* Version Header */}
+          <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl p-4">
+            <div className="flex items-center gap-3 mb-2">
+              <Megaphone className="w-6 h-6" />
+              <h4 className="font-black text-lg">Versi 2.0.0</h4>
+            </div>
+            <p className="text-sm text-blue-100">Released: {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+          </div>
+
+          {/* Update Content */}
+          <div className="prose prose-sm max-w-none">
+            <p className="text-slate-600">
+              Detail Update:
+            </p>
+
+            <ul className="space-y-2 mt-4">
+              <li className="flex items-start gap-2">
+                <span className="text-green-500 mt-1">✓</span>
+                <span><strong>Fitur Baru:</strong> Integrasi absensi, fleksibilitas produk, animasi, dan mikrointeraksi dari GSAP dan framer</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-blue-500 mt-1">🔧</span>
+                <span><strong>Perbaikan:</strong> implementasi sistem input berbasis tanggal, separasi produk dengan kategori kredit dan non-kredit, toggle report weekly/monthly, dan perbaikan error karena migrasi sistem lama ke sistem baru</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-purple-500 mt-1">⚡</span>
+                <span><strong>Optimasi:</strong> Peningkatan performa pada dekstop</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-purple-500 mt-1">💎</span>
+                <span><strong>On going:</strong> Development Chart, PDF & Excel Report Feature, Mobile Optimization</span>
+              </li>
+            </ul>
+          </div>
+
+          {/* Release Notes Section */}
+          <div className="bg-slate-50 rounded-xl p-4 border border-slate-200">
+            <h5 className="font-black text-slate-800 mb-2 flex items-center gap-2">
+              <FileText className="w-4 h-4" />
+              Changelog
+            </h5>
+            <div className="text-sm text-slate-600 space-y-2">
+              <p>• [26/03/2026] - Implementasi fitur absensi dan produk manajer dinamis, memperbaiki animasi loading</p>
+              <p>• [29/03/2026] - menambahkan beberapa fitur baru, integrasi realtime input dengan basis kalender</p>
+              <p>• [30/03/2026] - separasi produk kredit dan non-kredit, report monthly/weekly adjustment, menambahkan thousand separator pada form</p>
+              <p>• [01/04/2026] - finishing, menambahkan animasi dengan GSAP, dan beberapa mikrointeraksi</p>
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex justify-end gap-2 pt-4 border-t border-slate-200">
+            <button
+              onClick={() => setShowUpdateModal(false)}
+              className="px-4 py-2 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50 transition-colors font-bold text-sm"
+            >
+              Tutup
+            </button>
+            <button
+              onClick={() => setShowUpdateModal(false)}
+              className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors font-bold text-sm"
+            >
+              Mengerti
+            </button>
+          </div>
+        </div>
+      </BasicModal>
 
       <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-slate-200 px-2 sm:px-4 py-2 sm:py-3 md:hidden flex justify-around items-center z-50 rounded-t-[20px] sm:rounded-t-[30px] md:rounded-t-[40px] shadow-2xl overflow-x-auto">
         <button onClick={() => setViewMode('dashboard')} className={`flex flex-col items-center gap-0.5 sm:gap-1 transition-all flex-shrink-0 px-2 py-1 ${viewMode === 'dashboard' ? 'text-blue-900 scale-110' : 'text-slate-300'}`}><BarChart3 className="w-5 h-5 sm:w-6 sm:h-6" /><span className="text-[6px] sm:text-[7px] font-black uppercase">Home</span></button>
