@@ -392,6 +392,9 @@ export async function GET(request: Request) {
       // For CREDIT: achievement based on nominal vs target nominal
       // For others: achievement based on quantity vs target quantity
       const actualValue = product.category === 'CREDIT' ? totalNominal : totalQuantity;
+      // Multiply target by 4 for monthly mode
+      const targetMultiplier = reportType === 'monthly' ? 4 : 1;
+      const targetValue = product.weekly_target * targetMultiplier;
       return {
         productKey: product.product_key,
         productName: product.product_name,
@@ -400,8 +403,8 @@ export async function GET(request: Request) {
         totalQuantity,
         totalNominal: product.category === 'CREDIT' ? totalNominal : undefined,
         totalPoints,
-        weeklyTarget: product.weekly_target,
-        achievementRate: product.weekly_target > 0 ? Math.round((actualValue / product.weekly_target) * 100) : 0,
+        weeklyTarget: targetValue,
+        achievementRate: targetValue > 0 ? Math.round((actualValue / targetValue) * 100) : 0,
       };
     });
 
