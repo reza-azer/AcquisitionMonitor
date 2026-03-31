@@ -7,7 +7,7 @@ import {
   Activity, Crown, Clock,
   Calendar, FileText, XCircle, AlertCircle
 } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from 'recharts';
 import GridLoader from './GridLoader';
 import Skeleton, { SkeletonStatsCard, SkeletonCard } from './Skeleton';
 import { CountUp } from './animations';
@@ -53,6 +53,8 @@ interface CategoryPerformance {
   totalQuantity: number;
   totalNominal?: number;  // For CREDIT products
   totalPoints: number;
+  weeklyTarget: number;
+  achievementRate: number;
 }
 
 interface Insights {
@@ -102,6 +104,31 @@ interface AttendanceDetail {
   notes: string | null;
 }
 
+// Chart data interfaces
+interface DailyTeamPerformance {
+  date: string;
+  day: number;
+  [teamName: string]: number | string;
+}
+
+interface DailyProductPerformance {
+  date: string;
+  day: number;
+  productKey: string;
+  productName: string;
+  category: string;
+  quantity: number;
+  nominal?: number;
+  points: number;
+}
+
+interface DailyActivity {
+  date: string;
+  day: number;
+  count: number;
+  totalPoints: number;
+}
+
 export default function DashboardAnalytics() {
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -117,6 +144,15 @@ export default function DashboardAnalytics() {
   const [attendanceYear, setAttendanceYear] = useState<string>(String(new Date().getFullYear()));
   const [attendanceStatusFilter, setAttendanceStatusFilter] = useState<'all' | 'late' | 'leave' | 'alpha'>('all');
 
+  // Analytics view selector
+  const [analyticsView, setAnalyticsView] = useState<'overview' | 'attendance' | 'leaderboard' | 'charts'>('overview');
+
+  // Chart-specific state
+  const [selectedProductFilter, setSelectedProductFilter] = useState<string>('all');
+  const [dailyTeamData, setDailyTeamData] = useState<DailyTeamPerformance[]>([]);
+  const [dailyProductData, setDailyProductData] = useState<DailyProductPerformance[]>([]);
+  const [dailyActivityData, setDailyActivityData] = useState<DailyActivity[]>([]);
+
   // Format nominal to compact display (e.g., 36.000.000 → 36jt)
   const formatToJuta = (value: number): string => {
     const juta = value / 1000000;
@@ -129,6 +165,32 @@ export default function DashboardAnalytics() {
   useEffect(() => {
     fetchAnalytics();
   }, [reportType, startDate, endDate, selectedMonth, selectedYear]);
+
+  // Fetch daily chart data when charts view is selected
+  useEffect(() => {
+    if (analyticsView === 'charts' && data) {
+      fetchDailyChartData();
+    }
+  }, [analyticsView, selectedMonth, selectedYear, data]);
+
+  const fetchDailyChartData = async () => {
+    try {
+      const monthStr = String(parseInt(selectedMonth)).padStart(2, '0');
+      const startDate = `${selectedYear}-${monthStr}-01`;
+      const lastDay = new Date(parseInt(selectedYear), parseInt(selectedMonth), 0).getDate();
+      const endDate = `${selectedYear}-${monthStr}-${String(lastDay).padStart(2, '0')}`;
+
+      const response = await fetch(`/api/analytics/daily?startDate=${startDate}&endDate=${endDate}`);
+      if (!response.ok) throw new Error('Failed to fetch daily data');
+      const result = await response.json();
+
+      setDailyTeamData(result.teamPerformance || []);
+      setDailyProductData(result.productPerformance || []);
+      setDailyActivityData(result.dailyActivity || []);
+    } catch (err: any) {
+      console.error('Daily chart data fetch error:', err);
+    }
+  };
 
   const fetchAnalytics = async () => {
     setLoading(true);
@@ -364,97 +426,200 @@ export default function DashboardAnalytics() {
         </div>
       )}
 
-      {/* Summary Cards */}
-      <motion.div
-        className="grid grid-cols-2 md:grid-cols-4 gap-4"
-        initial={{ opacity: 0 }}
-        whileInView={{ opacity: 1 }}
-        viewport={{ once: true }}
-        transition={{ duration: 0.3 }}
-      >
-        <motion.div
-          className="bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-3xl p-6 shadow-lg"
-          initial={{ opacity: 0, y: 30 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: '-50px' }}
-          transition={{ duration: 0.4, delay: 0.1, ease: [0.25, 0.46, 0.45, 0.94] }}
-        >
-          <div className="flex items-center gap-2 mb-2">
-            <Users className="w-5 h-5 text-blue-200" />
-            <span className="text-xs font-bold text-blue-100 uppercase">Total Members</span>
-          </div>
-          <div className="text-4xl font-black">
-            <CountUp value={summary.totalMembers} duration={1.5} />
-          </div>
-          <div className="text-xs text-blue-200 mt-2">{summary.totalTeams} Teams</div>
-        </motion.div>
+      {/* Analytics View Selector */}
+      <div className="bg-white rounded-[30px] p-2 border border-slate-200 shadow-sm">
+        <div className="flex gap-2">
+          <button
+            onClick={() => setAnalyticsView('overview')}
+            className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-[20px] text-sm font-black transition-all ${
+              analyticsView === 'overview'
+                ? 'bg-blue-600 text-white shadow-md'
+                : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+            }`}
+          >
+            <BarChart3 className="w-4 h-4" /> Overview
+          </button>
+          <button
+            onClick={() => setAnalyticsView('charts')}
+            className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-[20px] text-sm font-black transition-all ${
+              analyticsView === 'charts'
+                ? 'bg-blue-600 text-white shadow-md'
+                : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+            }`}
+          >
+            <Activity className="w-4 h-4" /> Grafik
+          </button>
+          <button
+            onClick={() => setAnalyticsView('attendance')}
+            className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-[20px] text-sm font-black transition-all ${
+              analyticsView === 'attendance'
+                ? 'bg-blue-600 text-white shadow-md'
+                : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+            }`}
+          >
+            <Calendar className="w-4 h-4" /> Absensi
+          </button>
+          <button
+            onClick={() => setAnalyticsView('leaderboard')}
+            className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-[20px] text-sm font-black transition-all ${
+              analyticsView === 'leaderboard'
+                ? 'bg-blue-600 text-white shadow-md'
+                : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+            }`}
+          >
+            <Trophy className="w-4 h-4" /> Leaderboard
+          </button>
+        </div>
+      </div>
 
+      {/* Summary Cards - Overview View */}
+      {analyticsView === 'overview' && (
         <motion.div
-          className="bg-gradient-to-br from-green-500 to-green-600 text-white rounded-3xl p-6 shadow-lg"
-          initial={{ opacity: 0, y: 30 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: '-50px' }}
-          transition={{ duration: 0.4, delay: 0.2, ease: [0.25, 0.46, 0.45, 0.94] }}
+          className="grid grid-cols-2 md:grid-cols-4 gap-4"
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.3 }}
         >
-          <div className="flex items-center gap-2 mb-2">
-            <Trophy className="w-5 h-5 text-green-200" />
-            <span className="text-xs font-bold text-green-100 uppercase">Total Points</span>
-          </div>
-          <div className="text-4xl font-black">
-            <CountUp value={summary.totalPoints} duration={1.5} formatWithCommas />
-          </div>
-          <div className="text-xs text-green-200 mt-2">
-            <CountUp value={summary.totalQuantity} duration={1.5} /> Acquisitions
-          </div>
-        </motion.div>
+          <motion.div
+            className="bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-3xl p-6 shadow-lg"
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: '-50px' }}
+            transition={{ duration: 0.4, delay: 0.1, ease: [0.25, 0.46, 0.45, 0.94] }}
+          >
+            <div className="flex items-center gap-2 mb-2">
+              <Users className="w-5 h-5 text-blue-200" />
+              <span className="text-xs font-bold text-blue-100 uppercase">Total Members</span>
+            </div>
+            <div className="text-4xl font-black">
+              <CountUp value={summary.totalMembers} duration={1.5} />
+            </div>
+            <div className="text-xs text-blue-200 mt-2">{summary.totalTeams} Teams</div>
+          </motion.div>
 
-        <motion.div
-          className="bg-gradient-to-br from-amber-500 to-amber-600 text-white rounded-3xl p-6 shadow-lg"
-          initial={{ opacity: 0, y: 30 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: '-50px' }}
-          transition={{ duration: 0.4, delay: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
-        >
-          <div className="flex items-center gap-2 mb-2">
-            <Target className="w-5 h-5 text-amber-200" />
-            <span className="text-xs font-bold text-amber-100 uppercase">Avg Achievement</span>
-          </div>
-          <div className="text-4xl font-black">
-            <CountUp value={summary.avgAttendanceRate} duration={1.5} suffix="%" />
-          </div>
-          <div className="text-xs text-amber-200 mt-2">Attendance Rate</div>
-        </motion.div>
+          <motion.div
+            className="bg-gradient-to-br from-green-500 to-green-600 text-white rounded-3xl p-6 shadow-lg"
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: '-50px' }}
+            transition={{ duration: 0.4, delay: 0.2, ease: [0.25, 0.46, 0.45, 0.94] }}
+          >
+            <div className="flex items-center gap-2 mb-2">
+              <Trophy className="w-5 h-5 text-green-200" />
+              <span className="text-xs font-bold text-green-100 uppercase">Total Points</span>
+            </div>
+            <div className="text-4xl font-black">
+              <CountUp value={summary.totalPoints} duration={1.5} formatWithCommas />
+            </div>
+            <div className="text-xs text-green-200 mt-2">
+              <CountUp value={summary.totalQuantity} duration={1.5} /> Acquisitions
+            </div>
+          </motion.div>
 
-        <motion.div
-          className="bg-gradient-to-br from-purple-500 to-purple-600 text-white rounded-3xl p-6 shadow-lg"
-          initial={{ opacity: 0, y: 30 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: '-50px' }}
-          transition={{ duration: 0.4, delay: 0.4, ease: [0.25, 0.46, 0.45, 0.94] }}
-        >
-          <div className="flex items-center gap-2 mb-2">
-            <BarChart3 className="w-5 h-5 text-purple-200" />
-            <span className="text-xs font-bold text-purple-100 uppercase">Products</span>
-          </div>
-          <div className="text-4xl font-black">
-            <CountUp value={categoryPerformance.length} duration={1} />
-          </div>
-          <div className="text-xs text-purple-200 mt-2">Active Products</div>
-        </motion.div>
-      </motion.div>
+          <motion.div
+            className="bg-gradient-to-br from-amber-500 to-amber-600 text-white rounded-3xl p-6 shadow-lg"
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: '-50px' }}
+            transition={{ duration: 0.4, delay: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
+          >
+            <div className="flex items-center gap-2 mb-2">
+              <Target className="w-5 h-5 text-amber-200" />
+              <span className="text-xs font-bold text-amber-100 uppercase">Avg Achievement</span>
+            </div>
+            <div className="text-4xl font-black">
+              <CountUp value={summary.avgAttendanceRate} duration={1.5} suffix="%" />
+            </div>
+            <div className="text-xs text-amber-200 mt-2">Attendance Rate</div>
+          </motion.div>
 
-      {/* Attendance Summary */}
-      <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm">
-        <div className="flex items-center gap-3 mb-6">
-          <div className="w-10 h-10 rounded-2xl bg-blue-50 flex items-center justify-center">
-            <Calendar className="w-5 h-5 text-blue-600" />
+          <motion.div
+            className="bg-gradient-to-br from-purple-500 to-purple-600 text-white rounded-3xl p-6 shadow-lg"
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: '-50px' }}
+            transition={{ duration: 0.4, delay: 0.4, ease: [0.25, 0.46, 0.45, 0.94] }}
+          >
+            <div className="flex items-center gap-2 mb-2">
+              <BarChart3 className="w-5 h-5 text-purple-200" />
+              <span className="text-xs font-bold text-purple-100 uppercase">Products</span>
+            </div>
+            <div className="text-4xl font-black">
+              <CountUp value={categoryPerformance.length} duration={1} />
+            </div>
+            <div className="text-xs text-purple-200 mt-2">Active Products</div>
+          </motion.div>
+        </motion.div>
+      )}
+
+      {/* Product Target Achievement - Overview View */}
+      {analyticsView === 'overview' && categoryPerformance.length > 0 && (
+        <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-10 h-10 rounded-2xl bg-green-50 flex items-center justify-center">
+              <Target className="w-5 h-5 text-green-600" />
+            </div>
+            <div>
+              <h3 className="font-black text-slate-800">Product Target Achievement</h3>
+              <p className="text-xs font-bold text-slate-400">Progress toward weekly goals by product</p>
+            </div>
           </div>
-          <div>
-            <h3 className="font-black text-slate-800">Attendance Summary</h3>
-            <p className="text-xs font-bold text-slate-400">Breakdown by status</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {categoryPerformance.map((product, index) => (
+              <div key={product.productKey} className="bg-slate-50 rounded-2xl p-5 border border-slate-100">
+                <div className="flex justify-between items-start mb-3">
+                  <div>
+                    <div className="text-xs font-black text-slate-400 uppercase tracking-wider">{product.category}</div>
+                    <div className="font-black text-slate-800">{product.productName}</div>
+                  </div>
+                  <div
+                    className={`px-2 py-1 rounded-lg text-xs font-black ${
+                      product.achievementRate >= 100
+                        ? 'bg-green-100 text-green-700'
+                        : product.achievementRate >= 50
+                        ? 'bg-amber-100 text-amber-700'
+                        : 'bg-red-100 text-red-700'
+                    }`}
+                  >
+                    {product.achievementRate}%
+                  </div>
+                </div>
+                <div className="mb-2">
+                  <div className="flex justify-between text-xs font-bold text-slate-500 mb-1">
+                    {product.category === 'CREDIT' ? (
+                      <span>{formatToJuta(product.totalNominal || 0)} / {formatToJuta(product.weeklyTarget)} {product.unit}</span>
+                    ) : (
+                      <span>{product.totalQuantity} / {product.weeklyTarget} {product.unit}</span>
+                    )}
+                  </div>
+                  <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
+                    <div
+                      className="h-full rounded-full transition-all"
+                      style={{ width: `${Math.min(product.achievementRate, 100)}%`, backgroundColor: COLORS[index % COLORS.length] }}
+                    />
+                  </div>
+                </div>
+                <div className="text-xs font-bold text-slate-400">{product.totalPoints} points earned</div>
+              </div>
+            ))}
           </div>
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      )}
+
+      {/* Attendance Summary - Attendance View */}
+      {analyticsView === 'attendance' && (
+        <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-10 h-10 rounded-2xl bg-blue-50 flex items-center justify-center">
+              <Calendar className="w-5 h-5 text-blue-600" />
+            </div>
+            <div>
+              <h3 className="font-black text-slate-800">Attendance Summary</h3>
+              <p className="text-xs font-bold text-slate-400">Breakdown by status</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="bg-green-50 rounded-2xl p-5 border border-green-100">
             <div className="flex items-center gap-2 mb-2">
               <CheckCircle2 className="w-5 h-5 text-green-600" />
@@ -680,7 +845,171 @@ export default function DashboardAnalytics() {
           </div>
         </div>
       </div>
+      )}
 
+      {/* Charts View */}
+      {analyticsView === 'charts' && (
+        <div className="space-y-8">
+          {/* Line Chart - Performa Tim */}
+          <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-10 h-10 rounded-2xl bg-blue-50 flex items-center justify-center">
+                <Activity className="w-5 h-5 text-blue-600" />
+              </div>
+              <div>
+                <h3 className="font-black text-slate-800">Performa Tim - Month to Date</h3>
+                <p className="text-xs font-bold text-slate-400">Cumulative points progression by team</p>
+              </div>
+            </div>
+            <div className="h-80">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={dailyTeamData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                  <XAxis
+                    dataKey="day"
+                    stroke="#64748b"
+                    fontSize={12}
+                    tickFormatter={(v) => `Day ${v}`}
+                  />
+                  <YAxis stroke="#64748b" fontSize={12} />
+                  <Tooltip
+                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                    labelFormatter={(v) => `Day ${v}`}
+                  />
+                  <Legend />
+                  {data && data.teamPerformance.map((team, index) => (
+                    <Line
+                      key={team.teamId}
+                      type="monotone"
+                      dataKey={team.teamName}
+                      name={team.teamName}
+                      stroke={team.accentColor || COLORS[index % COLORS.length]}
+                      strokeWidth={3}
+                      dot={{ fill: 'white', strokeWidth: 2, r: 4 }}
+                      activeDot={{ r: 6 }}
+                    />
+                  ))}
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* Bar Chart - Performa Produk */}
+          <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-green-50 flex items-center justify-center">
+                  <BarChart3 className="w-5 h-5 text-green-600" />
+                </div>
+                <div>
+                  <h3 className="font-black text-slate-800">Performa Produk - Month to Date</h3>
+                  <p className="text-xs font-bold text-slate-400">Daily sales by product</p>
+                </div>
+              </div>
+              <select
+                value={selectedProductFilter}
+                onChange={(e) => setSelectedProductFilter(e.target.value)}
+                className="bg-white border border-slate-200 rounded-xl px-4 py-2 text-sm font-bold outline-none focus:ring-2 focus:ring-blue-200"
+              >
+                <option value="all">All Products</option>
+                {categoryPerformance.map(product => (
+                  <option key={product.productKey} value={product.productKey}>
+                    {product.productName}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="h-80">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart 
+                  data={dailyProductData.filter(d => 
+                    selectedProductFilter === 'all' || d.productKey === selectedProductFilter
+                  )}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                  <XAxis 
+                    dataKey="day" 
+                    stroke="#64748b" 
+                    fontSize={12}
+                    tickFormatter={(v) => `Day ${v}`}
+                  />
+                  <YAxis stroke="#64748b" fontSize={12} />
+                  <Tooltip 
+                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                    labelFormatter={(v) => `Day ${v}`}
+                    formatter={(value: any, name: any, props: any) => {
+                      if (props.payload.category === 'CREDIT') {
+                        return [formatToJuta(props.payload.nominal || 0), 'Nominal'];
+                      }
+                      return [value, 'Quantity'];
+                    }}
+                  />
+                  <Legend />
+                  <Bar 
+                    dataKey="quantity" 
+                    name="Quantity" 
+                    fill="#003d79" 
+                    radius={[8, 8, 0, 0]}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* Daily Activity Heatmap */}
+          <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-10 h-10 rounded-2xl bg-purple-50 flex items-center justify-center">
+                <Target className="w-5 h-5 text-purple-600" />
+              </div>
+              <div>
+                <h3 className="font-black text-slate-800">Daily Activity Heatmap</h3>
+                <p className="text-xs font-bold text-slate-400">Acquisition activity by day</p>
+              </div>
+            </div>
+            <div className="grid grid-cols-7 gap-2">
+              {/* Day headers */}
+              {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => (
+                <div key={day} className="text-center text-xs font-black text-slate-400 uppercase py-2">
+                  {day}
+                </div>
+              ))}
+              {/* Heatmap cells */}
+              {dailyActivityData.map((day, index) => {
+                const date = new Date(day.date);
+                const dayOfWeek = date.getDay();
+                const intensity = day.count > 0 ? Math.min(day.count / 10, 1) : 0;
+                const bgColor = intensity === 0 
+                  ? 'bg-slate-50' 
+                  : intensity < 0.3 
+                  ? 'bg-blue-100' 
+                  : intensity < 0.6 
+                  ? 'bg-blue-300' 
+                  : intensity < 0.8 
+                  ? 'bg-blue-500' 
+                  : 'bg-blue-700';
+                const textColor = intensity > 0.3 ? 'text-white' : 'text-slate-700';
+                
+                return (
+                  <div
+                    key={day.date}
+                    className={`${bgColor} ${textColor} rounded-xl p-3 text-center transition-all hover:scale-105 hover:shadow-md cursor-default`}
+                    title={`${day.date}: ${day.count} acquisitions, ${day.totalPoints} points`}
+                  >
+                    <div className="text-xs font-bold">{day.day}</div>
+                    <div className="text-lg font-black">{day.count}</div>
+                    <div className="text-[9px] font-bold">{day.totalPoints} pts</div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Overview and Leaderboard View */}
+      {analyticsView !== 'attendance' && (
+        <>
       {/* Top Performers Cards */}
       <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm">
         <div className="flex items-center gap-3 mb-6">
@@ -892,6 +1221,8 @@ export default function DashboardAnalytics() {
           </table>
         </div>
       </div>
+        </>
+      )}
     </div>
   );
 }
