@@ -3,11 +3,11 @@
 import React, { useState, useEffect } from 'react';
 import {
   Trophy, Users, Target, Medal, Star,
-  CheckCircle2, BarChart3, PieChart as PieChartIcon,
+  CheckCircle2, BarChart3,
   Activity, Crown, Clock,
-  Calendar, FileText, XCircle, AlertCircle, TrendingUp
+  Calendar, FileText, XCircle, AlertCircle
 } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import GridLoader from './GridLoader';
 import Skeleton, { SkeletonStatsCard, SkeletonCard } from './Skeleton';
 import { CountUp } from './animations';
@@ -53,16 +53,6 @@ interface CategoryPerformance {
   totalQuantity: number;
   totalNominal?: number;  // For CREDIT products
   totalPoints: number;
-  weeklyTarget: number;
-  achievementRate: number;
-}
-
-interface AttendanceCorrelation {
-  memberId: string;
-  memberName: string;
-  attendanceRate: number;
-  totalPoints: number;
-  totalQuantity: number;
 }
 
 interface Insights {
@@ -91,7 +81,6 @@ interface AnalyticsData {
   categoryPerformance: CategoryPerformance[];
   insights: Insights;
   summary: Summary;
-  attendanceCorrelation: AttendanceCorrelation[];
   attendanceDetails: AttendanceDetail[];
   reportType: string;
   startDate: string | null;
@@ -281,7 +270,7 @@ export default function DashboardAnalytics() {
     );
   }
 
-  const { teamPerformance, memberRankings, categoryPerformance, insights, summary, attendanceCorrelation } = data;
+  const { teamPerformance, memberRankings, categoryPerformance, insights, summary } = data;
   const COLORS = ['#003d79', '#FDB813', '#10b981', '#ef4444', '#8b5cf6', '#f59e0b', '#06b6d4', '#ec4899'];
 
   return (
@@ -823,243 +812,6 @@ export default function DashboardAnalytics() {
               ))}
             </tbody>
           </table>
-        </div>
-      </div>
-
-      {/* Category Performance with Targets - Non-CREDIT */}
-      {categoryPerformance.filter(p => p.category !== 'CREDIT').length > 0 && (
-        <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-10 h-10 rounded-2xl bg-green-50 flex items-center justify-center">
-              <Target className="w-5 h-5 text-green-600" />
-            </div>
-            <div>
-              <h3 className="font-black text-slate-800">Product Target Achievement - Non-CREDIT</h3>
-              <p className="text-xs font-bold text-slate-400">FUNDING & TRANSACTION - Progress toward weekly goals</p>
-            </div>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {categoryPerformance.filter(p => p.category !== 'CREDIT').map((product, index) => (
-              <div key={product.productKey} className="bg-slate-50 rounded-2xl p-5 border border-slate-100">
-                <div className="flex justify-between items-start mb-3">
-                  <div>
-                    <div className="text-xs font-black text-slate-400 uppercase tracking-wider">{product.category}</div>
-                    <div className="font-black text-slate-800">{product.productName}</div>
-                  </div>
-                  <div
-                    className={`px-2 py-1 rounded-lg text-xs font-black ${
-                      product.achievementRate >= 100
-                        ? 'bg-green-100 text-green-700'
-                        : product.achievementRate >= 50
-                        ? 'bg-amber-100 text-amber-700'
-                        : 'bg-red-100 text-red-700'
-                    }`}
-                  >
-                    {product.achievementRate}%
-                  </div>
-                </div>
-                <div className="mb-2">
-                  <div className="flex justify-between text-xs font-bold text-slate-500 mb-1">
-                    <span>{product.totalQuantity} / {product.weeklyTarget} {product.unit}</span>
-                  </div>
-                  <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
-                    <div
-                      className="h-full rounded-full transition-all"
-                      style={{ width: `${Math.min(product.achievementRate, 100)}%`, backgroundColor: COLORS[index % COLORS.length] }}
-                    />
-                  </div>
-                </div>
-                <div className="text-xs font-bold text-slate-400">{product.totalPoints} points earned</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Category Performance with Targets - CREDIT */}
-      {categoryPerformance.filter(p => p.category === 'CREDIT').length > 0 && (
-        <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-10 h-10 rounded-2xl bg-purple-50 flex items-center justify-center">
-              <Target className="w-5 h-5 text-purple-600" />
-            </div>
-            <div>
-              <h3 className="font-black text-slate-800">Product Target Achievement - CREDIT</h3>
-              <p className="text-xs font-bold text-slate-400">CREDIT products - Progress toward weekly nominal goals</p>
-            </div>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {categoryPerformance.filter(p => p.category === 'CREDIT').map((product, index) => (
-              <div key={product.productKey} className="bg-slate-50 rounded-2xl p-5 border border-slate-100">
-                <div className="flex justify-between items-start mb-3">
-                  <div>
-                    <div className="text-xs font-black text-slate-400 uppercase tracking-wider">{product.category}</div>
-                    <div className="font-black text-slate-800">{product.productName}</div>
-                  </div>
-                  <div
-                    className={`px-2 py-1 rounded-lg text-xs font-black ${
-                      product.achievementRate >= 100
-                        ? 'bg-green-100 text-green-700'
-                        : product.achievementRate >= 50
-                        ? 'bg-amber-100 text-amber-700'
-                        : 'bg-red-100 text-red-700'
-                    }`}
-                  >
-                    {product.achievementRate}%
-                  </div>
-                </div>
-                <div className="mb-2">
-                  <div className="flex justify-between text-xs font-bold text-slate-500 mb-1">
-                    <span>
-                      {formatToJuta(product.totalNominal || 0)} / {formatToJuta(product.weeklyTarget)} {product.unit}
-                    </span>
-                  </div>
-                  <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
-                    <div
-                      className="h-full rounded-full transition-all"
-                      style={{ width: `${Math.min(product.achievementRate, 100)}%`, backgroundColor: COLORS[index % COLORS.length] }}
-                    />
-                  </div>
-                </div>
-                <div className="text-xs font-bold text-slate-400">{product.totalPoints} points earned</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Product Performance Bar Chart - Non-CREDIT */}
-      {categoryPerformance.filter(p => p.category !== 'CREDIT').length > 0 && (
-        <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-10 h-10 rounded-2xl bg-green-50 flex items-center justify-center">
-              <PieChartIcon className="w-5 h-5 text-green-600" />
-            </div>
-            <div>
-              <h3 className="font-black text-slate-800">Product Performance - Non-CREDIT</h3>
-              <p className="text-xs font-bold text-slate-400">FUNDING & TRANSACTION - Achievement by product</p>
-            </div>
-          </div>
-          <div className="h-80">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={categoryPerformance.filter(p => p.category !== 'CREDIT')}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                <XAxis dataKey="productKey" stroke="#64748b" fontSize={12} />
-                <YAxis stroke="#64748b" fontSize={12} />
-                <Tooltip
-                  contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                  content={({ active, payload, label }) => {
-                    if (active && payload && payload[0]) {
-                      const data = payload[0].payload;
-                      return (
-                        <div style={{ padding: '12px', background: 'white', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}>
-                          <p style={{ margin: '0 0 8px 0', fontWeight: 'bold' }}>{data.productName}</p>
-                          <p style={{ margin: '4px 0', fontSize: '12px' }}>
-                            Actual: {data.totalQuantity}
-                          </p>
-                          <p style={{ margin: '4px 0', fontSize: '12px' }}>
-                            Target: {data.weeklyTarget}
-                          </p>
-                        </div>
-                      );
-                    }
-                    return null;
-                  }}
-                />
-                <Legend />
-                <Bar dataKey="totalQuantity" name="Actual" fill="#003d79" radius={[8, 8, 0, 0]} />
-                <Bar dataKey="weeklyTarget" name="Target" fill="#FDB813" radius={[8, 8, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-      )}
-
-      {/* Product Performance Bar Chart - CREDIT */}
-      {categoryPerformance.filter(p => p.category === 'CREDIT').length > 0 && (
-        <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm mt-8">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-10 h-10 rounded-2xl bg-purple-50 flex items-center justify-center">
-              <PieChartIcon className="w-5 h-5 text-purple-600" />
-            </div>
-            <div>
-              <h3 className="font-black text-slate-800">Product Performance - CREDIT</h3>
-              <p className="text-xs font-bold text-slate-400">CREDIT products - Achievement by nominal</p>
-            </div>
-          </div>
-          <div className="h-80">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={categoryPerformance.filter(p => p.category === 'CREDIT')}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                <XAxis dataKey="productKey" stroke="#64748b" fontSize={12} />
-                <YAxis stroke="#64748b" fontSize={12} />
-                <Tooltip
-                  contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                  content={({ active, payload, label }) => {
-                    if (active && payload && payload[0]) {
-                      const data = payload[0].payload;
-                      return (
-                        <div style={{ padding: '12px', background: 'white', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}>
-                          <p style={{ margin: '0 0 8px 0', fontWeight: 'bold' }}>{data.productName}</p>
-                          <p style={{ margin: '4px 0', fontSize: '12px' }}>
-                            Actual: {formatToJuta(data.totalNominal || 0)}
-                          </p>
-                          <p style={{ margin: '4px 0', fontSize: '12px' }}>
-                            Target: {formatToJuta(data.weeklyTarget)}
-                          </p>
-                        </div>
-                      );
-                    }
-                    return null;
-                  }}
-                />
-                <Legend />
-                <Bar dataKey="totalNominal" name="Actual (Nominal)" fill="#7c3aed" radius={[8, 8, 0, 0]} />
-                <Bar dataKey="weeklyTarget" name="Target" fill="#FDB813" radius={[8, 8, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-      )}
-
-      {/* Attendance vs Performance Correlation */}
-      <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm">
-        <div className="flex items-center gap-3 mb-6">
-          <div className="w-10 h-10 rounded-2xl bg-indigo-50 flex items-center justify-center">
-            <TrendingUp className="w-5 h-5 text-indigo-600" />
-          </div>
-          <div>
-            <h3 className="font-black text-slate-800">Attendance vs Performance</h3>
-            <p className="text-xs font-bold text-slate-400">Correlation analysis</p>
-          </div>
-        </div>
-        <div className="h-80">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={attendanceCorrelation.slice(0, 20)}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-              <XAxis
-                dataKey="attendanceRate"
-                label={{ value: 'Attendance Rate (%)', position: 'insideBottom', offset: -5 }}
-                stroke="#64748b"
-                fontSize={12}
-              />
-              <YAxis label={{ value: 'Points', angle: -90, position: 'insideLeft' }} stroke="#64748b" fontSize={12} />
-              <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
-              <Legend />
-              <Line type="monotone" dataKey="totalPoints" name="Points" fill="#003d79" stroke="#003d79" strokeWidth={2} />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-        <div className="mt-4 bg-blue-50 rounded-xl p-4 border border-blue-100">
-          <div className="flex items-start gap-3">
-            <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-            <div>
-              <div className="font-black text-blue-800 text-sm mb-1">Insight</div>
-              <p className="text-xs text-blue-700 font-bold">
-                This chart shows the relationship between attendance and performance. Members with higher attendance rates tend to have better performance scores.
-              </p>
-            </div>
-          </div>
         </div>
       </div>
 
