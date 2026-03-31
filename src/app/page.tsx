@@ -2146,9 +2146,9 @@ export default function App() {
         title="📢 Announcement System Update"
         size="md"
       >
-        <div className="space-y-4">
+        <div className="max-h-[70vh] overflow-y-auto pr-2 space-y-4 scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-slate-100">
           {/* Version Header */}
-          <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl p-4">
+          <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl p-4 sticky top-0 z-10">
             <div className="flex items-center gap-3 mb-2">
               <Megaphone className="w-6 h-6" />
               <h4 className="font-black text-lg">Versi 2.0.0</h4>
@@ -2197,7 +2197,7 @@ export default function App() {
           </div>
 
           {/* Action Buttons */}
-          <div className="flex justify-end gap-2 pt-4 border-t border-slate-200">
+          <div className="flex justify-end gap-2 pt-4 border-t border-slate-200 sticky bottom-0 bg-white pt-4">
             <button
               onClick={() => setShowUpdateModal(false)}
               className="px-4 py-2 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50 transition-colors font-bold text-sm"
