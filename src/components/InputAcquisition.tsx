@@ -100,7 +100,7 @@ export default function InputAcquisition({ products, teams, members }: InputAcqu
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editQuantity, setEditQuantity] = useState<number>(0);
   const [isDeleting, setIsDeleting] = useState(false);
-  
+
   // Calendar state
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [calendarMode, setCalendarMode] = useState<CalendarMode>('acquisition');
@@ -108,7 +108,7 @@ export default function InputAcquisition({ products, teams, members }: InputAcqu
   const [existingAcquisitions, setExistingAcquisitions] = useState<Acquisition[]>([]);
   const [allMonthAcquisitions, setAllMonthAcquisitions] = useState<Acquisition[]>([]);
   const [isBulkEditModalOpen, setIsBulkEditModalOpen] = useState(false);
-  
+
   // Attendance state
   const [attendances, setAttendances] = useState<Attendance[]>([]);
   const [isAttendanceModalOpen, setIsAttendanceModalOpen] = useState(false);
@@ -304,7 +304,7 @@ export default function InputAcquisition({ products, teams, members }: InputAcqu
     setInputData(prev => {
       const currentValue = prev[productKey];
       const product = products.find(p => p.product_key === productKey);
-      
+
       if (product?.category === 'CREDIT') {
         // For CREDIT: maintain both quantity and nominal
         const currentObj = typeof currentValue === 'object' ? currentValue : { quantity: 0, nominal: 0 };
@@ -599,7 +599,7 @@ export default function InputAcquisition({ products, teams, members }: InputAcqu
       if (!response.ok) throw new Error('Failed to save bulk attendance');
 
       await loadAttendances();
-      
+
       return response.json();
     } catch (error) {
       console.error('Failed to save bulk attendance:', error);
@@ -783,25 +783,23 @@ export default function InputAcquisition({ products, teams, members }: InputAcqu
             <div className="flex gap-2 mb-4">
               <button
                 onClick={() => setCalendarMode('acquisition')}
-                className={`flex-1 py-3 rounded-xl font-black text-sm transition-all flex items-center justify-center gap-2 ${
-                  calendarMode === 'acquisition'
+                className={`flex-1 py-3 rounded-xl font-black text-sm transition-all flex items-center justify-center gap-2 ${calendarMode === 'acquisition'
                     ? 'bg-purple-600 text-white shadow-lg shadow-purple-200'
                     : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
-                }`}
+                  }`}
               >
                 <Package className="w-4 h-4" />
-                Mode Akuisisi
+                Akuisisi
               </button>
               <button
                 onClick={() => setCalendarMode('attendance')}
-                className={`flex-1 py-3 rounded-xl font-black text-sm transition-all flex items-center justify-center gap-2 ${
-                  calendarMode === 'attendance'
+                className={`flex-1 py-3 rounded-xl font-black text-sm transition-all flex items-center justify-center gap-2 ${calendarMode === 'attendance'
                     ? 'bg-blue-600 text-white shadow-lg shadow-blue-200'
                     : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
-                }`}
+                  }`}
               >
                 <FileText className="w-4 h-4" />
-                Mode Absensi
+                Absensi
               </button>
             </div>
 
