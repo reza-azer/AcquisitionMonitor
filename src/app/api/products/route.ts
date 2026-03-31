@@ -42,6 +42,7 @@ export async function POST(request: NextRequest) {
       is_tiered,
       tier_config,
       flat_points,
+      credit_nominal_per_point,
       is_active,
     } = body;
 
@@ -63,7 +64,22 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate tiered vs flat product configuration
-    if (is_tiered) {
+    // CREDIT products cannot be tiered
+    if (category === 'CREDIT') {
+      if (is_tiered) {
+        return NextResponse.json(
+          { data: null, error: 'CREDIT products cannot be tiered. Use nominal per point configuration.' },
+          { status: 400 }
+        );
+      }
+      // For CREDIT, validate credit_nominal_per_point
+      if (credit_nominal_per_point !== undefined && (typeof credit_nominal_per_point !== 'number' || credit_nominal_per_point <= 0)) {
+        return NextResponse.json(
+          { data: null, error: 'CREDIT products must have valid credit_nominal_per_point (positive number)' },
+          { status: 400 }
+        );
+      }
+    } else if (is_tiered) {
       if (!tier_config || !Array.isArray(tier_config) || tier_config.length === 0) {
         return NextResponse.json(
           { data: null, error: 'Tiered products must have tier_config array' },
@@ -98,6 +114,7 @@ export async function POST(request: NextRequest) {
       is_tiered: is_tiered || false,
       tier_config: is_tiered ? tier_config : null,
       flat_points: is_tiered ? null : flat_points,
+      credit_nominal_per_point: category === 'CREDIT' ? (credit_nominal_per_point || 100) : null,
       is_active: is_active !== undefined ? is_active : true,
     };
 

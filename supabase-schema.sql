@@ -23,22 +23,34 @@ CREATE TABLE members (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW())
 );
 
--- Acquisitions table (stores weekly acquisition data)
+-- Acquisitions table (stores acquisition data by date)
 CREATE TABLE acquisitions (
   id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
   member_id UUID REFERENCES members(id) ON DELETE CASCADE NOT NULL,
-  week INTEGER NOT NULL CHECK (week >= 1 AND week <= 4),
+  week INTEGER,  -- nullable, week of month (1-4) for reference
+  date DATE NOT NULL DEFAULT CURRENT_DATE,  -- actual input date
   product_key TEXT NOT NULL,
   quantity INTEGER NOT NULL DEFAULT 0,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW()),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW()),
-  UNIQUE(member_id, week, product_key)
+  UNIQUE(member_id, date, product_key)
 );
 
 -- Create index for faster queries
+CREATE INDEX idx_acquisitions_member_date ON acquisitions(member_id, date);
+CREATE INDEX idx_acquisitions_date ON acquisitions(date);
 CREATE INDEX idx_acquisitions_member_week ON acquisitions(member_id, week);
-CREATE INDEX idx_acquisitions_week ON acquisitions(week);
 CREATE INDEX idx_members_team ON members(team_id);
+
+-- Migration: Populate date column for existing week-based records
+-- This assumes week 1 starts from a reference date (adjust as needed)
+-- Example: week 1 = first week of current month
+-- Run this after table alteration if you have existing data:
+/*
+UPDATE acquisitions
+SET date = DATE_TRUNC('month', CURRENT_DATE) + ((week - 1) * 7) * INTERVAL '1 day'
+WHERE date IS NULL;
+*/
 
 -- Attendances table (daily attendance records)
 CREATE TABLE attendances (
@@ -76,12 +88,30 @@ CREATE TABLE products (
 CREATE INDEX idx_products_category ON products(category);
 CREATE INDEX idx_products_active ON products(is_active);
 
+-- Acquisition Audit Log table (tracks changes to acquisitions)
+CREATE TABLE acquisition_audit_log (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  member_id UUID REFERENCES members(id) ON DELETE SET NULL,
+  member_name TEXT NOT NULL,
+  date DATE NOT NULL,
+  product_key TEXT NOT NULL,
+  old_quantity INTEGER NOT NULL,
+  new_quantity INTEGER NOT NULL,
+  changed_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW())
+);
+
+-- Create indexes for faster queries
+CREATE INDEX idx_audit_log_member ON acquisition_audit_log(member_id);
+CREATE INDEX idx_audit_log_date ON acquisition_audit_log(date);
+CREATE INDEX idx_audit_log_changed_at ON acquisition_audit_log(changed_at DESC);
+
 -- Enable Row Level Security (RLS)
 ALTER TABLE teams ENABLE ROW LEVEL SECURITY;
 ALTER TABLE members ENABLE ROW LEVEL SECURITY;
 ALTER TABLE acquisitions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE attendances ENABLE ROW LEVEL SECURITY;
 ALTER TABLE products ENABLE ROW LEVEL SECURITY;
+ALTER TABLE acquisition_audit_log ENABLE ROW LEVEL SECURITY;
 
 -- Create policies for public read/write (adjust for production with proper auth)
 -- For now, allowing full access for development purposes
@@ -91,6 +121,7 @@ CREATE POLICY "Allow full access to members" ON members FOR ALL USING (true) WIT
 CREATE POLICY "Allow full access to acquisitions" ON acquisitions FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow full access to attendances" ON attendances FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow full access to products" ON products FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow full access to acquisition_audit_log" ON acquisition_audit_log FOR ALL USING (true) WITH CHECK (true);
 
 -- ============================================
 -- SUPABASE STORAGE SETUP
