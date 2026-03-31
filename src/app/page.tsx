@@ -19,8 +19,7 @@ import DashboardAnalytics from '@/components/DashboardAnalytics';
 import DataBackup from '@/components/DataBackup';
 import InputAcquisition from '@/components/InputAcquisition';
 import Skeleton, { SkeletonCard, SkeletonStatsCard, SkeletonTable, SkeletonAvatar, SkeletonText } from '@/components/Skeleton';
-import { CountUp } from '@/components/animations';
-import { motion } from 'motion/react';
+import { CountUp, AnimatedContent } from '@/components/animations';
 
 // --- KONFIGURASI POIN & TARGET ---
 type TieredProduct = { name: string; unit: string; type: 'tiered'; tiers: { limit: number; p: number }[] };
@@ -431,7 +430,7 @@ export default function App() {
               const data = memberAcq[productKey];
               const product = products.find(p => p.product_key === productKey);
               if (!product) return;
-              
+
               if (product.category === 'CREDIT') {
                 // CREDIT: points based on nominal
                 const nominal = typeof data === 'object' ? (data.nominal || 0) : 0;
@@ -1193,8 +1192,8 @@ export default function App() {
                       <button
                         onClick={() => setMemberViewMode('weekly')}
                         className={`px-3 py-1.5 rounded-lg text-[10px] font-black transition-all ${memberViewMode === 'weekly'
-                            ? 'bg-blue-600 text-white shadow-sm'
-                            : 'text-slate-500 hover:text-slate-700'
+                          ? 'bg-blue-600 text-white shadow-sm'
+                          : 'text-slate-500 hover:text-slate-700'
                           }`}
                       >
                         Minggu
@@ -1202,8 +1201,8 @@ export default function App() {
                       <button
                         onClick={() => setMemberViewMode('monthly')}
                         className={`px-3 py-1.5 rounded-lg text-[10px] font-black transition-all ${memberViewMode === 'monthly'
-                            ? 'bg-blue-600 text-white shadow-sm'
-                            : 'text-slate-500 hover:text-slate-700'
+                          ? 'bg-blue-600 text-white shadow-sm'
+                          : 'text-slate-500 hover:text-slate-700'
                           }`}
                       >
                         Bulan
@@ -1705,8 +1704,8 @@ export default function App() {
                       <button
                         onClick={() => setDashboardViewMode('weekly')}
                         className={`px-3 py-1.5 rounded-lg text-[10px] font-black transition-all ${dashboardViewMode === 'weekly'
-                            ? 'bg-blue-600 text-white shadow-sm'
-                            : 'text-slate-500 hover:text-slate-700'
+                          ? 'bg-blue-600 text-white shadow-sm'
+                          : 'text-slate-500 hover:text-slate-700'
                           }`}
                       >
                         Mingguan
@@ -1714,8 +1713,8 @@ export default function App() {
                       <button
                         onClick={() => setDashboardViewMode('monthly')}
                         className={`px-3 py-1.5 rounded-lg text-[10px] font-black transition-all ${dashboardViewMode === 'monthly'
-                            ? 'bg-blue-600 text-white shadow-sm'
-                            : 'text-slate-500 hover:text-slate-700'
+                          ? 'bg-blue-600 text-white shadow-sm'
+                          : 'text-slate-500 hover:text-slate-700'
                           }`}
                       >
                         Bulanan
@@ -1746,12 +1745,9 @@ export default function App() {
             </div>
 
             {/* Tim Card Grid */}
-            <motion.div
+            <div
+              key={dashboardViewMode === 'weekly' ? `week-${activeWeek}` : `month-${selectedMonth}-${selectedYear}`}
               className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
-              initial={{ opacity: 0 }}
-              whileInView={{ opacity: 1 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.3 }}
             >
               {teamStats.map((team, idx) => {
                 const cardStyle: React.CSSProperties = team.image_url
@@ -1762,18 +1758,21 @@ export default function App() {
                   : { background: 'white' };
 
                 return (
-                  <motion.div
+                  <AnimatedContent
                     key={team.id}
+                    // ANIMATION CUSTOMIZATION:
+                    distance={100}        // Start 100px below final position
+                    direction="horizontal"  // Animate on y-axis (vertical)
+                    reverse={false}       // false = from bottom, true = from top
+                    duration={0.6}        // Animation duration in seconds
+                    ease="power3.in"     // Easing: power3.out = smooth deceleration
+                    delay={idx * 0.15}    // Stagger delay: 0.15s per card
+                    threshold={0.05}      // Trigger when 5% of card is visible
+                    initialOpacity={0}    // Start fully transparent
+                    animateOpacity={true} // Fade in during animation
+                    scale={1}             // Start at normal size (no scaling)
                     className={`rounded-[32px] border border-slate-200 shadow-sm relative overflow-hidden transition-all hover:translate-y-[-6px] hover:shadow-xl group`}
                     style={cardStyle}
-                    initial={{ opacity: 0, y: 30 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true, margin: '-50px' }}
-                    transition={{
-                      duration: 0.4,
-                      delay: idx * 0.08,
-                      ease: [0.25, 0.46, 0.45, 0.94]
-                    }}
                   >
                     {team.image_url && (
                       <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
@@ -1812,7 +1811,7 @@ export default function App() {
                             {dashboardViewMode === 'monthly' ? 'Poin Bulan Ini' : 'Poin Minggu Ini'}
                           </span>
                           <span className="text-3xl font-black tracking-tighter text-[#003d79]">
-                            <CountUp value={team.totalPoints} duration={1.5} />
+                            <CountUp value={team.totalPoints} duration={1.5} delay={idx * 0.15 + 0.6} />
                           </span>
                         </div>
                         <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center shadow-sm text-blue-900 border border-blue-100 font-black text-xs">
@@ -1832,8 +1831,8 @@ export default function App() {
                             {products.filter(p => {
                               const current = team.stats[p.product_key];
                               const isCredit = p.category === 'CREDIT';
-                              const currentValue = isCredit && typeof current === 'object' 
-                                ? current.nominal || 0 
+                              const currentValue = isCredit && typeof current === 'object'
+                                ? current.nominal || 0
                                 : (typeof current === 'object' ? current.quantity : (current || 0));
                               return p.is_active && currentValue >= p.weekly_target;
                             }).length} Goal
@@ -1844,8 +1843,8 @@ export default function App() {
                             const current = team.stats[p.product_key];
                             const isCredit = p.category === 'CREDIT';
                             // For CREDIT: get total nominal, for others: get quantity
-                            const currentValue = isCredit && typeof current === 'object' 
-                              ? current.nominal || 0 
+                            const currentValue = isCredit && typeof current === 'object'
+                              ? current.nominal || 0
                               : (typeof current === 'object' ? current.quantity : (current || 0));
                             const target = p.weekly_target;
                             const isDone = isCredit ? currentValue >= target : currentValue >= target;
@@ -1891,17 +1890,17 @@ export default function App() {
                                 </div>
                               </div>
                               <div className={`text-lg font-black pr-2 flex-shrink-0 ${tier.color}`}>
-                                <CountUp value={pts} duration={1} />
+                                <CountUp value={pts} duration={1} delay={idx * 0.15 + 0.6} />
                               </div>
                             </div>
                           );
                         })}
                       </div>
                     </div>
-                  </motion.div>
+                  </AnimatedContent>
                 );
               })}
-            </motion.div>
+            </div>
           </div>
         )}
 
@@ -1912,21 +1911,19 @@ export default function App() {
               <div className="flex gap-2">
                 <button
                   onClick={() => setManageSubTab('products')}
-                  className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-[20px] text-sm font-black transition-all ${
-                    manageSubTab === 'products'
-                      ? 'bg-blue-600 text-white shadow-md'
-                      : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
-                  }`}
+                  className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-[20px] text-sm font-black transition-all ${manageSubTab === 'products'
+                    ? 'bg-blue-600 text-white shadow-md'
+                    : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                    }`}
                 >
                   <Package className="w-4 h-4" /> Manage Products
                 </button>
                 <button
                   onClick={() => setManageSubTab('team')}
-                  className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-[20px] text-sm font-black transition-all ${
-                    manageSubTab === 'team'
-                      ? 'bg-blue-600 text-white shadow-md'
-                      : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
-                  }`}
+                  className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-[20px] text-sm font-black transition-all ${manageSubTab === 'team'
+                    ? 'bg-blue-600 text-white shadow-md'
+                    : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                    }`}
                 >
                   <Users className="w-4 h-4" /> Manage Team
                 </button>

@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(npx *)",
-      "Bash(mkdir *)"
+      "Bash(mkdir *)",
+      "Bash(npm install *)"
     ]
   },
   "$version": 3

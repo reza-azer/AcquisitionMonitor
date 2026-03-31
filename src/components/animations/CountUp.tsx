@@ -11,6 +11,7 @@ interface CountUpProps {
   prefix?: string;
   suffix?: string;
   formatWithCommas?: boolean;
+  delay?: number;
 }
 
 /**
@@ -25,6 +26,7 @@ export default function CountUp({
   prefix = '',
   suffix = '',
   formatWithCommas = false,
+  delay = 0,
 }: CountUpProps) {
   const ref = useRef<HTMLSpanElement>(null);
   const isInView = useInView(ref, { once: true });
@@ -47,12 +49,15 @@ export default function CountUp({
     return rounded;
   });
 
-  // Update spring when in view
+  // Update spring when in view (with optional delay)
   useEffect(() => {
     if (isInView) {
-      springValue.set(value);
+      const timer = setTimeout(() => {
+        springValue.set(value);
+      }, delay * 1000);
+      return () => clearTimeout(timer);
     }
-  }, [isInView, value, springValue]);
+  }, [isInView, value, springValue, delay]);
 
   // Sync display value with transformed value
   useEffect(() => {
