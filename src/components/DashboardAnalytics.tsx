@@ -10,6 +10,8 @@ import {
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Scatter } from 'recharts';
 import GridLoader from './GridLoader';
 import Skeleton, { SkeletonStatsCard, SkeletonCard } from './Skeleton';
+import { CountUp } from './animations';
+import { motion } from 'motion/react';
 
 interface WeeklyTrend {
   week: number;
@@ -540,43 +542,83 @@ export default function DashboardAnalytics() {
       )}
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-3xl p-6 shadow-lg">
+      <motion.div
+        className="grid grid-cols-2 md:grid-cols-4 gap-4"
+        initial={{ opacity: 0 }}
+        whileInView={{ opacity: 1 }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.3 }}
+      >
+        <motion.div
+          className="bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-3xl p-6 shadow-lg"
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: '-50px' }}
+          transition={{ duration: 0.4, delay: 0.1, ease: [0.25, 0.46, 0.45, 0.94] }}
+        >
           <div className="flex items-center gap-2 mb-2">
             <Users className="w-5 h-5 text-blue-200" />
             <span className="text-xs font-bold text-blue-100 uppercase">Total Members</span>
           </div>
-          <div className="text-4xl font-black">{summary.totalMembers}</div>
+          <div className="text-4xl font-black">
+            <CountUp value={summary.totalMembers} duration={1.5} />
+          </div>
           <div className="text-xs text-blue-200 mt-2">{summary.totalTeams} Teams</div>
-        </div>
+        </motion.div>
 
-        <div className="bg-gradient-to-br from-green-500 to-green-600 text-white rounded-3xl p-6 shadow-lg">
+        <motion.div
+          className="bg-gradient-to-br from-green-500 to-green-600 text-white rounded-3xl p-6 shadow-lg"
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: '-50px' }}
+          transition={{ duration: 0.4, delay: 0.2, ease: [0.25, 0.46, 0.45, 0.94] }}
+        >
           <div className="flex items-center gap-2 mb-2">
             <Trophy className="w-5 h-5 text-green-200" />
             <span className="text-xs font-bold text-green-100 uppercase">Total Points</span>
           </div>
-          <div className="text-4xl font-black">{summary.totalPoints.toLocaleString()}</div>
-          <div className="text-xs text-green-200 mt-2">{summary.totalQuantity.toLocaleString()} Acquisitions</div>
-        </div>
+          <div className="text-4xl font-black">
+            <CountUp value={summary.totalPoints} duration={1.5} formatWithCommas />
+          </div>
+          <div className="text-xs text-green-200 mt-2">
+            <CountUp value={summary.totalQuantity} duration={1.5} /> Acquisitions
+          </div>
+        </motion.div>
 
-        <div className="bg-gradient-to-br from-amber-500 to-amber-600 text-white rounded-3xl p-6 shadow-lg">
+        <motion.div
+          className="bg-gradient-to-br from-amber-500 to-amber-600 text-white rounded-3xl p-6 shadow-lg"
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: '-50px' }}
+          transition={{ duration: 0.4, delay: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
+        >
           <div className="flex items-center gap-2 mb-2">
             <Target className="w-5 h-5 text-amber-200" />
             <span className="text-xs font-bold text-amber-100 uppercase">Avg Achievement</span>
           </div>
-          <div className="text-4xl font-black">{summary.avgAttendanceRate}%</div>
+          <div className="text-4xl font-black">
+            <CountUp value={summary.avgAttendanceRate} duration={1.5} suffix="%" />
+          </div>
           <div className="text-xs text-amber-200 mt-2">Attendance Rate</div>
-        </div>
+        </motion.div>
 
-        <div className="bg-gradient-to-br from-purple-500 to-purple-600 text-white rounded-3xl p-6 shadow-lg">
+        <motion.div
+          className="bg-gradient-to-br from-purple-500 to-purple-600 text-white rounded-3xl p-6 shadow-lg"
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: '-50px' }}
+          transition={{ duration: 0.4, delay: 0.4, ease: [0.25, 0.46, 0.45, 0.94] }}
+        >
           <div className="flex items-center gap-2 mb-2">
             <BarChart3 className="w-5 h-5 text-purple-200" />
             <span className="text-xs font-bold text-purple-100 uppercase">Products</span>
           </div>
-          <div className="text-4xl font-black">{categoryPerformance.length}</div>
+          <div className="text-4xl font-black">
+            <CountUp value={categoryPerformance.length} duration={1} />
+          </div>
           <div className="text-xs text-purple-200 mt-2">Active Products</div>
-        </div>
-      </div>
+        </motion.div>
+      </motion.div>
 
       {/* Key Insights */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

@@ -19,6 +19,8 @@ import DashboardAnalytics from '@/components/DashboardAnalytics';
 import DataBackup from '@/components/DataBackup';
 import InputAcquisition from '@/components/InputAcquisition';
 import Skeleton, { SkeletonCard, SkeletonStatsCard, SkeletonTable, SkeletonAvatar, SkeletonText } from '@/components/Skeleton';
+import { CountUp } from '@/components/animations';
+import { motion } from 'motion/react';
 
 // --- KONFIGURASI POIN & TARGET ---
 type TieredProduct = { name: string; unit: string; type: 'tiered'; tiers: { limit: number; p: number }[] };
@@ -1744,7 +1746,13 @@ export default function App() {
             </div>
 
             {/* Tim Card Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <motion.div
+              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
+              initial={{ opacity: 0 }}
+              whileInView={{ opacity: 1 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.3 }}
+            >
               {teamStats.map((team, idx) => {
                 const cardStyle: React.CSSProperties = team.image_url
                   ? {
@@ -1754,10 +1762,18 @@ export default function App() {
                   : { background: 'white' };
 
                 return (
-                  <div
+                  <motion.div
                     key={team.id}
                     className={`rounded-[32px] border border-slate-200 shadow-sm relative overflow-hidden transition-all hover:translate-y-[-6px] hover:shadow-xl group`}
                     style={cardStyle}
+                    initial={{ opacity: 0, y: 30 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true, margin: '-50px' }}
+                    transition={{
+                      duration: 0.4,
+                      delay: idx * 0.08,
+                      ease: [0.25, 0.46, 0.45, 0.94]
+                    }}
                   >
                     {team.image_url && (
                       <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
@@ -1795,7 +1811,9 @@ export default function App() {
                           <span className="text-[10px] text-slate-500 font-black uppercase tracking-widest">
                             {dashboardViewMode === 'monthly' ? 'Poin Bulan Ini' : 'Poin Minggu Ini'}
                           </span>
-                          <span className="text-3xl font-black tracking-tighter text-[#003d79]">{team.totalPoints}</span>
+                          <span className="text-3xl font-black tracking-tighter text-[#003d79]">
+                            <CountUp value={team.totalPoints} duration={1.5} />
+                          </span>
                         </div>
                         <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center shadow-sm text-blue-900 border border-blue-100 font-black text-xs">
                           {dashboardViewMode === 'monthly'
@@ -1872,16 +1890,18 @@ export default function App() {
                                   <div className={`text-[9px] font-black uppercase flex items-center gap-1 mt-0.5 ${tier.color}`}>{tier.icon} {tier.label}</div>
                                 </div>
                               </div>
-                              <div className={`text-lg font-black pr-2 flex-shrink-0 ${tier.color}`}>{pts}</div>
+                              <div className={`text-lg font-black pr-2 flex-shrink-0 ${tier.color}`}>
+                                <CountUp value={pts} duration={1} />
+                              </div>
                             </div>
                           );
                         })}
                       </div>
                     </div>
-                  </div>
+                  </motion.div>
                 );
               })}
-            </div>
+            </motion.div>
           </div>
         )}
 
