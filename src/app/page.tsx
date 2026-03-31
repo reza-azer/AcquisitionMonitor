@@ -307,8 +307,10 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    fetchData(selectedMonth, selectedYear);
-  }, [selectedMonth, selectedYear, fetchData]);
+    if (viewMode === 'dashboard') {
+      fetchData(selectedMonth, selectedYear);
+    }
+  }, [selectedMonth, selectedYear, viewMode, fetchData]);
 
   const formatToIDR = (value: number): string => {
     return new Intl.NumberFormat('id-ID').format(value);
@@ -1426,7 +1428,7 @@ export default function App() {
         )}
 
         {viewMode === 'dashboard' && (
-          <div className="space-y-4 sm:space-y-6 md:space-y-8 animate-in fade-in duration-500">
+          <div key={`dashboard-${selectedMonth}-${selectedYear}`} className="space-y-4 sm:space-y-6 md:space-y-8 animate-in fade-in duration-500">
             {/* Floating Navigation Bar - Sticky */}
             <div className="sticky top-[60px] sm:top-[68px] z-30 bg-slate-50/9 backdrop-blur-[8px] pb-4 -mx-4 sm:-mx-6 md:-mx-8 px-4 sm:px-6 md:px-8 pt-4">
               <div className="bg-white rounded-[20px] sm:rounded-[30px] md:rounded-[40px] p-4 sm:p-6 md:p-8 border border-slate-200 shadow-lg">
@@ -2116,7 +2118,7 @@ export default function App() {
 
         {viewMode === 'analytics' && (
           <div className="space-y-8 animate-in fade-in duration-500">
-            <DashboardAnalytics />
+            <DashboardAnalytics key={`analytics-${selectedMonth}-${selectedYear}`} />
           </div>
         )}
 
