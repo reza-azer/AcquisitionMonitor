@@ -17,6 +17,7 @@ import AutoSaveIndicator from '@/components/AutoSaveIndicator';
 import { useAutoSave } from '@/hooks/useAutoSave';
 import DashboardAnalytics from '@/components/DashboardAnalytics';
 import DataBackup from '@/components/DataBackup';
+import GradientMenu from '@/components/ui/GradientMenu';
 import InputAcquisition from '@/components/InputAcquisition';
 import Skeleton, { SkeletonCard, SkeletonStatsCard, SkeletonTable, SkeletonAvatar, SkeletonText } from '@/components/Skeleton';
 import { CountUp, AnimatedContent } from '@/components/animations';
@@ -773,15 +774,7 @@ export default function App() {
             <div className="h-6 sm:h-8 w-px bg-white/20 mx-1 hidden sm:block"></div>
             <h1 className="text-base sm:text-lg font-bold tracking-tight">Acquisition Monitor</h1>
           </div>
-          <div className="flex items-center gap-2 sm:gap-4">
-            <nav className="hidden md:flex bg-blue-900/40 p-0.5 sm:p-1 rounded-lg sm:rounded-xl gap-0.5 sm:gap-1 border border-white/5 overflow-x-auto max-w-[50vw]">
-              <button onClick={() => setViewMode('dashboard')} className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-1.5 sm:py-2 rounded-md sm:rounded-lg text-[10px] sm:text-xs font-bold transition-all whitespace-nowrap ${viewMode === 'dashboard' ? 'bg-white text-blue-900 shadow-md' : 'text-white/70 hover:text-white'}`}><BarChart3 className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> Dashboard</button>
-              <button onClick={() => setViewMode('analytics')} className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-1.5 sm:py-2 rounded-md sm:rounded-lg text-[10px] sm:text-xs font-bold transition-all whitespace-nowrap ${viewMode === 'analytics' ? 'bg-white text-blue-900 shadow-md' : 'text-white/70 hover:text-white'}`}><Activity className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> Analytics</button>
-              <button onClick={() => setViewMode('input')} className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-1.5 sm:py-2 rounded-md sm:rounded-lg text-[10px] sm:text-xs font-bold transition-all whitespace-nowrap ${viewMode === 'input' ? 'bg-white text-blue-900 shadow-md' : 'text-white/70 hover:text-white'}`}><Edit2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> Input</button>
-              <button onClick={() => setViewMode('backup')} className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-1.5 sm:py-2 rounded-md sm:rounded-lg text-[10px] sm:text-xs font-bold transition-all whitespace-nowrap ${viewMode === 'backup' ? 'bg-white text-blue-900 shadow-md' : 'text-white/70 hover:text-white'}`}><Database className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> Backup</button>
-              <button onClick={() => setViewMode('manage')} className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-1.5 sm:py-2 rounded-md sm:rounded-lg text-[10px] sm:text-xs font-bold transition-all whitespace-nowrap ${viewMode === 'manage' ? 'bg-white text-blue-900 shadow-md' : 'text-white/70 hover:text-white'}`}><Settings className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> Manage</button>
-            </nav>
-          </div>
+          <GradientMenu activeTab={viewMode} onTabChange={setViewMode} />
         </div>
       </header>
 
