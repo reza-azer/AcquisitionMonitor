@@ -133,23 +133,51 @@ export async function POST(request: Request) {
         console.log('[Acquisitions API] Bulk insert success:', data?.length, 'records');
         return NextResponse.json({ success: true, count: data?.length || 0, data }, { status: 201 });
       } else {
-        // For FUNDING/TRANSACTION: use upsert (existing behavior)
-        console.log('[Acquisitions API] Bulk upserting:', insertRecords.length, 'records');
+        // For FUNDING/TRANSACTION: check existing and update/insert for each record
+        console.log('[Acquisitions API] Bulk update/insert for non-CREDIT:', insertRecords.length, 'records');
 
-        const { data, error } = await supabase
-          .from('acquisitions')
-          .upsert(insertRecords, {
-            onConflict: 'member_id,date,product_key'
-          })
-          .select();
+        const results = [];
+        for (const record of insertRecords) {
+          // Check if exists
+          const { data: existing } = await supabase
+            .from('acquisitions')
+            .select('id')
+            .eq('member_id', record.member_id)
+            .eq('date', record.date)
+            .eq('product_key', record.product_key)
+            .single();
 
-        if (error) {
-          console.error('[Acquisitions API] Bulk upsert error:', error);
-          throw error;
+          let result;
+          if (existing) {
+            // Update existing
+            result = await supabase
+              .from('acquisitions')
+              .update({
+                ...record,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', existing.id)
+              .select()
+              .single();
+          } else {
+            // Insert new
+            result = await supabase
+              .from('acquisitions')
+              .insert([record])
+              .select()
+              .single();
+          }
+
+          if (result.error) {
+            console.error('[Acquisitions API] Bulk operation error:', result.error);
+            throw result.error;
+          }
+
+          results.push(result.data);
         }
 
-        console.log('[Acquisitions API] Bulk upsert success:', data?.length, 'records');
-        return NextResponse.json({ success: true, count: data?.length || 0, data }, { status: 201 });
+        console.log('[Acquisitions API] Bulk update/insert success:', results.length, 'records');
+        return NextResponse.json({ success: true, count: results.length, data: results }, { status: 201 });
       }
     }
 
@@ -176,22 +204,83 @@ export async function POST(request: Request) {
 
     console.log('[Acquisitions API] Upserting:', upsertData);
 
-    // Upsert: insert or update on conflict (member_id, date, product_key)
-    const { data, error } = await supabase
-      .from('acquisitions')
-      .upsert([upsertData], {
-        onConflict: 'member_id,date,product_key'
-      })
-      .select()
+    // Check if product is CREDIT type
+    const { data: productData } = await supabase
+      .from('products')
+      .select('category')
+      .eq('product_key', product_key)
       .single();
 
-    if (error) {
-      console.error('[Acquisitions API] Upsert error:', error);
-      throw error;
-    }
+    const isCredit = productData?.category === 'CREDIT';
 
-    console.log('[Acquisitions API] Upsert success:', data);
-    return NextResponse.json(data, { status: 201 });
+    if (isCredit) {
+      // For CREDIT: delete existing entries first, then insert (allows multiple entries)
+      console.log('[Acquisitions API] CREDIT product - deleting existing entries first');
+      
+      await supabase
+        .from('acquisitions')
+        .delete()
+        .eq('member_id', member_id)
+        .eq('date', inputDate)
+        .eq('product_key', product_key);
+
+      const { data, error } = await supabase
+        .from('acquisitions')
+        .insert([upsertData])
+        .select()
+        .single();
+
+      if (error) {
+        console.error('[Acquisitions API] Insert error:', error);
+        throw error;
+      }
+
+      console.log('[Acquisitions API] CREDIT insert success:', data);
+      return NextResponse.json(data, { status: 201 });
+    } else {
+      // For FUNDING/TRANSACTION: check if exists and update, or insert
+      console.log('[Acquisitions API] Non-CREDIT product - checking for existing record');
+
+      const { data: existing } = await supabase
+        .from('acquisitions')
+        .select('id')
+        .eq('member_id', member_id)
+        .eq('date', inputDate)
+        .eq('product_key', product_key)
+        .single();
+
+      let data, error;
+      
+      if (existing) {
+        // Update existing record
+        console.log('[Acquisitions API] Updating existing record:', existing.id);
+        ({ data, error } = await supabase
+          .from('acquisitions')
+          .update({
+            ...upsertData,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', existing.id)
+          .select()
+          .single());
+      } else {
+        // Insert new record
+        console.log('[Acquisitions API] Inserting new record');
+        ({ data, error } = await supabase
+          .from('acquisitions')
+          .insert([upsertData])
+          .select()
+          .single());
+      }
+
+      if (error) {
+        console.error('[Acquisitions API] Save error:', error);
+        throw error;
+      }
+
+      console.log('[Acquisitions API] Save success:', data);
+      return NextResponse.json(data, { status: 201 });
+    }
   } catch (error) {
     console.error('[Acquisitions API] Error saving acquisition:', error);
     return NextResponse.json({ error: 'Failed to save acquisition' }, { status: 500 });
