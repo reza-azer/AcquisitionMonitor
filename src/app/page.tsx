@@ -753,10 +753,10 @@ export default function App() {
       });
     });
     const sortedMembers = allMembers.sort((a, b) => b.totalPoints - a.totalPoints);
-    
+
     const rankIndex = sortedMembers.findIndex(m => m.id === memberId);
     const member = sortedMembers.find(m => m.id === memberId);
-    
+
     if (!member || member.totalPoints === 0) return { label: 'Rookie', color: 'text-slate-400', icon: <Star className="w-4 h-4" />, bg: 'bg-slate-50' };
     if (rankIndex === 0) return { label: 'MVP / Diamond', color: 'text-cyan-600', icon: <Trophy className="w-4 h-4" />, bg: 'bg-cyan-50' };
     if (rankIndex >= 1 && rankIndex <= 2) return { label: 'Gold', color: 'text-yellow-600', icon: <Medal className="w-4 h-4" />, bg: 'bg-yellow-50' };
