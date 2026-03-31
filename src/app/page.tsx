@@ -1,7 +1,7 @@
 'use client'
 import {
-  BarChart3, Calendar, Check, ChevronDown, ChevronUp, Clock, Database, Download, Edit2,
-  FileSpreadsheet, FileText, ImageIcon, LineChart as LineChartIcon, Loader2, Medal,
+  BarChart3, Calendar, Check, ChevronDown, ChevronUp, Clock, Database, Edit2,
+  ImageIcon, LineChart as LineChartIcon, Loader2, Medal,
   Package, Plus, Save, Settings, Star, Target, Trash2, TrendingUp, Trophy, User, UserPlus, X, Activity, Users
 } from 'lucide-react';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -97,15 +97,9 @@ export default function App() {
   const [viewMode, setViewMode] = useState('dashboard');
   const [manageSubTab, setManageSubTab] = useState<'products' | 'team'>('products');
   const [activeWeek, setActiveWeek] = useState(1);
-  const [isExcelReady, setIsExcelReady] = useState(false);
-  const [showExportModal, setShowExportModal] = useState(false);
-  const [selectedWeeks, setSelectedWeeks] = useState([1]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedMonth, setSelectedMonth] = useState<string>(String(new Date().getMonth() + 1));
   const [selectedYear, setSelectedYear] = useState<string>(String(new Date().getFullYear()));
-  const [exportMode, setExportMode] = useState<'weeks' | 'month' | 'all'>('weeks');
-  const [exportStartDate, setExportStartDate] = useState('');
-  const [exportEndDate, setExportEndDate] = useState('');
   const [dashboardViewMode, setDashboardViewMode] = useState<'weekly' | 'monthly'>('weekly');
 
   // Data state
@@ -220,15 +214,6 @@ export default function App() {
       document.body.style.overflow = '';
     };
   }, [selectedMember]);
-
-  // Load SheetJS for XLSX support
-  useEffect(() => {
-    const script = document.createElement('script');
-    script.src = "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";
-    script.async = true;
-    script.onload = () => setIsExcelReady(true);
-    document.body.appendChild(script);
-  }, []);
 
   // Fetch data from Supabase with optional month/year filter
   const fetchData = useCallback(async (month?: string, year?: string) => {
@@ -364,9 +349,8 @@ export default function App() {
         if (dashboardViewMode === 'monthly') {
           // Accumulate all weeks for monthly view
           Object.values(m.weeklyAcquisitions || {}).forEach(weekAcq => {
-            Object.keys(weekAcq).forEach(p => {
+            Object.entries(weekAcq || {}).forEach(([p, current]) => {
               const existing = combined[p];
-              const current = weekAcq[p];
               if (typeof current === 'object') {
                 // CREDIT: accumulate quantity and nominal
                 const existingObj = typeof existing === 'object' ? existing : { quantity: 0, nominal: 0 };
@@ -383,9 +367,8 @@ export default function App() {
         } else {
           // Weekly view - use activeWeek
           const currentAqc = (m.weeklyAcquisitions || {})[activeWeek] || {};
-          Object.keys(currentAqc).forEach(p => {
+          Object.entries(currentAqc || {}).forEach(([p, current]) => {
             const existing = combined[p];
-            const current = currentAqc[p];
             if (typeof current === 'object') {
               const existingObj = typeof existing === 'object' ? existing : { quantity: 0, nominal: 0 };
               combined[p] = {
@@ -400,7 +383,7 @@ export default function App() {
       });
       return { ...team, stats: combined, totalPoints: getMemberPoints(combined) };
     }).sort((a, b) => b.totalPoints - a.totalPoints);
-  }, [teams, activeWeek, dashboardViewMode]);
+  }, [teams, activeWeek, dashboardViewMode, getMemberPoints]);
 
   const chartData = useMemo(() => {
     const weeks = [1, 2, 3, 4];
@@ -627,130 +610,6 @@ export default function App() {
     }
   };
 
-  // --- FITUR EXPORT EXCEL ---
-  const handleExportAction = () => {
-    if (!(window as typeof window & { XLSX?: any }).XLSX) return;
-
-    const activeProducts = products.filter(p => p.is_active);
-    let finalData: Record<string, string | number>[] = [];
-    let fileName = '';
-
-    if (exportMode === 'weeks') {
-      if (selectedWeeks.length === 0) {
-        alert("Pilih minimal satu minggu untuk diekspor.");
-        return;
-      }
-      selectedWeeks.sort().forEach(weekNum => {
-        teams.forEach(t => {
-          (t.members || []).forEach(m => {
-            const acq = (m.weeklyAcquisitions || {})[weekNum] || {};
-            const row: Record<string, string | number> = {
-              "Minggu": `Minggu ${weekNum}`,
-              "Nama Sales": m.name,
-              "Tim": t.name,
-              "Jabatan": m.position,
-              "Total Poin": getMemberPoints(acq)
-            };
-            activeProducts.forEach(p => {
-              const data = acq[p.product_key];
-              row[p.product_key] = typeof data === 'object' ? data.quantity : (data || 0);
-            });
-            finalData.push(row);
-          });
-        });
-      });
-      fileName = `Laporan_Minggu_${selectedWeeks.join('-')}_${selectedYear}-${selectedMonth}.xlsx`;
-    } else if (exportMode === 'month') {
-      const monthName = new Date(parseInt(selectedYear), parseInt(selectedMonth) - 1).toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
-      teams.forEach(t => {
-        (t.members || []).forEach(m => {
-          let totalAcq: Record<string, { quantity: number; nominal?: number } | number> = {};
-          [1, 2, 3, 4].forEach(weekNum => {
-            const weekAcq = (m.weeklyAcquisitions || {})[weekNum] || {};
-            Object.entries(weekAcq).forEach(([key, value]) => {
-              const existing = totalAcq[key];
-              if (typeof value === 'object') {
-                const existingObj = typeof existing === 'object' ? existing : { quantity: 0, nominal: 0 };
-                totalAcq[key] = {
-                  quantity: (existingObj.quantity || 0) + (value.quantity || 0),
-                  nominal: (existingObj.nominal || 0) + (value.nominal || 0)
-                };
-              } else {
-                totalAcq[key] = (typeof existing === 'object' ? existing.quantity : (existing || 0)) + (value || 0);
-              }
-            });
-          });
-          const row: Record<string, string | number> = {
-            "Bulan": monthName,
-            "Nama Sales": m.name,
-            "Tim": t.name,
-            "Jabatan": m.position,
-            "Total Poin": getMemberPoints(totalAcq)
-          };
-          activeProducts.forEach(p => {
-            const data = totalAcq[p.product_key];
-            row[p.product_key] = typeof data === 'object' ? data.quantity : (data || 0);
-          });
-          finalData.push(row);
-        });
-      });
-      fileName = `Laporan_Bulan_${selectedYear}-${selectedMonth}.xlsx`;
-    } else if (exportMode === 'all') {
-      teams.forEach(t => {
-        (t.members || []).forEach(m => {
-          let totalAcq: Record<string, { quantity: number; nominal?: number } | number> = {};
-          [1, 2, 3, 4].forEach(weekNum => {
-            const weekAcq = (m.weeklyAcquisitions || {})[weekNum] || {};
-            Object.entries(weekAcq).forEach(([key, value]) => {
-              const existing = totalAcq[key];
-              if (typeof value === 'object') {
-                const existingObj = typeof existing === 'object' ? existing : { quantity: 0, nominal: 0 };
-                totalAcq[key] = {
-                  quantity: (existingObj.quantity || 0) + (value.quantity || 0),
-                  nominal: (existingObj.nominal || 0) + (value.nominal || 0)
-                };
-              } else {
-                totalAcq[key] = (typeof existing === 'object' ? existing.quantity : (existing || 0)) + (value || 0);
-              }
-            });
-          });
-          const row: Record<string, string | number> = {
-            "Export Mode": "All Data",
-            "Nama Sales": m.name,
-            "Tim": t.name,
-            "Jabatan": m.position,
-            "Total Poin": getMemberPoints(totalAcq)
-          };
-          activeProducts.forEach(p => {
-            const data = totalAcq[p.product_key];
-            row[p.product_key] = typeof data === 'object' ? data.quantity : (data || 0);
-          });
-          finalData.push(row);
-        });
-      });
-      fileName = `Laporan_Semua_Data_${new Date().toISOString().split('T')[0]}.xlsx`;
-    } else if (exportMode === 'custom' && exportStartDate && exportEndDate) {
-      fileName = `Laporan_Custom_${exportStartDate}_to_${exportEndDate}.xlsx`;
-    }
-
-    if (finalData.length === 0) {
-      alert("Tidak ada data untuk diekspor.");
-      return;
-    }
-
-    const worksheet = (window as any).XLSX.utils.json_to_sheet(finalData);
-    const workbook = (window as any).XLSX.utils.book_new();
-    (window as any).XLSX.utils.book_append_sheet(workbook, worksheet, "Laporan Performa");
-    (window as any).XLSX.writeFile(workbook, fileName);
-    setShowExportModal(false);
-  };
-
-  const toggleWeekSelection = (w: number) => {
-    setSelectedWeeks(prev =>
-      prev.includes(w) ? prev.filter(item => item !== w) : [...prev, w]
-    );
-  };
-
   const getTierByRank = (memberId: string) => {
     const rankIndex = globalMemberRankings.findIndex(m => m.id === memberId);
     const member = globalMemberRankings.find(m => m.id === memberId);
@@ -858,6 +717,53 @@ export default function App() {
     );
   }
 
+  // Helper function to get member points based on dashboardViewMode
+  const getMemberPointsForView = (member: Member) => {
+    if (dashboardViewMode === 'monthly') {
+      // Accumulate all weeks for monthly view
+      let totalAcq: Record<string, { quantity: number; nominal?: number } | number> = {};
+      Object.values(member.weeklyAcquisitions || {}).forEach(weekAcq => {
+        Object.entries(weekAcq || {}).forEach(([p, current]) => {
+          const existing = totalAcq[p];
+          if (typeof current === 'object') {
+            const existingObj = typeof existing === 'object' ? existing : { quantity: 0, nominal: 0 };
+            totalAcq[p] = {
+              quantity: (existingObj.quantity || 0) + (current.quantity || 0),
+              nominal: (existingObj.nominal || 0) + (current.nominal || 0)
+            };
+          } else {
+            totalAcq[p] = (typeof existing === 'object' ? existing.quantity : (existing || 0)) + (current || 0);
+          }
+        });
+      });
+      return getMemberPoints(totalAcq);
+    }
+    // Weekly view - use activeWeek
+    return getMemberPoints((member.weeklyAcquisitions || {})[activeWeek] || {});
+  };
+
+  // Get tier based on dashboardViewMode
+  const getTierByRankForView = (memberId: string) => {
+    // Calculate rankings based on current view mode
+    const allMembers: { id: string; totalPoints: number }[] = [];
+    teams.forEach(t => {
+      (t.members || []).forEach(m => {
+        const points = getMemberPointsForView(m);
+        allMembers.push({ id: m.id, totalPoints: points });
+      });
+    });
+    const sortedMembers = allMembers.sort((a, b) => b.totalPoints - a.totalPoints);
+    
+    const rankIndex = sortedMembers.findIndex(m => m.id === memberId);
+    const member = sortedMembers.find(m => m.id === memberId);
+    
+    if (!member || member.totalPoints === 0) return { label: 'Rookie', color: 'text-slate-400', icon: <Star className="w-4 h-4" />, bg: 'bg-slate-50' };
+    if (rankIndex === 0) return { label: 'MVP / Diamond', color: 'text-cyan-600', icon: <Trophy className="w-4 h-4" />, bg: 'bg-cyan-50' };
+    if (rankIndex >= 1 && rankIndex <= 2) return { label: 'Gold', color: 'text-yellow-600', icon: <Medal className="w-4 h-4" />, bg: 'bg-yellow-50' };
+    if (rankIndex >= 3 && rankIndex <= 5) return { label: 'Silver', color: 'text-slate-500', icon: <Medal className="w-4 h-4" />, bg: 'bg-slate-50' };
+    return { label: 'Bronze', color: 'text-orange-600', icon: <Star className="w-4 h-4" />, bg: 'bg-orange-50' };
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-900 pb-20">
       <header className="bg-[#003d79] text-white sticky top-0 z-50 shadow-lg border-b-4 border-[#FDB813]">
@@ -880,140 +786,6 @@ export default function App() {
       </header>
 
       <main className="max-w-[95%] lg:max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-4 sm:py-6 md:py-8">
-        <div className="mb-4 sm:mb-6 md:mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setShowExportModal(true)}
-              disabled={!isExcelReady}
-              className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl sm:rounded-2xl text-[10px] sm:text-xs font-black shadow-lg transition-all active:scale-95 ${isExcelReady ? 'bg-green-600 hover:bg-green-700 text-white shadow-green-200' : 'bg-slate-300 text-slate-500 cursor-not-allowed'}`}
-            >
-              <FileSpreadsheet className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> <span className="hidden xs:inline">EXPORT EXCEL</span><span className="xs:hidden">EXPORT</span>
-            </button>
-          </div>
-        </div>
-
-        {/* --- EXPORT MODAL --- */}
-        {showExportModal && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-            <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setShowExportModal(false)}></div>
-            <div className="bg-white w-full max-w-lg rounded-[40px] p-8 shadow-2xl relative z-10 animate-in zoom-in-95 duration-200 border border-slate-200 max-h-[90vh] overflow-y-auto">
-              <div className="flex justify-between items-start mb-6">
-                <div>
-                  <h3 className="font-black text-xl text-slate-800">Opsi Ekspor Excel</h3>
-                  <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Pilih periode data</p>
-                </div>
-                <button onClick={() => setShowExportModal(false)} className="p-2 bg-slate-100 rounded-2xl text-slate-400 hover:text-slate-600"><X className="w-5 h-5" /></button>
-              </div>
-
-              {/* Export Mode Selection */}
-              <div className="grid grid-cols-2 gap-3 mb-6">
-                <button
-                  onClick={() => setExportMode('weeks')}
-                  className={`p-4 rounded-2xl border-2 font-black text-sm transition-all ${exportMode === 'weeks' ? 'bg-blue-50 border-blue-600 text-blue-900' : 'bg-white border-slate-100 text-slate-400 hover:border-slate-300'}`}
-                >
-                  <Calendar className="w-5 h-5 mx-auto mb-2" />
-                  Per Minggu
-                </button>
-                <button
-                  onClick={() => setExportMode('month')}
-                  className={`p-4 rounded-2xl border-2 font-black text-sm transition-all ${exportMode === 'month' ? 'bg-blue-50 border-blue-600 text-blue-900' : 'bg-white border-slate-100 text-slate-400 hover:border-slate-300'}`}
-                >
-                  <FileText className="w-5 h-5 mx-auto mb-2" />
-                  Per Bulan
-                </button>
-                <button
-                  onClick={() => setExportMode('all')}
-                  className={`p-4 rounded-2xl border-2 font-black text-sm transition-all ${exportMode === 'all' ? 'bg-blue-50 border-blue-600 text-blue-900' : 'bg-white border-slate-100 text-slate-400 hover:border-slate-300'}`}
-                >
-                  <Database className="w-5 h-5 mx-auto mb-2" />
-                  Semua Data
-                </button>
-              </div>
-
-              {/* Weeks Selection */}
-              {exportMode === 'weeks' && (
-                <div className="space-y-3 mb-8">
-                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">Pilih Minggu</p>
-                  <div className="grid grid-cols-2 gap-3">
-                    {[1, 2, 3, 4].map(w => (
-                      <button
-                        key={w}
-                        onClick={() => toggleWeekSelection(w)}
-                        className={`py-4 rounded-3xl border-2 font-black text-sm transition-all flex items-center justify-center gap-3 ${selectedWeeks.includes(w) ? 'bg-blue-50 border-blue-600 text-blue-900' : 'bg-white border-slate-100 text-slate-300'}`}
-                      >
-                        {selectedWeeks.includes(w) ? <Check className="w-4 h-4" /> : <div className="w-4 h-4 rounded-full border border-slate-200" />}
-                        Minggu {w}
-                      </button>
-                    ))}
-                  </div>
-                  <button
-                    onClick={() => setSelectedWeeks(selectedWeeks.length === 4 ? [] : [1, 2, 3, 4])}
-                    className="w-full py-2 text-[10px] font-black text-blue-600 uppercase tracking-widest hover:underline"
-                  >
-                    {selectedWeeks.length === 4 ? "Batalkan Semua" : "Pilih Semua Minggu"}
-                  </button>
-                </div>
-              )}
-
-              {/* Month Selection */}
-              {exportMode === 'month' && (
-                <div className="space-y-4 mb-8">
-                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">Pilih Bulan & Tahun</p>
-                  <div className="grid grid-cols-2 gap-3">
-                    <select
-                      value={selectedMonth}
-                      onChange={(e) => setSelectedMonth(e.target.value)}
-                      className="bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:ring-2 focus:ring-blue-200"
-                    >
-                      <option value="1">January</option>
-                      <option value="2">February</option>
-                      <option value="3">March</option>
-                      <option value="4">April</option>
-                      <option value="5">May</option>
-                      <option value="6">June</option>
-                      <option value="7">July</option>
-                      <option value="8">August</option>
-                      <option value="9">September</option>
-                      <option value="10">October</option>
-                      <option value="11">November</option>
-                      <option value="12">December</option>
-                    </select>
-                    <select
-                      value={selectedYear}
-                      onChange={(e) => setSelectedYear(e.target.value)}
-                      className="bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:ring-2 focus:ring-blue-200"
-                    >
-                      {Array.from({ length: 11 }, (_, i) => 2020 + i).map(year => (
-                        <option key={year} value={year}>{year}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-              )}
-
-              {/* All Data Info */}
-              {exportMode === 'all' && (
-                <div className="bg-blue-50 border border-blue-200 rounded-2xl p-6 mb-8">
-                  <div className="flex items-start gap-3">
-                    <Database className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-                    <div>
-                      <p className="text-sm font-bold text-blue-900">Ekspor Semua Data</p>
-                      <p className="text-xs text-blue-600 mt-1">Semua data akuisisi yang ada di sistem akan diekspor ke dalam satu file Excel.</p>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              <button
-                onClick={handleExportAction}
-                className="w-full bg-[#003d79] text-white py-5 rounded-[24px] font-black tracking-tight shadow-xl shadow-blue-100 hover:bg-blue-800 active:scale-95 transition-all flex items-center justify-center gap-3"
-              >
-                <Download className="w-5 h-5" /> UNDUH LAPORAN .XLSX
-              </button>
-            </div>
-          </div>
-        )}
-
         {/* --- MEMBER DETAIL MODAL --- */}
         {selectedMember && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 overflow-y-auto" style={{ scrollBehavior: 'auto' }}>
@@ -1834,7 +1606,9 @@ export default function App() {
                               const currentValue = isCredit && typeof current === 'object'
                                 ? current.nominal || 0
                                 : (typeof current === 'object' ? current.quantity : (current || 0));
-                              return p.is_active && currentValue >= p.weekly_target;
+                              const targetMultiplier = dashboardViewMode === 'monthly' ? 4 : 1;
+                              const target = p.weekly_target * targetMultiplier;
+                              return p.is_active && currentValue >= target;
                             }).length} Goal
                           </span>
                         </div>
@@ -1846,7 +1620,8 @@ export default function App() {
                             const currentValue = isCredit && typeof current === 'object'
                               ? current.nominal || 0
                               : (typeof current === 'object' ? current.quantity : (current || 0));
-                            const target = p.weekly_target;
+                            const targetMultiplier = dashboardViewMode === 'monthly' ? 4 : 1;
+                            const target = p.weekly_target * targetMultiplier;
                             const isDone = isCredit ? currentValue >= target : currentValue >= target;
                             return (
                               <div key={p.product_key} className={`p-2 rounded-xl border transition-all ${isDone ? 'bg-green-50/80 border-green-100' : currentValue > 0 ? 'bg-white/80 border-blue-100' : 'bg-white/40 border-slate-100/50'}`}>
@@ -1867,9 +1642,9 @@ export default function App() {
                       </div>
 
                       <div className="space-y-3">
-                        {[...(team.members || [])].sort((a, b) => getMemberPoints((b.weeklyAcquisitions || {})[activeWeek] || {}) - getMemberPoints((a.weeklyAcquisitions || {})[activeWeek] || {})).map(m => {
-                          const pts = getMemberPoints((m.weeklyAcquisitions || {})[activeWeek] || {});
-                          const tier = getTierByRank(m.id);
+                        {[...(team.members || [])].sort((a, b) => getMemberPointsForView(b) - getMemberPointsForView(a)).map(m => {
+                          const pts = getMemberPointsForView(m);
+                          const tier = getTierByRankForView(m.id);
                           return (
                             <div
                               key={m.id}

@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import {
   TrendingUp, Trophy, Users, Target, Medal, Star,
   CheckCircle2, BarChart3, PieChart as PieChartIcon,
-  Activity, Crown, Clock, FileSpreadsheet, Download,
+  Activity, Crown, Clock,
   Calendar, FileText, XCircle, AlertCircle
 } from 'lucide-react';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Scatter } from 'recharts';
@@ -139,8 +139,7 @@ export default function DashboardAnalytics() {
   const [endDate, setEndDate] = useState('');
   const [selectedMonth, setSelectedMonth] = useState<string>(String(new Date().getMonth() + 1));
   const [selectedYear, setSelectedYear] = useState<string>(String(new Date().getFullYear()));
-  const [isExporting, setIsExporting] = useState(false);
-  
+
   // Attendance summary filter states
   const [attendanceMonth, setAttendanceMonth] = useState<string>(String(new Date().getMonth() + 1));
   const [attendanceYear, setAttendanceYear] = useState<string>(String(new Date().getFullYear()));
@@ -192,105 +191,6 @@ export default function DashboardAnalytics() {
       setData(null);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleExport = () => {
-    if (!(window as typeof window & { XLSX?: any }).XLSX) {
-      alert('Excel library not loaded yet');
-      return;
-    }
-    setIsExporting(true);
-    try {
-      const workbook = (window as any).XLSX.utils.book_new();
-      if (data) {
-        // Summary Sheet
-        const summaryData = [
-          ['Analytics Report Summary'],
-          ['Report Type', data.reportType],
-          ['Generated At', new Date(data.generatedAt).toLocaleString()],
-          [],
-          ['Total Members', data.summary.totalMembers],
-          ['Total Teams', data.summary.totalTeams],
-          ['Total Points', data.summary.totalPoints],
-          ['Total Acquisitions', data.summary.totalQuantity],
-          ['Avg Attendance Rate', `${data.summary.avgAttendanceRate}%`],
-          [],
-          ['Attendance Breakdown'],
-          ['Present Days', data.summary.totalPresentDays],
-          ['Late Days', data.summary.totalLateDays],
-          ['Leave Days', data.summary.totalLeaveDays],
-          ['Alpha Days', data.summary.totalAlphaDays],
-        ];
-        const summarySheet = (window as any).XLSX.utils.aoa_to_sheet(summaryData);
-        (window as any).XLSX.utils.book_append_sheet(workbook, summarySheet, 'Summary');
-
-        // Team Performance Sheet
-        const teamData = data.teamPerformance.map(t => ({
-          'Team Name': t.teamName,
-          'Members': t.memberCount,
-          'Total Points': t.totalPoints,
-          'Total Acquisitions': t.totalQuantity,
-          'Attendance Rate': `${t.attendanceRate}%`,
-          'Target Achievement': `${t.targetAchievement}%`,
-          'Present Days': t.presentDays,
-          'Late Days': t.lateDays,
-          'Leave Days': t.leaveDays,
-          'Alpha Days': t.alphaDays,
-        }));
-        const teamSheet = (window as any).XLSX.utils.json_to_sheet(teamData);
-        (window as any).XLSX.utils.book_append_sheet(workbook, teamSheet, 'Team Performance');
-
-        // Member Performance Sheet
-        const memberData = data.memberRankings.map(m => ({
-          'Name': m.memberName,
-          'Position': m.position,
-          'Team': m.teamName,
-          'Total Points': m.totalPoints,
-          'Total Acquisitions': m.totalQuantity,
-          'Attendance Rate': `${m.attendanceRate}%`,
-          'Days Present': m.presentDays,
-          'Total Days': m.totalDays,
-        }));
-        const memberSheet = (window as any).XLSX.utils.json_to_sheet(memberData);
-        (window as any).XLSX.utils.book_append_sheet(workbook, memberSheet, 'Member Performance');
-
-        // Product Breakdown Sheet
-        const productData = data.categoryPerformance.map(p => ({
-          'Product Key': p.productKey,
-          'Product Name': p.productName,
-          'Category': p.category,
-          'Unit': p.unit,
-          'Total Quantity': p.totalQuantity,
-          'Weekly Target': p.weeklyTarget,
-          'Achievement Rate': `${p.achievementRate}%`,
-          'Total Points': p.totalPoints,
-        }));
-        const productSheet = (window as any).XLSX.utils.json_to_sheet(productData);
-        (window as any).XLSX.utils.book_append_sheet(workbook, productSheet, 'Product Breakdown');
-
-        // Top Performers Sheet
-        const topPerformersData = data.memberRankings.slice(0, 10).map((m, i) => ({
-          'Rank': i + 1,
-          'Name': m.memberName,
-          'Team': m.teamName,
-          'Position': m.position,
-          'Total Points': m.totalPoints,
-          'Total Acquisitions': m.totalQuantity,
-          'Attendance Rate': `${m.attendanceRate}%`,
-        }));
-        const topPerformersSheet = (window as any).XLSX.utils.json_to_sheet(topPerformersData);
-        (window as any).XLSX.utils.book_append_sheet(workbook, topPerformersSheet, 'Top Performers');
-
-        const monthName = new Date(parseInt(selectedYear), parseInt(selectedMonth) - 1).toLocaleDateString('id-ID', { month: 'short', year: 'numeric' });
-        const fileName = `Analytics_Report_${data.reportType}_${monthName.replace(/ /g, '_')}_${new Date().toISOString().split('T')[0]}.xlsx`;
-        (window as any).XLSX.writeFile(workbook, fileName);
-      }
-    } catch (error) {
-      console.error('Export failed:', error);
-      alert('Failed to export report');
-    } finally {
-      setIsExporting(false);
     }
   };
 
@@ -494,16 +394,6 @@ export default function DashboardAnalytics() {
             <option value="monthly">Monthly</option>
             <option value="custom">Custom Range</option>
           </select>
-          <button
-            onClick={handleExport}
-            disabled={isExporting}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-black shadow-lg transition-all ${
-              isExporting ? 'bg-slate-300 text-slate-500 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700 text-white shadow-green-200'
-            }`}
-          >
-            {isExporting ? <GridLoader pattern="edge-cw" size="sm" color="#fff" mode="stagger" /> : <Download className="w-4 h-4" />}
-            EXPORT
-          </button>
         </div>
       </div>
 
