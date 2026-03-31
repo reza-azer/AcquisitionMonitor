@@ -2,29 +2,16 @@
 
 import React, { useState, useEffect } from 'react';
 import {
-  TrendingUp, Trophy, Users, Target, Medal, Star,
+  Trophy, Users, Target, Medal, Star,
   CheckCircle2, BarChart3, PieChart as PieChartIcon,
   Activity, Crown, Clock,
-  Calendar, FileText, XCircle, AlertCircle
+  Calendar, FileText, XCircle, AlertCircle, TrendingUp
 } from 'lucide-react';
-import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Scatter } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from 'recharts';
 import GridLoader from './GridLoader';
 import Skeleton, { SkeletonStatsCard, SkeletonCard } from './Skeleton';
 import { CountUp } from './animations';
 import { motion } from 'motion/react';
-
-interface WeeklyTrend {
-  week: number;
-  totalPoints: number;
-  totalQuantity: number;
-}
-
-interface TeamWeeklyTrend {
-  teamId: string;
-  teamName: string;
-  accentColor: string;
-  weeklyData: { week: number; [teamName: string]: number }[];
-}
 
 interface TeamPerformance {
   teamId: string;
@@ -99,10 +86,6 @@ interface Summary {
 }
 
 interface AnalyticsData {
-  weeklyTrends: WeeklyTrend[];
-  weeklyTrendsCredit: WeeklyTrend[];
-  weeklyTrendsNonCredit: WeeklyTrend[];
-  teamWeeklyTrends: TeamWeeklyTrend[];
   teamPerformance: TeamPerformance[];
   memberRankings: MemberRanking[];
   categoryPerformance: CategoryPerformance[];
@@ -217,29 +200,6 @@ export default function DashboardAnalytics() {
           ))}
         </div>
 
-        {/* Key Insights Skeleton */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {[1, 2, 3].map(i => (
-            <div key={i} className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-4">
-              <div className="flex items-center gap-2">
-                <Skeleton variant="circular" width="40px" height="40px" />
-                <div className="space-y-2">
-                  <Skeleton variant="text" width="100px" height="16px" />
-                  <Skeleton variant="text" width="80px" height="12px" />
-                </div>
-              </div>
-              <div className="flex items-center gap-4">
-                <Skeleton variant="circular" width="56px" height="56px" />
-                <div className="space-y-2">
-                  <Skeleton variant="text" width="120px" height="16px" />
-                  <Skeleton variant="text" width="80px" height="12px" />
-                  <Skeleton variant="text" width="60px" height="14px" />
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-
         {/* Attendance Summary Skeleton */}
         <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm">
           <div className="flex items-center gap-3 mb-6">
@@ -321,24 +281,8 @@ export default function DashboardAnalytics() {
     );
   }
 
-  const { weeklyTrends, teamWeeklyTrends, teamPerformance, memberRankings, categoryPerformance, insights, summary, attendanceCorrelation } = data;
+  const { teamPerformance, memberRankings, categoryPerformance, insights, summary, attendanceCorrelation } = data;
   const COLORS = ['#003d79', '#FDB813', '#10b981', '#ef4444', '#8b5cf6', '#f59e0b', '#06b6d4', '#ec4899'];
-
-  // Helper function to merge team weekly data into a single array for the chart
-  const mergeTeamWeeklyData = (teamWeeklyTrends: TeamWeeklyTrend[]) => {
-    const merged: { week: number; [teamName: string]: number }[] = [];
-    for (let w = 1; w <= 4; w++) {
-      const weekData: { week: number; [teamName: string]: number } = { week: w };
-      teamWeeklyTrends.forEach(team => {
-        const dataPoint = team.weeklyData.find(d => d.week === w);
-        if (dataPoint) {
-          weekData[team.teamName] = dataPoint[team.teamName] || 0;
-        }
-      });
-      merged.push(weekData);
-    }
-    return merged;
-  };
 
   return (
     <div className="space-y-8">
@@ -509,87 +453,6 @@ export default function DashboardAnalytics() {
           <div className="text-xs text-purple-200 mt-2">Active Products</div>
         </motion.div>
       </motion.div>
-
-      {/* Key Insights */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm">
-          <div className="flex items-center gap-2 mb-4">
-            <div className="w-10 h-10 rounded-2xl bg-yellow-50 flex items-center justify-center">
-              <Crown className="w-5 h-5 text-yellow-600" />
-            </div>
-            <div>
-              <h3 className="font-black text-slate-800">Best Performer</h3>
-              <p className="text-xs font-bold text-slate-400">Top scorer this period</p>
-            </div>
-          </div>
-          {insights.bestPerformer ? (
-            <div className="flex items-center gap-4">
-              <div className="w-14 h-14 rounded-full bg-gradient-to-br from-yellow-400 to-yellow-600 flex items-center justify-center text-white font-black text-xl shadow-lg">
-                {insights.bestPerformer.memberName[0]}
-              </div>
-              <div className="flex-1">
-                <div className="font-black text-slate-800">{insights.bestPerformer.memberName}</div>
-                <div className="text-xs font-bold text-slate-500">{insights.bestPerformer.teamName}</div>
-                <div className="text-sm font-black text-yellow-600">{insights.bestPerformer.totalPoints} pts</div>
-              </div>
-            </div>
-          ) : (
-            <p className="text-sm text-slate-400 font-bold">No data available</p>
-          )}
-        </div>
-
-        <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm">
-          <div className="flex items-center gap-2 mb-4">
-            <div className="w-10 h-10 rounded-2xl bg-blue-50 flex items-center justify-center">
-              <Trophy className="w-5 h-5 text-blue-600" />
-            </div>
-            <div>
-              <h3 className="font-black text-slate-800">Top Team</h3>
-              <p className="text-xs font-bold text-slate-400">Highest performing team</p>
-            </div>
-          </div>
-          {insights.topTeam ? (
-            <div className="flex items-center gap-4">
-              <div className="w-14 h-14 rounded-full flex items-center justify-center font-black text-lg shadow-lg" style={{ backgroundColor: insights.topTeam.accentColor + '20', color: insights.topTeam.accentColor }}>
-                {insights.topTeam.teamName[0]}
-              </div>
-              <div className="flex-1">
-                <div className="font-black text-slate-800">{insights.topTeam.teamName}</div>
-                <div className="text-xs font-bold text-slate-500">{insights.topTeam.memberCount} Members</div>
-                <div className="text-sm font-black text-blue-600">{insights.topTeam.totalPoints} pts</div>
-              </div>
-            </div>
-          ) : (
-            <p className="text-sm text-slate-400 font-bold">No data available</p>
-          )}
-        </div>
-
-        <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm">
-          <div className="flex items-center gap-2 mb-4">
-            <div className="w-10 h-10 rounded-2xl bg-green-50 flex items-center justify-center">
-              <CheckCircle2 className="w-5 h-5 text-green-600" />
-            </div>
-            <div>
-              <h3 className="font-black text-slate-800">Attendance Leader</h3>
-              <p className="text-xs font-bold text-slate-400">Best attendance rate</p>
-            </div>
-          </div>
-          {insights.highestAttendance ? (
-            <div className="flex items-center gap-4">
-              <div className="w-14 h-14 rounded-full bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center text-white font-black text-xl shadow-lg">
-                {insights.highestAttendance.memberName[0]}
-              </div>
-              <div className="flex-1">
-                <div className="font-black text-slate-800">{insights.highestAttendance.memberName}</div>
-                <div className="text-xs font-bold text-slate-500">{insights.highestAttendance.teamName}</div>
-                <div className="text-sm font-black text-green-600">{insights.highestAttendance.attendanceRate}%</div>
-              </div>
-            </div>
-          ) : (
-            <p className="text-sm text-slate-400 font-bold">No data available</p>
-          )}
-        </div>
-      </div>
 
       {/* Attendance Summary */}
       <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm">
@@ -883,100 +746,6 @@ export default function DashboardAnalytics() {
           ))}
         </div>
       </div>
-
-      {/* Weekly Trend Chart - Non-CREDIT */}
-      {data.weeklyTrendsNonCredit && data.weeklyTrendsNonCredit.length > 0 && (
-        <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-10 h-10 rounded-2xl bg-indigo-50 flex items-center justify-center">
-              <TrendingUp className="w-5 h-5 text-indigo-600" />
-            </div>
-            <div>
-              <h3 className="font-black text-slate-800">Weekly Performance Trend - Non-CREDIT</h3>
-              <p className="text-xs font-bold text-slate-400">FUNDING & TRANSACTION - Points progression across weeks</p>
-            </div>
-          </div>
-          <div className="h-80">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={data.weeklyTrendsNonCredit}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                <XAxis dataKey="week" tickFormatter={(v) => `W${v}`} stroke="#64748b" fontSize={12} />
-                <YAxis stroke="#64748b" fontSize={12} />
-                <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} labelFormatter={(v) => `Week ${v}`} />
-                <Legend />
-                <Line type="monotone" dataKey="totalPoints" name="Total Points" stroke="#003d79" strokeWidth={3} dot={{ fill: '#003d79', strokeWidth: 2, r: 6 }} activeDot={{ r: 8 }} />
-                <Line type="monotone" dataKey="totalQuantity" name="Total Quantity" stroke="#FDB813" strokeWidth={3} dot={{ fill: '#FDB813', strokeWidth: 2, r: 6 }} />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-      )}
-
-      {/* Weekly Trend Chart - CREDIT */}
-      {data.weeklyTrendsCredit && data.weeklyTrendsCredit.length > 0 && (
-        <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm mt-8">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-10 h-10 rounded-2xl bg-purple-50 flex items-center justify-center">
-              <TrendingUp className="w-5 h-5 text-purple-600" />
-            </div>
-            <div>
-              <h3 className="font-black text-slate-800">Weekly Performance Trend - CREDIT</h3>
-              <p className="text-xs font-bold text-slate-400">CREDIT - Points progression across weeks</p>
-            </div>
-          </div>
-          <div className="h-80">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={data.weeklyTrendsCredit}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                <XAxis dataKey="week" tickFormatter={(v) => `W${v}`} stroke="#64748b" fontSize={12} />
-                <YAxis stroke="#64748b" fontSize={12} />
-                <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} labelFormatter={(v) => `Week ${v}`} />
-                <Legend />
-                <Line type="monotone" dataKey="totalPoints" name="Total Points" stroke="#7c3aed" strokeWidth={3} dot={{ fill: '#7c3aed', strokeWidth: 2, r: 6 }} activeDot={{ r: 8 }} />
-                <Line type="monotone" dataKey="totalQuantity" name="Total Acquisitions" stroke="#FDB813" strokeWidth={3} dot={{ fill: '#FDB813', strokeWidth: 2, r: 6 }} />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-      )}
-
-      {/* Team Weekly Trends Chart */}
-      {data.teamWeeklyTrends && data.teamWeeklyTrends.length > 0 && (
-        <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm mt-8">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-10 h-10 rounded-2xl bg-blue-50 flex items-center justify-center">
-              <Activity className="w-5 h-5 text-blue-600" />
-            </div>
-            <div>
-              <h3 className="font-black text-slate-800">Tren Performa Tim</h3>
-              <p className="text-xs font-bold text-slate-400">Perkembangan poin per tim setiap minggu</p>
-            </div>
-          </div>
-          <div className="h-80">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={mergeTeamWeeklyData(data.teamWeeklyTrends)}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                <XAxis dataKey="week" tickFormatter={(v) => `W${v}`} stroke="#64748b" fontSize={12} />
-                <YAxis stroke="#64748b" fontSize={12} />
-                <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} labelFormatter={(v) => `Week ${v}`} />
-                <Legend />
-                {data.teamWeeklyTrends.map((team, index) => (
-                  <Line
-                    key={team.teamId}
-                    type="monotone"
-                    dataKey={team.teamName}
-                    name={team.teamName}
-                    stroke={team.accentColor || COLORS[index % COLORS.length]}
-                    strokeWidth={3}
-                    dot={{ fill: 'white', strokeWidth: 2, r: 5 }}
-                    activeDot={{ r: 7 }}
-                  />
-                ))}
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-      )}
 
       {/* Team Performance Table */}
       <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm">
