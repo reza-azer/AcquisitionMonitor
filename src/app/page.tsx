@@ -136,6 +136,11 @@ export default function App() {
   const [migrateWithData, setMigrateWithData] = useState<boolean | null>(null);
   const [isMigrating, setIsMigrating] = useState(false);
 
+  // Modal states for team and member creation
+  const [showNewTeamModal, setShowNewTeamModal] = useState(false);
+  const [showAddMemberModal, setShowAddMemberModal] = useState<{ isOpen: boolean; teamId: string; teamName: string } | null>(null);
+  const [newMemberForm, setNewMemberForm] = useState<{ name: string; position: string; avatar_url: string }>({ name: '', position: '', avatar_url: '' });
+
   // Load settings from localStorage
   useEffect(() => {
     const savedColors = localStorage.getItem('chartTeamColors');
@@ -1708,42 +1713,17 @@ export default function App() {
             {/* Team Management */}
             {manageSubTab === 'team' && (
               <div className="space-y-8">
-                {/* Team Creation Form */}
-                <div className="bg-white rounded-[30px] p-6 border border-slate-200 shadow-sm">
-                  <h3 className="text-lg font-black text-slate-800 mb-4 flex items-center gap-2">
-                    <Plus className="w-5 h-5" /> Buat Tim Baru
+                {/* Team Creation Button */}
+                <div className="flex justify-between items-center">
+                  <h3 className="text-xl font-black text-slate-800 flex items-center gap-2">
+                    <Users className="w-6 h-6" /> Manage Team
                   </h3>
-                  <div className="space-y-3">
-                    <input
-                      type="text"
-                      value={newTeam.name}
-                      onChange={(e) => setNewTeam({ ...newTeam, name: e.target.value })}
-                      placeholder="Nama Tim"
-                      className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-sm font-semibold outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-300 transition-all"
-                    />
-                    <div className="grid grid-cols-2 gap-3">
-                      <ImageUploader
-                        value={newTeam.image_url}
-                        onChange={(url) => setNewTeam({ ...newTeam, image_url: url || '' })}
-                        label="Upload"
-                        folder="teams"
-                        aspectRatio="16/10"
-                      />
-                      <ImageUploader
-                        value={newTeam.image_url}
-                        onChange={(url) => setNewTeam({ ...newTeam, image_url: url || '' })}
-                        label="Paste URL"
-                        folder="teams"
-                        aspectRatio="16/10"
-                      />
-                    </div>
-                    <button
-                      onClick={addTeam}
-                      className="w-full bg-[#003d79] text-white py-4 rounded-2xl font-black text-sm hover:bg-[#002d5a] transition-all flex items-center justify-center gap-2 shadow-lg hover:shadow-xl"
-                    >
-                      <Plus className="w-5 h-5" /> BUAT TIM
-                    </button>
-                  </div>
+                  <button
+                    onClick={() => setShowNewTeamModal(true)}
+                    className="bg-[#003d79] hover:bg-[#002d5a] text-white px-5 py-2.5 rounded-full font-black text-sm transition-all flex items-center gap-2 shadow-lg hover:shadow-xl"
+                  >
+                    <Plus className="w-4 h-4" /> Buat Tim Baru
+                  </button>
                 </div>
 
                 {/* Teams Grid */}
@@ -1819,51 +1799,16 @@ export default function App() {
 
                       {/* Members Section */}
                       <div className="p-5 flex-1 flex flex-col">
-                        {/* Add Member Form */}
-                        <div className="bg-slate-50 rounded-2xl p-4 mb-4 border border-slate-100">
-                          <div className="flex items-center gap-2 mb-3">
-                            <UserPlus className="w-3.5 h-3.5 text-slate-400" />
-                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Tambah Anggota</span>
-                          </div>
-                          <div className="space-y-2">
-                            <input
-                              type="text"
-                              value={tempMembers[team.id]?.name || ''}
-                              onChange={(e) => setTempMembers({ ...tempMembers, [team.id]: { ...tempMembers[team.id], name: e.target.value } })}
-                              placeholder="Nama Lengkap"
-                              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-300"
-                            />
-                            <input
-                              type="text"
-                              value={tempMembers[team.id]?.position || ''}
-                              onChange={(e) => setTempMembers({ ...tempMembers, [team.id]: { ...tempMembers[team.id], position: e.target.value } })}
-                              placeholder="Jabatan"
-                              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-300"
-                            />
-                            <div className="grid grid-cols-2 gap-2">
-                              <ImageUploader
-                                value={tempMembers[team.id]?.avatar_url || null}
-                                onChange={(url) => setTempMembers({ ...tempMembers, [team.id]: { ...tempMembers[team.id], avatar_url: url || '' } })}
-                                label="Upload"
-                                folder="members"
-                                aspectRatio="1/1"
-                              />
-                              <ImageUploader
-                                value={tempMembers[team.id]?.avatar_url || null}
-                                onChange={(url) => setTempMembers({ ...tempMembers, [team.id]: { ...tempMembers[team.id], avatar_url: url || '' } })}
-                                label="Paste URL"
-                                folder="members"
-                                aspectRatio="1/1"
-                              />
-                            </div>
-                            <button
-                              onClick={() => addMemberToTeam(team.id)}
-                              className="w-full bg-[#003d79] text-white py-2.5 rounded-xl font-black text-xs hover:bg-[#002d5a] transition-all flex items-center justify-center gap-1.5"
-                            >
-                              <Plus className="w-3.5 h-3.5" /> TAMBAH
-                            </button>
-                          </div>
-                        </div>
+                        {/* Add Member Button */}
+                        <button
+                          onClick={() => {
+                            setShowAddMemberModal({ isOpen: true, teamId: team.id, teamName: team.name });
+                            setNewMemberForm({ name: '', position: '', avatar_url: '' });
+                          }}
+                          className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 py-3 rounded-xl font-black text-xs transition-all flex items-center justify-center gap-2 border-2 border-dashed border-slate-300"
+                        >
+                          <UserPlus className="w-4 h-4" /> Tambah Anggota
+                        </button>
 
                         {/* Members List */}
                         {(team.members && team.members.length > 0) ? (
@@ -1980,6 +1925,158 @@ export default function App() {
                       </div>
                     </div>
                   ))}
+                </div>
+              </div>
+            )}
+
+            {/* New Team Modal */}
+            {showNewTeamModal && (
+              <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" style={{ scrollBehavior: 'auto' }}>
+                <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setShowNewTeamModal(false)}></div>
+                <div className="bg-white w-full max-w-md rounded-[40px] shadow-2xl relative z-10 animate-in zoom-in-95 duration-200 border border-slate-200 my-auto">
+                  {/* Header */}
+                  <div className="bg-gradient-to-r from-[#003d79] to-[#005bb7] text-white p-6 rounded-t-[40px]">
+                    <h3 className="font-black text-xl flex items-center gap-2">
+                      <Users className="w-6 h-6" /> Buat Tim Baru
+                    </h3>
+                  </div>
+                  
+                  {/* Content */}
+                  <div className="p-6 space-y-4">
+                    <div>
+                      <label className="text-xs font-black text-slate-500 uppercase tracking-widest block mb-2">Nama Tim</label>
+                      <input
+                        type="text"
+                        value={newTeam.name}
+                        onChange={(e) => setNewTeam({ ...newTeam, name: e.target.value })}
+                        placeholder="Masukkan nama tim..."
+                        className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-sm font-semibold outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-300 transition-all"
+                        autoFocus
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="text-xs font-black text-slate-500 uppercase tracking-widest block mb-2">Gambar Tim</label>
+                      <div className="grid grid-cols-2 gap-3">
+                        <ImageUploader
+                          value={newTeam.image_url}
+                          onChange={(url) => setNewTeam({ ...newTeam, image_url: url || '' })}
+                          label="Upload"
+                          folder="teams"
+                          aspectRatio="16/10"
+                        />
+                        <ImageUploader
+                          value={newTeam.image_url}
+                          onChange={(url) => setNewTeam({ ...newTeam, image_url: url || '' })}
+                          label="Paste URL"
+                          folder="teams"
+                          aspectRatio="16/10"
+                        />
+                      </div>
+                    </div>
+                    
+                    {/* Actions */}
+                    <div className="flex gap-3 pt-4">
+                      <button
+                        onClick={() => setShowNewTeamModal(false)}
+                        className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 py-3 rounded-2xl font-black text-sm transition-all"
+                      >
+                        Batal
+                      </button>
+                      <button
+                        onClick={() => {
+                          addTeam();
+                          setShowNewTeamModal(false);
+                        }}
+                        disabled={!newTeam.name.trim()}
+                        className="flex-1 bg-[#003d79] hover:bg-[#002d5a] disabled:bg-slate-300 disabled:cursor-not-allowed text-white py-3 rounded-2xl font-black text-sm transition-all flex items-center justify-center gap-2 shadow-lg"
+                      >
+                        <Plus className="w-5 h-5" /> Buat Tim
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Add Member Modal */}
+            {showAddMemberModal && (
+              <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" style={{ scrollBehavior: 'auto' }}>
+                <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setShowAddMemberModal(null)}></div>
+                <div className="bg-white w-full max-w-md rounded-[40px] shadow-2xl relative z-10 animate-in zoom-in-95 duration-200 border border-slate-200 my-auto">
+                  {/* Header */}
+                  <div className="bg-gradient-to-r from-[#003d79] to-[#005bb7] text-white p-6 rounded-t-[40px]">
+                    <h3 className="font-black text-xl flex items-center gap-2">
+                      <UserPlus className="w-6 h-6" /> Tambah Anggota - {showAddMemberModal.teamName}
+                    </h3>
+                  </div>
+                  
+                  {/* Content */}
+                  <div className="p-6 space-y-4">
+                    <div>
+                      <label className="text-xs font-black text-slate-500 uppercase tracking-widest block mb-2">Nama Lengkap</label>
+                      <input
+                        type="text"
+                        value={newMemberForm.name}
+                        onChange={(e) => setNewMemberForm({ ...newMemberForm, name: e.target.value })}
+                        placeholder="Masukkan nama lengkap..."
+                        className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-sm font-semibold outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-300 transition-all"
+                        autoFocus
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="text-xs font-black text-slate-500 uppercase tracking-widest block mb-2">Jabatan</label>
+                      <input
+                        type="text"
+                        value={newMemberForm.position}
+                        onChange={(e) => setNewMemberForm({ ...newMemberForm, position: e.target.value })}
+                        placeholder="Masukkan jabatan..."
+                        className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-sm font-semibold outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-300 transition-all"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="text-xs font-black text-slate-500 uppercase tracking-widest block mb-2">Foto Anggota</label>
+                      <div className="grid grid-cols-2 gap-3">
+                        <ImageUploader
+                          value={newMemberForm.avatar_url || null}
+                          onChange={(url) => setNewMemberForm({ ...newMemberForm, avatar_url: url || '' })}
+                          label="Upload"
+                          folder="members"
+                          aspectRatio="1/1"
+                        />
+                        <ImageUploader
+                          value={newMemberForm.avatar_url || null}
+                          onChange={(url) => setNewMemberForm({ ...newMemberForm, avatar_url: url || '' })}
+                          label="Paste URL"
+                          folder="members"
+                          aspectRatio="1/1"
+                        />
+                      </div>
+                    </div>
+                    
+                    {/* Actions */}
+                    <div className="flex gap-3 pt-4">
+                      <button
+                        onClick={() => setShowAddMemberModal(null)}
+                        className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 py-3 rounded-2xl font-black text-sm transition-all"
+                      >
+                        Batal
+                      </button>
+                      <button
+                        onClick={() => {
+                          setTempMembers({ ...tempMembers, [showAddMemberModal.teamId]: newMemberForm });
+                          addMemberToTeam(showAddMemberModal.teamId);
+                          setShowAddMemberModal(null);
+                        }}
+                        disabled={!newMemberForm.name.trim() || !newMemberForm.position.trim()}
+                        className="flex-1 bg-[#003d79] hover:bg-[#002d5a] disabled:bg-slate-300 disabled:cursor-not-allowed text-white py-3 rounded-2xl font-black text-sm transition-all flex items-center justify-center gap-2 shadow-lg"
+                      >
+                        <Plus className="w-5 h-5" /> Tambah
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
