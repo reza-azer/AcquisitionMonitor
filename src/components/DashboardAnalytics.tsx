@@ -145,13 +145,24 @@ export default function DashboardAnalytics() {
   const [attendanceStatusFilter, setAttendanceStatusFilter] = useState<'all' | 'late' | 'leave' | 'alpha'>('all');
 
   // Analytics view selector
-  const [analyticsView, setAnalyticsView] = useState<'overview' | 'attendance' | 'charts'>('overview');
+  const [analyticsView, setAnalyticsView] = useState<'overview' | 'attendance' | 'charts' | 'chartStudio'>('overview');
 
   // Chart-specific state
   const [selectedProductFilter, setSelectedProductFilter] = useState<string>('all');
   const [dailyTeamData, setDailyTeamData] = useState<DailyTeamPerformance[]>([]);
   const [dailyProductData, setDailyProductData] = useState<DailyProductPerformance[]>([]);
   const [dailyActivityData, setDailyActivityData] = useState<DailyActivity[]>([]);
+
+  // Import ChartStudio dynamically
+  const [ChartStudioComponent, setChartStudioComponent] = React.useState<React.ComponentType<any> | null>(null);
+  
+  React.useEffect(() => {
+    if (analyticsView === 'chartStudio') {
+      import('./ChartStudio/ChartStudio').then(mod => {
+        setChartStudioComponent(() => mod.default);
+      });
+    }
+  }, [analyticsView]);
 
   // Format nominal to compact display (e.g., 36.000.000 → 36jt)
   const formatToJuta = (value: number): string => {
@@ -448,6 +459,16 @@ export default function DashboardAnalytics() {
             }`}
           >
             <Activity className="w-4 h-4" /> Grafik
+          </button>
+          <button
+            onClick={() => setAnalyticsView('chartStudio')}
+            className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-[20px] text-sm font-black transition-all ${
+              analyticsView === 'chartStudio'
+                ? 'bg-purple-600 text-white shadow-md'
+                : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+            }`}
+          >
+            <BarChart3 className="w-4 h-4" /> Chart Studio
           </button>
           <button
             onClick={() => setAnalyticsView('attendance')}
@@ -847,6 +868,19 @@ export default function DashboardAnalytics() {
           <p className="text-lg font-bold text-slate-500 text-center max-w-md">
             Stay tuned! We're working on bringing you some amazing charts and visualizations. 🚀
           </p>
+        </div>
+      )}
+
+      {/* Chart Studio View */}
+      {analyticsView === 'chartStudio' && (
+        <div className="py-6">
+          {ChartStudioComponent ? (
+            <ChartStudioComponent />
+          ) : (
+            <div className="flex items-center justify-center py-20">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
+            </div>
+          )}
         </div>
       )}
     </div>
