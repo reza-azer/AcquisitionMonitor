@@ -26,6 +26,11 @@ export default function FilterPanel({ filters, onChange }: FilterPanelProps) {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
 
+  // Helper function to safely check if value is an array and includes an item
+  const arrayIncludes = (value: any, item: any): boolean => {
+    return Array.isArray(value) && value.includes(item);
+  };
+
   // Fetch teams and products
   useEffect(() => {
     const fetchData = async () => {
@@ -35,15 +40,15 @@ export default function FilterPanel({ filters, onChange }: FilterPanelProps) {
           fetch('/api/teams'),
           fetch('/api/products'),
         ]);
-        
+
         if (teamsRes.ok) {
-          const teamsData = await teamsRes.json();
-          setTeams(teamsData);
+          const teamsResponse = await teamsRes.json();
+          setTeams(teamsResponse.data || []);
         }
-        
+
         if (productsRes.ok) {
-          const productsData = await productsRes.json();
-          setProducts(productsData.filter((p: any) => p.is_active));
+          const productsResponse = await productsRes.json();
+          setProducts(productsResponse.data?.filter((p: any) => p.is_active) || []);
         }
       } catch (error) {
         console.error('Error fetching filter data:', error);
@@ -58,7 +63,7 @@ export default function FilterPanel({ filters, onChange }: FilterPanelProps) {
   const categories = ['FUNDING', 'TRANSACTION', 'CREDIT'];
 
   const handleWeekToggle = (week: number) => {
-    const currentWeeks = filters.weeks || [];
+    const currentWeeks = Array.isArray(filters.weeks) ? filters.weeks : [];
     const newWeeks = currentWeeks.includes(week)
       ? currentWeeks.filter((w: number) => w !== week)
       : [...currentWeeks, week];
@@ -66,7 +71,7 @@ export default function FilterPanel({ filters, onChange }: FilterPanelProps) {
   };
 
   const handleTeamToggle = (teamId: string) => {
-    const currentTeams = filters.teams || [];
+    const currentTeams = Array.isArray(filters.teams) ? filters.teams : [];
     const newTeams = currentTeams.includes(teamId)
       ? currentTeams.filter((t: string) => t !== teamId)
       : [...currentTeams, teamId];
@@ -74,7 +79,7 @@ export default function FilterPanel({ filters, onChange }: FilterPanelProps) {
   };
 
   const handleProductToggle = (productKey: string) => {
-    const currentProducts = filters.products || [];
+    const currentProducts = Array.isArray(filters.products) ? filters.products : [];
     const newProducts = currentProducts.includes(productKey)
       ? currentProducts.filter((p: string) => p !== productKey)
       : [...currentProducts, productKey];
@@ -82,7 +87,7 @@ export default function FilterPanel({ filters, onChange }: FilterPanelProps) {
   };
 
   const handleCategoryToggle = (category: string) => {
-    const currentCategories = filters.categories || [];
+    const currentCategories = Array.isArray(filters.categories) ? filters.categories : [];
     const newCategories = currentCategories.includes(category)
       ? currentCategories.filter((c: string) => c !== category)
       : [...currentCategories, category];
@@ -141,7 +146,7 @@ export default function FilterPanel({ filters, onChange }: FilterPanelProps) {
                   key={week}
                   onClick={() => handleWeekToggle(week)}
                   className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
-                    (filters.weeks || []).includes(week)
+                    arrayIncludes(filters.weeks, week)
                       ? 'bg-blue-600 text-white'
                       : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600'
                   }`}
@@ -168,7 +173,7 @@ export default function FilterPanel({ filters, onChange }: FilterPanelProps) {
                   >
                     <input
                       type="checkbox"
-                      checked={(filters.teams || []).includes(team.id)}
+                      checked={arrayIncludes(filters.teams, team.id)}
                       onChange={() => handleTeamToggle(team.id)}
                       className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
                     />
@@ -194,7 +199,7 @@ export default function FilterPanel({ filters, onChange }: FilterPanelProps) {
                   key={category}
                   onClick={() => handleCategoryToggle(category)}
                   className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
-                    (filters.categories || []).includes(category)
+                    arrayIncludes(filters.categories, category)
                       ? getCategoryColor(category)
                       : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600'
                   }`}
@@ -221,7 +226,7 @@ export default function FilterPanel({ filters, onChange }: FilterPanelProps) {
                   >
                     <input
                       type="checkbox"
-                      checked={(filters.products || []).includes(product.product_key)}
+                      checked={arrayIncludes(filters.products, product.product_key)}
                       onChange={() => handleProductToggle(product.product_key)}
                       className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
                     />

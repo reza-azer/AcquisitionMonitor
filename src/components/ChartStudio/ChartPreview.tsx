@@ -160,6 +160,7 @@ export default function ChartPreview({
                 position: 'top',
                 content: (props: any) => {
                   const { x, y, value } = props;
+                  if (x == null || y == null) return null;
                   return (
                     <text x={x} y={y - 5} textAnchor="middle" fontSize="11" fill="#6b7280">
                       {formatter(value)}
@@ -261,6 +262,7 @@ export default function ChartPreview({
               label={styles.showLabels ? {
                 content: (props: any) => {
                   const { x, y, value } = props;
+                  if (x == null || y == null) return null;
                   return (
                     <text x={x} y={y - 5} textAnchor="middle" fontSize="11" fill="#6b7280">
                       {formatter(value)}
@@ -293,11 +295,12 @@ export default function ChartPreview({
                 position: 'outside',
                 content: (props: any) => {
                   const { cx, cy, innerRadius, outerRadius, value, name, percent, midAngle } = props;
+                  if (cx == null || cy == null || outerRadius == null || midAngle == null) return null;
                   const RADIAN = Math.PI / 180;
                   const radius = outerRadius + 24;
                   const x = cx + radius * Math.cos(-midAngle * RADIAN);
                   const y = cy + radius * Math.sin(-midAngle * RADIAN);
-                  const text = styles.showPercentage 
+                  const text = styles.showPercentage
                     ? `${name}: ${(percent * 100).toFixed(1)}%`
                     : `${name}: ${formatter(value)}`;
                   return (
@@ -340,6 +343,7 @@ export default function ChartPreview({
               label={styles.showLabels ? {
                 content: (props: any) => {
                   const { x, y, value } = props;
+                  if (x == null || y == null) return null;
                   return (
                     <text x={x} y={y - 5} textAnchor="middle" fontSize="11" fill="#6b7280">
                       {formatter(value)}
