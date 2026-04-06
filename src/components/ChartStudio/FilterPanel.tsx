@@ -15,6 +15,14 @@ interface Team {
   accent_color: string;
 }
 
+interface Member {
+  id: string;
+  name: string;
+  position: string;
+  team_id: string;
+  team_name: string;
+}
+
 interface Product {
   product_key: string;
   product_name: string;
@@ -23,6 +31,7 @@ interface Product {
 
 export default function FilterPanel({ filters, onChange }: FilterPanelProps) {
   const [teams, setTeams] = useState<Team[]>([]);
+  const [members, setMembers] = useState<Member[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -31,24 +40,48 @@ export default function FilterPanel({ filters, onChange }: FilterPanelProps) {
     return Array.isArray(value) && value.includes(item);
   };
 
-  // Fetch teams and products
+  // Fetch teams, members, and products
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
       try {
-        const [teamsRes, productsRes] = await Promise.all([
+        const [teamsRes, membersRes, productsRes] = await Promise.all([
           fetch('/api/teams'),
+          fetch('/api/members'),
           fetch('/api/products'),
         ]);
 
+        let teamsData: Team[] = [];
+        let membersData: any[] = [];
+
         if (teamsRes.ok) {
-          const teamsResponse = await teamsRes.json();
-          setTeams(teamsResponse.data || []);
+          teamsData = await teamsRes.json();
+          console.log('Teams API response:', teamsData);
+          setTeams(Array.isArray(teamsData) ? teamsData : []);
+        }
+
+        if (membersRes.ok) {
+          membersData = await membersRes.json();
+          console.log('Members API response:', membersData);
+          
+          // Join members with teams to get team_name
+          const membersWithTeams = Array.isArray(membersData) 
+            ? membersData.map((member: any) => {
+                const team = teamsData.find((t: Team) => t.id === member.team_id);
+                return {
+                  ...member,
+                  team_name: team?.name || 'Unknown Team',
+                };
+              })
+            : [];
+          
+          setMembers(membersWithTeams);
         }
 
         if (productsRes.ok) {
-          const productsResponse = await productsRes.json();
-          setProducts(productsResponse.data?.filter((p: any) => p.is_active) || []);
+          const productsData = await productsRes.json();
+          console.log('Products API response:', productsData);
+          setProducts(Array.isArray(productsData) ? productsData.filter((p: any) => p.is_active) : []);
         }
       } catch (error) {
         console.error('Error fetching filter data:', error);
@@ -76,6 +109,14 @@ export default function FilterPanel({ filters, onChange }: FilterPanelProps) {
       ? currentTeams.filter((t: string) => t !== teamId)
       : [...currentTeams, teamId];
     onChange('teams', newTeams);
+  };
+
+  const handleMemberToggle = (memberId: string) => {
+    const currentMembers = Array.isArray(filters.members) ? filters.members : [];
+    const newMembers = currentMembers.includes(memberId)
+      ? currentMembers.filter((m: string) => m !== memberId)
+      : [...currentMembers, memberId];
+    onChange('members', newMembers);
   };
 
   const handleProductToggle = (productKey: string) => {
@@ -174,6 +215,44 @@ export default function FilterPanel({ filters, onChange }: FilterPanelProps) {
                   <span className="text-sm text-gray-700">{team.name}</span>
                 </label>
               ))
+            )}
+          </div>
+        </div>
+
+        {/* Member Filter */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-3">
+            Members
+          </label>
+          <div className="space-y-2 max-h-48 overflow-y-auto">
+            {loading ? (
+              <div className="text-sm text-gray-500">Loading...</div>
+            ) : (
+              <>
+                {/* Show all members if no team selected, or filter by selected teams */}
+                {members
+                  .filter(member => {
+                    if (!filters.teams || filters.teams.length === 0) return true;
+                    return arrayIncludes(filters.teams, member.team_id);
+                  })
+                  .map(member => (
+                    <label
+                      key={member.id}
+                      className="flex items-center gap-3 cursor-pointer hover:bg-white/40 p-2 rounded-lg -m-2"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={arrayIncludes(filters.members, member.id)}
+                        onChange={() => handleMemberToggle(member.id)}
+                        className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      />
+                      <div className="flex-1">
+                        <div className="text-sm font-medium text-gray-700">{member.name}</div>
+                        <div className="text-xs text-gray-500">{member.position} • {member.team_name}</div>
+                      </div>
+                    </label>
+                  ))}
+              </>
             )}
           </div>
         </div>

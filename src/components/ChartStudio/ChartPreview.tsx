@@ -415,28 +415,28 @@ export default function ChartPreview({
       </div>
 
       {/* Summary Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-        <div className="text-center">
-          <div className="text-xs text-gray-500 dark:text-gray-400">Total</div>
-          <div className="text-lg font-bold text-gray-900 dark:text-white">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4 border-t border-gray-200">
+        <div className="text-center p-3 bg-blue-50/60 backdrop-blur-sm rounded-lg">
+          <div className="text-xs text-gray-600">Total</div>
+          <div className="text-lg font-bold text-blue-700">
             {formatter(data.reduce((sum, d) => sum + d.value, 0))}
           </div>
         </div>
-        <div className="text-center">
-          <div className="text-xs text-gray-500 dark:text-gray-400">Average</div>
-          <div className="text-lg font-bold text-gray-900 dark:text-white">
+        <div className="text-center p-3 bg-purple-50/60 backdrop-blur-sm rounded-lg">
+          <div className="text-xs text-gray-600">Average</div>
+          <div className="text-lg font-bold text-purple-700">
             {formatter(data.reduce((sum, d) => sum + d.value, 0) / data.length)}
           </div>
         </div>
-        <div className="text-center">
-          <div className="text-xs text-gray-500 dark:text-gray-400">Highest</div>
-          <div className="text-lg font-bold text-green-600 dark:text-green-400">
+        <div className="text-center p-3 bg-green-50/60 backdrop-blur-sm rounded-lg">
+          <div className="text-xs text-gray-600">Highest</div>
+          <div className="text-lg font-bold text-green-600">
             {formatter(Math.max(...data.map(d => d.value)))}
           </div>
         </div>
-        <div className="text-center">
-          <div className="text-xs text-gray-500 dark:text-gray-400">Lowest</div>
-          <div className="text-lg font-bold text-red-600 dark:text-red-400">
+        <div className="text-center p-3 bg-red-50/60 backdrop-blur-sm rounded-lg">
+          <div className="text-xs text-gray-600">Lowest</div>
+          <div className="text-lg font-bold text-red-600">
             {formatter(Math.min(...data.map(d => d.value)))}
           </div>
         </div>
