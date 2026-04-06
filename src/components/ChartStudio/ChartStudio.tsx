@@ -224,13 +224,13 @@ export default function ChartStudio({ onSaveConfig }: ChartStudioProps) {
         <div className="flex items-center gap-2">
           <button
             onClick={() => setShowSavedCharts(true)}
-            className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white/60 backdrop-blur-lg border border-white/20 rounded-lg hover:bg-white/80 transition-all"
           >
             Saved Charts
           </button>
           <button
             onClick={() => setShowPresets(!showPresets)}
-            className="px-4 py-2 text-sm font-medium text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-900/20 border border-purple-300 dark:border-purple-600 rounded-lg hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-colors flex items-center gap-2"
+            className="px-4 py-2 text-sm font-medium text-purple-700 bg-purple-100/60 backdrop-blur-lg border border-purple-200/50 rounded-lg hover:bg-purple-200/60 transition-all flex items-center gap-2"
           >
             <Sparkles className="w-4 h-4" />
             Templates
@@ -240,12 +240,12 @@ export default function ChartStudio({ onSaveConfig }: ChartStudioProps) {
 
       {/* Presets Panel */}
       {showPresets && (
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+        <div className="bg-white/60 backdrop-blur-xl border border-white/20 rounded-xl shadow-lg p-6">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Quick Start Templates</h3>
+            <h3 className="text-lg font-semibold text-gray-900">Quick Start Templates</h3>
             <button
               onClick={() => setShowPresets(false)}
-              className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              className="text-gray-400 hover:text-gray-600"
             >
               <X className="w-5 h-5" />
             </button>
@@ -255,14 +255,14 @@ export default function ChartStudio({ onSaveConfig }: ChartStudioProps) {
               <button
                 key={preset.id}
                 onClick={() => applyPreset(preset)}
-                className="text-left p-4 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-purple-500 dark:hover:border-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-all"
+                className="text-left p-4 rounded-lg border border-gray-200 hover:border-purple-400 hover:bg-purple-50/50 backdrop-blur-sm transition-all"
               >
-                <h4 className="font-semibold text-gray-900 dark:text-white">{preset.name}</h4>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{preset.description}</p>
+                <h4 className="font-semibold text-gray-900">{preset.name}</h4>
+                <p className="text-sm text-gray-500 mt-1">{preset.description}</p>
                 <div className="flex items-center gap-2 mt-3 text-xs">
-                  <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded">{preset.chartType}</span>
-                  <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded">{preset.metric}</span>
-                  <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded">{preset.dimension}</span>
+                  <span className="px-2 py-1 bg-gray-100/80 rounded">{preset.chartType}</span>
+                  <span className="px-2 py-1 bg-gray-100/80 rounded">{preset.metric}</span>
+                  <span className="px-2 py-1 bg-gray-100/80 rounded">{preset.dimension}</span>
                 </div>
               </button>
             ))}
@@ -277,7 +277,7 @@ export default function ChartStudio({ onSaveConfig }: ChartStudioProps) {
           value={chartName}
           onChange={(e) => setChartName(e.target.value)}
           placeholder="Enter chart name..."
-          className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+          className="flex-1 px-4 py-2 border border-gray-300 rounded-lg bg-white/60 backdrop-blur-sm text-gray-900 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
         />
         <button
           onClick={handleSave}
@@ -289,7 +289,7 @@ export default function ChartStudio({ onSaveConfig }: ChartStudioProps) {
         </button>
         <button
           onClick={handleReset}
-          className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors flex items-center gap-2"
+          className="px-4 py-2 bg-white/60 backdrop-blur-lg border border-white/20 text-gray-700 rounded-lg hover:bg-white/80 transition-all flex items-center gap-2"
         >
           <RotateCcw className="w-4 h-4" />
           Reset
@@ -331,11 +331,11 @@ export default function ChartStudio({ onSaveConfig }: ChartStudioProps) {
 
         {/* Chart Preview */}
         <div className="lg:col-span-2">
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 sticky top-6">
+          <div className="bg-white/60 backdrop-blur-xl border border-white/20 rounded-xl shadow-lg p-6 sticky top-6">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Preview</h3>
+              <h3 className="text-lg font-semibold text-gray-900">Preview</h3>
               {loading && (
-                <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400">
+                <div className="flex items-center gap-2 text-gray-500">
                   <Loader2 className="w-4 h-4 animate-spin" />
                   <span className="text-sm">Loading...</span>
                 </div>
@@ -343,7 +343,7 @@ export default function ChartStudio({ onSaveConfig }: ChartStudioProps) {
             </div>
 
             {error && (
-              <div className="mb-4 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-700 dark:text-red-300 text-sm">
+              <div className="mb-4 p-4 bg-red-50/80 backdrop-blur-sm border border-red-200 rounded-lg text-red-700 text-sm">
                 {error}
               </div>
             )}
@@ -368,7 +368,7 @@ export default function ChartStudio({ onSaveConfig }: ChartStudioProps) {
             )}
 
             {!loading && !chartData && !error && (
-              <div className="text-center py-12 text-gray-500 dark:text-gray-400">
+              <div className="text-center py-12 text-gray-500">
                 <BarChart3 className="w-12 h-12 mx-auto mb-4 opacity-50" />
                 <p>Configure your chart to see preview</p>
               </div>
@@ -379,13 +379,13 @@ export default function ChartStudio({ onSaveConfig }: ChartStudioProps) {
 
       {/* Saved Charts Modal */}
       {showSavedCharts && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-4xl w-full max-h-[80vh] overflow-hidden">
-            <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
-              <h3 className="text-xl font-semibold text-gray-900 dark:text-white">Saved Charts</h3>
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white/70 backdrop-blur-xl border border-white/30 rounded-xl shadow-xl max-w-4xl w-full max-h-[80vh] overflow-hidden">
+            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+              <h3 className="text-xl font-semibold text-gray-900">Saved Charts</h3>
               <button
                 onClick={() => setShowSavedCharts(false)}
-                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                className="text-gray-400 hover:text-gray-600"
               >
                 <X className="w-6 h-6" />
               </button>

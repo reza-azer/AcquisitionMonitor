@@ -4,6 +4,7 @@ import React from 'react';
 import { ChartType } from '@/lib/chart-presets';
 import { getChartTypeDisplayName } from '@/lib/chart-utils';
 import { BarChart3, TrendingUp, PieChart, Layers } from 'lucide-react';
+import CollapsiblePanel from './CollapsiblePanel';
 
 interface ChartTypeSelectorProps {
   chartType: ChartType;
@@ -50,8 +51,10 @@ const CHART_OPTIONS: { type: ChartType; icon: React.ReactNode; description: stri
 
 export default function ChartTypeSelector({ chartType, onChange }: ChartTypeSelectorProps) {
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Chart Type</h3>
+    <CollapsiblePanel
+      title="Chart Type"
+      icon={<BarChart3 className="w-5 h-5 text-gray-500" />}
+    >
       <div className="grid grid-cols-2 gap-3">
         {CHART_OPTIONS.map(option => (
           <button
@@ -59,30 +62,30 @@ export default function ChartTypeSelector({ chartType, onChange }: ChartTypeSele
             onClick={() => onChange(option.type)}
             className={`p-4 rounded-lg border-2 transition-all text-left ${
               chartType === option.type
-                ? 'border-purple-600 bg-purple-50 dark:bg-purple-900/20'
-                : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+                ? 'border-purple-500 bg-purple-50/60 backdrop-blur-sm'
+                : 'border-gray-200 hover:border-gray-300'
             }`}
           >
             <div className={`mb-2 ${
               chartType === option.type
-                ? 'text-purple-600 dark:text-purple-400'
-                : 'text-gray-500 dark:text-gray-400'
+                ? 'text-purple-600'
+                : 'text-gray-500'
             }`}>
               {option.icon}
             </div>
             <div className={`font-medium text-sm ${
               chartType === option.type
-                ? 'text-purple-700 dark:text-purple-300'
-                : 'text-gray-700 dark:text-gray-200'
+                ? 'text-purple-700'
+                : 'text-gray-700'
             }`}>
               {getChartTypeDisplayName(option.type)}
             </div>
-            <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+            <div className="text-xs text-gray-500 mt-1">
               {option.description}
             </div>
           </button>
         ))}
       </div>
-    </div>
+    </CollapsiblePanel>
   );
 }

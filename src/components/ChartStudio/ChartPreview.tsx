@@ -71,22 +71,22 @@ export default function ChartPreview({
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       return (
-        <div className="bg-white dark:bg-gray-800 p-3 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700">
-          <p className="font-medium text-gray-900 dark:text-white mb-2">{label}</p>
+        <div className="bg-white/80 backdrop-blur-xl p-3 rounded-lg shadow-lg border border-white/30">
+          <p className="font-medium text-gray-900 mb-2">{label}</p>
           {payload.map((entry: any, index: number) => (
             <div key={index} className="flex items-center gap-2 text-sm">
               <div
                 className="w-3 h-3 rounded-full"
                 style={{ backgroundColor: entry.color || entry.fill }}
               />
-              <span className="text-gray-600 dark:text-gray-300">{entry.name}</span>
-              <span className="font-semibold text-gray-900 dark:text-white">
+              <span className="text-gray-600">{entry.name}</span>
+              <span className="font-semibold text-gray-900">
                 {formatter(entry.value)}
               </span>
             </div>
           ))}
           {advanced.showComparison && payload[0]?.payload?.growth !== undefined && (
-            <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
+            <div className="mt-2 pt-2 border-t border-gray-200">
               <div className={`text-sm font-medium ${
                 payload[0].payload.growth >= 0 ? 'text-green-600' : 'text-red-600'
               }`}>

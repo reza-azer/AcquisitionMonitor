@@ -92,21 +92,21 @@ export default function SavedCharts({ onLoadConfig, onClose }: SavedChartsProps)
 
   const getChartTypeBadgeColor = (type: string) => {
     const colors: Record<string, string> = {
-      bar: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300',
-      line: 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300',
-      area: 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300',
-      pie: 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300',
-      donut: 'bg-pink-100 dark:bg-pink-900/30 text-pink-700 dark:text-pink-300',
-      combo: 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300',
-      horizontal_bar: 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300',
+      bar: 'bg-blue-100 text-blue-700',
+      line: 'bg-green-100 text-green-700',
+      area: 'bg-purple-100 text-purple-700',
+      pie: 'bg-yellow-100 text-yellow-700',
+      donut: 'bg-pink-100 text-pink-700',
+      combo: 'bg-indigo-100 text-indigo-700',
+      horizontal_bar: 'bg-orange-100 text-orange-700',
     };
-    return colors[type] || 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200';
+    return colors[type] || 'bg-gray-100 text-gray-700';
   };
 
   return (
     <div className="flex flex-col h-full">
       {/* Filter Tabs */}
-      <div className="flex gap-2 p-6 border-b border-gray-200 dark:border-gray-700">
+      <div className="flex gap-2 p-6 border-b border-gray-200">
         {[
           { value: 'all', label: 'All Charts' },
           { value: 'templates', label: 'Templates' },
@@ -119,7 +119,7 @@ export default function SavedCharts({ onLoadConfig, onClose }: SavedChartsProps)
             className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
               filter === tab.value
                 ? 'bg-purple-600 text-white'
-                : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600'
+                : 'bg-white/40 backdrop-blur-sm text-gray-700 hover:bg-white/60'
             }`}
           >
             {tab.label}
@@ -130,11 +130,11 @@ export default function SavedCharts({ onLoadConfig, onClose }: SavedChartsProps)
       {/* Charts List */}
       <div className="flex-1 overflow-y-auto p-6">
         {loading ? (
-          <div className="text-center py-12 text-gray-500 dark:text-gray-400">
+          <div className="text-center py-12 text-gray-500">
             Loading...
           </div>
         ) : charts.length === 0 ? (
-          <div className="text-center py-12 text-gray-500 dark:text-gray-400">
+          <div className="text-center py-12 text-gray-500">
             <Clock className="w-12 h-12 mx-auto mb-4 opacity-50" />
             <p>No saved charts found</p>
           </div>
@@ -143,21 +143,21 @@ export default function SavedCharts({ onLoadConfig, onClose }: SavedChartsProps)
             {charts.map(chart => (
               <div
                 key={chart.id}
-                className="p-4 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-purple-500 dark:hover:border-purple-400 transition-colors bg-white dark:bg-gray-800"
+                className="p-4 rounded-lg border border-gray-200 hover:border-purple-400 transition-colors bg-white/60 backdrop-blur-sm"
               >
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-2">
-                      <h4 className="font-semibold text-gray-900 dark:text-white">
+                      <h4 className="font-semibold text-gray-900">
                         {chart.name}
                       </h4>
                       {chart.is_template && (
-                        <span className="px-2 py-0.5 text-xs font-medium bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded">
+                        <span className="px-2 py-0.5 text-xs font-medium bg-purple-100 text-purple-700 rounded">
                           Template
                         </span>
                       )}
                       {chart.is_public && (
-                        <span className="px-2 py-0.5 text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded">
+                        <span className="px-2 py-0.5 text-xs font-medium bg-green-100 text-green-700 rounded">
                           Public
                         </span>
                       )}
@@ -167,18 +167,18 @@ export default function SavedCharts({ onLoadConfig, onClose }: SavedChartsProps)
                       <span className={`px-2 py-1 text-xs font-medium rounded ${getChartTypeBadgeColor(chart.chart_type)}`}>
                         {chart.chart_type}
                       </span>
-                      <span className="text-xs text-gray-500 dark:text-gray-400">
+                      <span className="text-xs text-gray-500">
                         {chart.metric} / {chart.dimension}
                       </span>
                     </div>
 
                     {chart.description && (
-                      <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">
+                      <p className="text-sm text-gray-500 mb-2">
                         {chart.description}
                       </p>
                     )}
 
-                    <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
+                    <div className="flex items-center gap-4 text-xs text-gray-500">
                       {chart.user_name && (
                         <div className="flex items-center gap-1">
                           <User className="w-3 h-3" />
@@ -195,14 +195,14 @@ export default function SavedCharts({ onLoadConfig, onClose }: SavedChartsProps)
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => handleLoad(chart)}
-                      className="px-3 py-1.5 text-sm font-medium text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-lg transition-colors"
+                      className="px-3 py-1.5 text-sm font-medium text-purple-600 hover:bg-purple-50/50 rounded-lg transition-colors"
                     >
                       Load
                     </button>
                     {!chart.is_template && (
                       <button
                         onClick={() => handleDelete(chart.id)}
-                        className="p-1.5 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                        className="p-1.5 text-red-600 hover:bg-red-50/50 rounded-lg transition-colors"
                         title="Delete"
                       >
                         <Trash2 className="w-4 h-4" />

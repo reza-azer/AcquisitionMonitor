@@ -63,18 +63,18 @@ export default function ExportMenu({ chartData, chartName }: ExportMenuProps) {
   };
 
   return (
-    <div className="flex items-center justify-center gap-3 mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
-      <span className="text-sm text-gray-500 dark:text-gray-400">Export:</span>
+    <div className="flex items-center justify-center gap-3 mt-6 pt-6 border-t border-gray-200">
+      <span className="text-sm text-gray-500">Export:</span>
       <button
         onClick={handleExportCSV}
-        className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+        className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white/60 backdrop-blur-lg border border-white/20 rounded-lg hover:bg-white/80 transition-all"
       >
         <FileDown className="w-4 h-4" />
         CSV
       </button>
       <button
         onClick={handleExportPNG}
-        className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+        className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white/60 backdrop-blur-lg border border-white/20 rounded-lg hover:bg-white/80 transition-all"
       >
         <Image className="w-4 h-4" />
         PNG
