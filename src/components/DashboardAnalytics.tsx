@@ -5,7 +5,7 @@ import {
   Trophy, Users, Target, Medal, Star,
   CheckCircle2, BarChart3,
   Activity, Crown, Clock,
-  Calendar, FileText, XCircle, AlertCircle
+  Calendar, FileText, XCircle
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from 'recharts';
 import GridLoader from './GridLoader';
@@ -104,31 +104,6 @@ interface AttendanceDetail {
   notes: string | null;
 }
 
-// Chart data interfaces
-interface DailyTeamPerformance {
-  date: string;
-  day: number;
-  [teamName: string]: number | string;
-}
-
-interface DailyProductPerformance {
-  date: string;
-  day: number;
-  productKey: string;
-  productName: string;
-  category: string;
-  quantity: number;
-  nominal?: number;
-  points: number;
-}
-
-interface DailyActivity {
-  date: string;
-  day: number;
-  count: number;
-  totalPoints: number;
-}
-
 export default function DashboardAnalytics() {
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -145,13 +120,7 @@ export default function DashboardAnalytics() {
   const [attendanceStatusFilter, setAttendanceStatusFilter] = useState<'all' | 'late' | 'leave' | 'alpha'>('all');
 
   // Analytics view selector
-  const [analyticsView, setAnalyticsView] = useState<'overview' | 'attendance' | 'charts' | 'chartStudio'>('overview');
-
-  // Chart-specific state
-  const [selectedProductFilter, setSelectedProductFilter] = useState<string>('all');
-  const [dailyTeamData, setDailyTeamData] = useState<DailyTeamPerformance[]>([]);
-  const [dailyProductData, setDailyProductData] = useState<DailyProductPerformance[]>([]);
-  const [dailyActivityData, setDailyActivityData] = useState<DailyActivity[]>([]);
+  const [analyticsView, setAnalyticsView] = useState<'overview' | 'attendance' | 'chartStudio'>('overview');
 
   // Import ChartStudio dynamically
   const [ChartStudioComponent, setChartStudioComponent] = React.useState<React.ComponentType<any> | null>(null);
@@ -176,32 +145,6 @@ export default function DashboardAnalytics() {
   useEffect(() => {
     fetchAnalytics();
   }, [reportType, startDate, endDate, selectedMonth, selectedYear]);
-
-  // Fetch daily chart data when charts view is selected
-  useEffect(() => {
-    if (analyticsView === 'charts' && data) {
-      fetchDailyChartData();
-    }
-  }, [analyticsView, selectedMonth, selectedYear, data]);
-
-  const fetchDailyChartData = async () => {
-    try {
-      const monthStr = String(parseInt(selectedMonth)).padStart(2, '0');
-      const startDate = `${selectedYear}-${monthStr}-01`;
-      const lastDay = new Date(parseInt(selectedYear), parseInt(selectedMonth), 0).getDate();
-      const endDate = `${selectedYear}-${monthStr}-${String(lastDay).padStart(2, '0')}`;
-
-      const response = await fetch(`/api/analytics/daily?startDate=${startDate}&endDate=${endDate}`);
-      if (!response.ok) throw new Error('Failed to fetch daily data');
-      const result = await response.json();
-
-      setDailyTeamData(result.teamPerformance || []);
-      setDailyProductData(result.productPerformance || []);
-      setDailyActivityData(result.dailyActivity || []);
-    } catch (err: any) {
-      console.error('Daily chart data fetch error:', err);
-    }
-  };
 
   const fetchAnalytics = async () => {
     setLoading(true);
@@ -449,16 +392,6 @@ export default function DashboardAnalytics() {
             }`}
           >
             <BarChart3 className="w-4 h-4" /> Overview
-          </button>
-          <button
-            onClick={() => setAnalyticsView('charts')}
-            className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-[20px] text-sm font-black transition-all ${
-              analyticsView === 'charts'
-                ? 'bg-blue-600 text-white shadow-md'
-                : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
-            }`}
-          >
-            <Activity className="w-4 h-4" /> Grafik
           </button>
           <button
             onClick={() => setAnalyticsView('chartStudio')}
@@ -856,19 +789,6 @@ export default function DashboardAnalytics() {
           </div>
         </div>
       </div>
-      )}
-
-      {/* Charts View */}
-      {analyticsView === 'charts' && (
-        <div className="flex flex-col items-center justify-center py-20">
-          <div className="w-32 h-32 rounded-full bg-slate-100 flex items-center justify-center mb-8">
-            <Activity className="w-16 h-16 text-slate-300" />
-          </div>
-          <h2 className="text-3xl font-black text-slate-800 mb-3 text-center">Chart Feature Under Development</h2>
-          <p className="text-lg font-bold text-slate-500 text-center max-w-md">
-            Stay tuned! We're working on bringing you some amazing charts and visualizations. 🚀
-          </p>
-        </div>
       )}
 
       {/* Chart Studio View */}

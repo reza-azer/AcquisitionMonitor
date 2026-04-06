@@ -8,15 +8,17 @@ interface MenuItem {
   icon: React.ReactNode;
   gradientFrom: string;
   gradientTo: string;
+  iconColor: string;
+  bgColor: string;
   value: string;
 }
 
 const menuItems: MenuItem[] = [
-  { title: 'Dashboard', icon: <BarChart3 />, gradientFrom: '#003d79', gradientTo: '#3b82f6', value: 'dashboard' },
-  { title: 'Analytics', icon: <Activity />, gradientFrom: '#8b5cf6', gradientTo: '#a855f7', value: 'analytics' },
-  { title: 'Input', icon: <Edit2 />, gradientFrom: '#10b981', gradientTo: '#34d399', value: 'input' },
-  { title: 'Backup', icon: <Database />, gradientFrom: '#f59e0b', gradientTo: '#fbbf24', value: 'backup' },
-  { title: 'Manage', icon: <Settings />, gradientFrom: '#ef4444', gradientTo: '#f87171', value: 'manage' }
+  { title: 'Dashboard', icon: <BarChart3 strokeWidth={2.5} className="w-3 h-3 sm:w-3.5 sm:h-3.5" />, gradientFrom: '#003d79', gradientTo: '#3b82f6', iconColor: '#003d79', bgColor: '#e8f0fe', value: 'dashboard' },
+  { title: 'Analytics', icon: <Activity strokeWidth={2.5} className="w-3 h-3 sm:w-3.5 sm:h-3.5" />, gradientFrom: '#8b5cf6', gradientTo: '#a855f7', iconColor: '#8b5cf6', bgColor: '#f0e8fe', value: 'analytics' },
+  { title: 'Edit', icon: <Edit2 strokeWidth={2.5} className="w-3 h-3 sm:w-3.5 sm:h-3.5" />, gradientFrom: '#10b981', gradientTo: '#34d399', iconColor: '#10b981', bgColor: '#e8fef4', value: 'input' },
+  { title: 'Backup', icon: <Database strokeWidth={2.5} className="w-3 h-3 sm:w-3.5 sm:h-3.5" />, gradientFrom: '#f59e0b', gradientTo: '#fbbf24', iconColor: '#f59e0b', bgColor: '#fef5e8', value: 'backup' },
+  { title: 'Manage', icon: <Settings strokeWidth={2.5} className="w-3 h-3 sm:w-3.5 sm:h-3.5" />, gradientFrom: '#ef4444', gradientTo: '#f87171', iconColor: '#ef4444', bgColor: '#fee8e8', value: 'manage' }
 ];
 
 interface GradientMenuProps {
@@ -28,15 +30,20 @@ export default function GradientMenu({ activeTab, onTabChange }: GradientMenuPro
   return (
     <div className="flex justify-end items-center w-full">
       <ul className="hidden md:flex gap-2 sm:gap-3">
-        {menuItems.map(({ title, icon, gradientFrom, gradientTo, value }, idx) => (
+        {menuItems.map(({ title, icon, gradientFrom, gradientTo, iconColor, bgColor, value }, idx) => (
           <li
             key={value}
-            style={{ '--gradient-from': gradientFrom, '--gradient-to': gradientTo } as React.CSSProperties}
+            style={{
+              '--gradient-from': gradientFrom,
+              '--gradient-to': gradientTo,
+              '--bg-color': bgColor,
+              backgroundColor: activeTab === value ? 'transparent' : bgColor
+            } as React.CSSProperties}
             onClick={() => onTabChange(value)}
             className={`relative w-[32px] h-[32px] sm:w-[36px] sm:h-[36px] rounded-full flex items-center justify-center transition-all duration-500 cursor-pointer backdrop-blur-md ${
-              activeTab === value 
-                ? 'w-[100px] sm:w-[120px] shadow-none' 
-                : 'bg-white/20 backdrop-blur-md shadow-lg hover:w-[100px] sm:hover:w-[120px] hover:shadow-none'
+              activeTab === value
+                ? 'w-[100px] sm:w-[120px] shadow-none'
+                : 'shadow-lg hover:w-[100px] sm:hover:w-[120px] hover:shadow-none'
             } group border border-white/10`}
           >
             {/* Gradient background on hover/active */}
@@ -54,12 +61,12 @@ export default function GradientMenu({ activeTab, onTabChange }: GradientMenuPro
             ></span>
 
             {/* Icon */}
-            <span 
+            <span
               className={`relative z-10 transition-all duration-500 ${
                 activeTab === value ? 'scale-0' : 'scale-100 group-hover:scale-0'
               }`}
             >
-              <span className={`text-sm sm:text-base ${activeTab === value ? 'text-white' : 'text-white/90'}`}>
+              <span style={{ color: activeTab === value ? '#ffffff' : iconColor }}>
                 {icon}
               </span>
             </span>
