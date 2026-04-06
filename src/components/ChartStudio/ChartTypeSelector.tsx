@@ -15,37 +15,37 @@ const CHART_OPTIONS: { type: ChartType; icon: React.ReactNode; description: stri
   {
     type: 'bar',
     icon: <BarChart3 className="w-6 h-6" />,
-    description: 'Compare values across categories',
+    description: 'Bandingkan nilai antar kategori',
   },
   {
     type: 'line',
     icon: <TrendingUp className="w-6 h-6" />,
-    description: 'Show trends over time',
+    description: 'Tampilkan tren sepanjang waktu',
   },
   {
     type: 'area',
     icon: <Layers className="w-6 h-6" />,
-    description: 'Display cumulative trends',
+    description: 'Tampilkan tren kumulatif',
   },
   {
     type: 'pie',
     icon: <PieChart className="w-6 h-6" />,
-    description: 'Show composition percentages',
+    description: 'Tampilkan komposisi persentase',
   },
   {
     type: 'donut',
     icon: <PieChart className="w-6 h-6" />,
-    description: 'Modern pie chart variant',
+    description: 'Varian diagram lingkaran modern',
   },
   {
     type: 'combo',
     icon: <BarChart3 className="w-6 h-6" />,
-    description: 'Combine multiple chart types',
+    description: 'Gabungkan beberapa jenis grafik',
   },
   {
     type: 'horizontal_bar',
     icon: <BarChart3 className="w-6 h-6" />,
-    description: 'Horizontal bar comparison',
+    description: 'Perbandingan batang horizontal',
   },
 ];
 

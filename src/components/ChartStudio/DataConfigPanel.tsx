@@ -17,22 +17,22 @@ const METRIC_OPTIONS: { value: ChartMetric; icon: React.ReactNode; description: 
   {
     value: 'points',
     icon: <Target className="w-5 h-5" />,
-    description: 'Total points earned',
+    description: 'Total poin yang diperoleh',
   },
   {
     value: 'quantity',
     icon: <Package className="w-5 h-5" />,
-    description: 'Number of acquisitions',
+    description: 'Jumlah akuisisi',
   },
   {
     value: 'attendance_rate',
     icon: <Users className="w-5 h-5" />,
-    description: 'Attendance percentage',
+    description: 'Persentase kehadiran',
   },
   {
     value: 'nominal',
     icon: <Tag className="w-5 h-5" />,
-    description: 'Nominal value (IDR)',
+    description: 'Nilai nominal (IDR)',
   },
 ];
 
@@ -40,32 +40,32 @@ const DIMENSION_OPTIONS: { value: ChartDimension; icon: React.ReactNode; descrip
   {
     value: 'team',
     icon: <Users className="w-5 h-5" />,
-    description: 'Group by team',
+    description: 'Kelompokkan berdasarkan tim',
   },
   {
     value: 'member',
     icon: <Users className="w-5 h-5" />,
-    description: 'Group by individual',
+    description: 'Kelompokkan berdasarkan individu',
   },
   {
     value: 'product',
     icon: <Package className="w-5 h-5" />,
-    description: 'Group by product',
+    description: 'Kelompokkan berdasarkan produk',
   },
   {
     value: 'category',
     icon: <Tag className="w-5 h-5" />,
-    description: 'Group by category',
+    description: 'Kelompokkan berdasarkan kategori',
   },
   {
     value: 'week',
     icon: <Clock className="w-5 h-5" />,
-    description: 'Group by week',
+    description: 'Kelompokkan berdasarkan minggu',
   },
   {
     value: 'date',
     icon: <Calendar className="w-5 h-5" />,
-    description: 'Group by date',
+    description: 'Kelompokkan berdasarkan tanggal',
   },
 ];
 
@@ -83,7 +83,7 @@ export default function DataConfigPanel({
       {/* Metric Selection */}
       <div className="mb-6">
         <label className="block text-sm font-medium text-gray-700 mb-3">
-          Metric (What to measure)
+          Metrik (Apa yang diukur)
         </label>
         <div className="grid grid-cols-2 gap-2">
           {METRIC_OPTIONS.map(option => (
@@ -123,7 +123,7 @@ export default function DataConfigPanel({
       {/* Dimension Selection */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-3">
-          Dimension (How to group)
+          Dimensi (Cara mengelompokkan)
         </label>
         <div className="grid grid-cols-2 gap-2">
           {DIMENSION_OPTIONS.map(option => (

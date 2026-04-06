@@ -90,7 +90,7 @@ export default function ChartPreview({
               <div className={`text-sm font-medium ${
                 payload[0].payload.growth >= 0 ? 'text-green-600' : 'text-red-600'
               }`}>
-                {payload[0].payload.growth >= 0 ? '↑' : '↓'} {Math.abs(payload[0].payload.growth).toFixed(1)}% vs previous
+                {payload[0].payload.growth >= 0 ? '↑' : '↓'} {Math.abs(payload[0].payload.growth).toFixed(1)}% vs sebelumnya
               </div>
             </div>
           )}
@@ -403,7 +403,7 @@ export default function ChartPreview({
         </h4>
         {advanced.showComparison && (
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-            Growth rates shown vs previous period
+            Tingkat pertumbuhan vs periode sebelumnya
           </p>
         )}
       </div>
@@ -423,19 +423,19 @@ export default function ChartPreview({
           </div>
         </div>
         <div className="text-center p-3 bg-purple-50/60 backdrop-blur-sm rounded-lg">
-          <div className="text-xs text-gray-600">Average</div>
+          <div className="text-xs text-gray-600">Rata-rata</div>
           <div className="text-lg font-bold text-purple-700">
             {formatter(data.reduce((sum, d) => sum + d.value, 0) / data.length)}
           </div>
         </div>
         <div className="text-center p-3 bg-green-50/60 backdrop-blur-sm rounded-lg">
-          <div className="text-xs text-gray-600">Highest</div>
+          <div className="text-xs text-gray-600">Tertinggi</div>
           <div className="text-lg font-bold text-green-600">
             {formatter(Math.max(...data.map(d => d.value)))}
           </div>
         </div>
         <div className="text-center p-3 bg-red-50/60 backdrop-blur-sm rounded-lg">
-          <div className="text-xs text-gray-600">Lowest</div>
+          <div className="text-xs text-gray-600">Terendah</div>
           <div className="text-lg font-bold text-red-600">
             {formatter(Math.min(...data.map(d => d.value)))}
           </div>

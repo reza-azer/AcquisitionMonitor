@@ -132,7 +132,7 @@ export default function ChartStudio({ onSaveConfig }: ChartStudioProps) {
   // Save chart configuration
   const handleSave = useCallback(async () => {
     if (!chartName.trim()) {
-      setError('Please enter a chart name');
+      setError('Harap masukkan nama grafik');
       return;
     }
 
@@ -242,7 +242,7 @@ export default function ChartStudio({ onSaveConfig }: ChartStudioProps) {
       {showPresets && (
         <div className="bg-white/60 backdrop-blur-xl border border-white/20 rounded-xl shadow-lg p-6">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-gray-900">Quick Start Templates</h3>
+            <h3 className="text-lg font-semibold text-gray-900">Template Cepat</h3>
             <button
               onClick={() => setShowPresets(false)}
               className="text-gray-400 hover:text-gray-600"
@@ -276,7 +276,7 @@ export default function ChartStudio({ onSaveConfig }: ChartStudioProps) {
           type="text"
           value={chartName}
           onChange={(e) => setChartName(e.target.value)}
-          placeholder="Enter chart name..."
+          placeholder="Masukkan nama grafik..."
           className="flex-1 px-4 py-2 border border-gray-300 rounded-lg bg-white/60 backdrop-blur-sm text-gray-900 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
         />
         <button
@@ -285,7 +285,7 @@ export default function ChartStudio({ onSaveConfig }: ChartStudioProps) {
           className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
         >
           <Save className="w-4 h-4" />
-          Save
+          Simpan
         </button>
         <button
           onClick={handleReset}
@@ -333,11 +333,11 @@ export default function ChartStudio({ onSaveConfig }: ChartStudioProps) {
         <div className="lg:col-span-2">
           <div className="bg-white/60 backdrop-blur-xl border border-white/20 rounded-xl shadow-lg p-6 sticky top-6">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">Preview</h3>
+              <h3 className="text-lg font-semibold text-gray-900">Pratinjau</h3>
               {loading && (
                 <div className="flex items-center gap-2 text-gray-500">
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  <span className="text-sm">Loading...</span>
+                  <span className="text-sm">Memuat...</span>
                 </div>
               )}
             </div>
@@ -362,7 +362,7 @@ export default function ChartStudio({ onSaveConfig }: ChartStudioProps) {
 
                 <ExportMenu
                   chartData={chartData.chartData}
-                  chartName={chartName || 'Untitled Chart'}
+                  chartName={chartName || 'Grafik Tanpa Judul'}
                 />
               </>
             )}
@@ -370,7 +370,7 @@ export default function ChartStudio({ onSaveConfig }: ChartStudioProps) {
             {!loading && !chartData && !error && (
               <div className="text-center py-12 text-gray-500">
                 <BarChart3 className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                <p>Configure your chart to see preview</p>
+                <p>Konfigurasi grafik Anda untuk melihat pratinjau</p>
               </div>
             )}
           </div>
@@ -382,7 +382,7 @@ export default function ChartStudio({ onSaveConfig }: ChartStudioProps) {
         <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white/70 backdrop-blur-xl border border-white/30 rounded-xl shadow-xl max-w-4xl w-full max-h-[80vh] overflow-hidden">
             <div className="flex items-center justify-between p-6 border-b border-gray-200">
-              <h3 className="text-xl font-semibold text-gray-900">Saved Charts</h3>
+              <h3 className="text-xl font-semibold text-gray-900">Grafik Tersimpan</h3>
               <button
                 onClick={() => setShowSavedCharts(false)}
                 className="text-gray-400 hover:text-gray-600"

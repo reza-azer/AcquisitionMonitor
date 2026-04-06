@@ -58,13 +58,13 @@ export default function ExportMenu({ chartData, chartName }: ExportMenuProps) {
       img.src = url;
     } catch (error) {
       console.error('Error exporting chart:', error);
-      alert('Failed to export chart as PNG');
+      alert('Gagal mengekspor grafik sebagai PNG');
     }
   };
 
   return (
     <div className="flex items-center justify-center gap-3 mt-6 pt-6 border-t border-gray-200">
-      <span className="text-sm text-gray-500">Export:</span>
+      <span className="text-sm text-gray-500">Ekspor:</span>
       <button
         onClick={handleExportCSV}
         className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white/60 backdrop-blur-lg border border-white/20 rounded-lg hover:bg-white/80 transition-all"

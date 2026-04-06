@@ -51,13 +51,13 @@ export function formatPercentage(value: number, decimals = 0): string {
  */
 export function getChartTypeDisplayName(type: ChartType): string {
   const names: Record<ChartType, string> = {
-    bar: 'Bar Chart',
-    line: 'Line Chart',
-    area: 'Area Chart',
-    pie: 'Pie Chart',
-    donut: 'Donut Chart',
-    combo: 'Combo Chart',
-    horizontal_bar: 'Horizontal Bar',
+    bar: 'Diagram Batang',
+    line: 'Diagram Garis',
+    area: 'Diagram Area',
+    pie: 'Diagram Lingkaran',
+    donut: 'Diagram Donat',
+    combo: 'Diagram Kombinasi',
+    horizontal_bar: 'Batang Horizontal',
   };
   return names[type];
 }
@@ -67,9 +67,9 @@ export function getChartTypeDisplayName(type: ChartType): string {
  */
 export function getMetricDisplayName(metric: ChartMetric): string {
   const names: Record<ChartMetric, string> = {
-    points: 'Points',
-    quantity: 'Quantity',
-    attendance_rate: 'Attendance Rate',
+    points: 'Poin',
+    quantity: 'Jumlah',
+    attendance_rate: 'Tingkat Kehadiran',
     nominal: 'Nominal (IDR)',
   };
   return names[metric];
@@ -80,12 +80,12 @@ export function getMetricDisplayName(metric: ChartMetric): string {
  */
 export function getDimensionDisplayName(dimension: ChartDimension): string {
   const names: Record<ChartDimension, string> = {
-    team: 'By Team',
-    member: 'By Member',
-    product: 'By Product',
-    category: 'By Category',
-    week: 'By Week',
-    date: 'By Date',
+    team: 'Menurut Tim',
+    member: 'Menurut Anggota',
+    product: 'Menurut Produk',
+    category: 'Menurut Kategori',
+    week: 'Menurut Minggu',
+    date: 'Menurut Tanggal',
   };
   return names[dimension];
 }

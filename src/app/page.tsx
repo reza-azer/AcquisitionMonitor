@@ -2167,7 +2167,7 @@ export default function App() {
             <ul className="space-y-2 mt-4">
               <li className="flex items-start gap-2">
                 <span className="text-green-500 mt-1">✓</span>
-                <span><strong>Fitur Baru:</strong> Integrasi absensi, fleksibilitas produk, animasi, dan mikrointeraksi dari GSAP dan framer</span>
+                <span><strong>Fitur Baru:</strong> Integrasi absensi, fleksibilitas produk, animasi, Chart Studio, dan mikrointeraksi dari GSAP dan framer</span>
               </li>
               <li className="flex items-start gap-2">
                 <span className="text-blue-500 mt-1">🔧</span>
@@ -2179,7 +2179,7 @@ export default function App() {
               </li>
               <li className="flex items-start gap-2">
                 <span className="text-purple-500 mt-1">💎</span>
-                <span><strong>On going:</strong>PDF & Excel Report Feature, Mobile Optimization</span>
+                <span><strong>On going:</strong> PDF & Excel Report Feature, Mobile Optimization</span>
               </li>
             </ul>
           </div>

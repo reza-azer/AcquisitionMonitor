@@ -143,9 +143,11 @@ export default function FilterPanel({ filters, onChange }: FilterPanelProps) {
   const selectAllWeeks = () => onChange('weeks', [1, 2, 3, 4]);
   const clearAllWeeks = () => onChange('weeks', []);
 
+  const weekLabel = (week: number) => `Minggu ${week}`;
+
   return (
     <CollapsiblePanel
-      title="Filters"
+      title="Filter"
       icon={<Filter className="w-5 h-5 text-gray-500" />}
       defaultExpanded={true}
     >
@@ -154,20 +156,20 @@ export default function FilterPanel({ filters, onChange }: FilterPanelProps) {
         <div>
           <div className="flex items-center justify-between mb-3">
             <label className="block text-sm font-medium text-gray-700">
-              Weeks
+              Minggu
             </label>
             <div className="flex gap-2 text-xs">
               <button
                 onClick={selectAllWeeks}
                 className="text-blue-600 hover:underline"
               >
-                Select All
+                Pilih Semua
               </button>
               <button
                 onClick={clearAllWeeks}
                 className="text-red-600 hover:underline"
               >
-                Clear
+                Hapus
               </button>
             </div>
           </div>
@@ -182,7 +184,7 @@ export default function FilterPanel({ filters, onChange }: FilterPanelProps) {
                     : 'bg-white/40 backdrop-blur-sm text-gray-700 hover:bg-white/60'
                 }`}
               >
-                Week {week}
+                {weekLabel(week)}
               </button>
             ))}
           </div>
@@ -191,11 +193,11 @@ export default function FilterPanel({ filters, onChange }: FilterPanelProps) {
         {/* Team Filter */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-3">
-            Teams
+            Tim
           </label>
           <div className="space-y-2 max-h-40 overflow-y-auto">
             {loading ? (
-              <div className="text-sm text-gray-500">Loading...</div>
+              <div className="text-sm text-gray-500">Memuat...</div>
             ) : (
               teams.map(team => (
                 <label
@@ -222,11 +224,11 @@ export default function FilterPanel({ filters, onChange }: FilterPanelProps) {
         {/* Member Filter */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-3">
-            Members
+            Anggota
           </label>
           <div className="space-y-2 max-h-48 overflow-y-auto">
             {loading ? (
-              <div className="text-sm text-gray-500">Loading...</div>
+              <div className="text-sm text-gray-500">Memuat...</div>
             ) : (
               <>
                 {/* Show all members if no team selected, or filter by selected teams */}
@@ -260,7 +262,7 @@ export default function FilterPanel({ filters, onChange }: FilterPanelProps) {
         {/* Category Filter */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-3">
-            Categories
+            Kategori
           </label>
           <div className="flex flex-wrap gap-2">
             {categories.map(category => (
@@ -282,11 +284,11 @@ export default function FilterPanel({ filters, onChange }: FilterPanelProps) {
         {/* Product Filter */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-3">
-            Products
+            Produk
           </label>
           <div className="space-y-2 max-h-40 overflow-y-auto">
             {loading ? (
-              <div className="text-sm text-gray-500">Loading...</div>
+              <div className="text-sm text-gray-500">Memuat...</div>
             ) : (
               products.map((product: Product) => (
                 <label
@@ -312,7 +314,7 @@ export default function FilterPanel({ filters, onChange }: FilterPanelProps) {
         {/* Date Range Filter */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-3">
-            Date Range
+            Rentang Tanggal
           </label>
           <div className="flex items-center gap-3">
             <div className="flex-1">
@@ -322,7 +324,7 @@ export default function FilterPanel({ filters, onChange }: FilterPanelProps) {
                 onChange={(e) => handleDateRangeChange('start', e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white/60 backdrop-blur-sm text-gray-900 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
-              <span className="text-xs text-gray-500">Start</span>
+              <span className="text-xs text-gray-500">Mulai</span>
             </div>
             <div className="flex-1">
               <input
@@ -331,7 +333,7 @@ export default function FilterPanel({ filters, onChange }: FilterPanelProps) {
                 onChange={(e) => handleDateRangeChange('end', e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white/60 backdrop-blur-sm text-gray-900 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
-              <span className="text-xs text-gray-500">End</span>
+              <span className="text-xs text-gray-500">Selesai</span>
             </div>
           </div>
         </div>
@@ -348,7 +350,7 @@ export default function FilterPanel({ filters, onChange }: FilterPanelProps) {
           }}
           className="w-full py-2 text-sm text-red-600 hover:bg-red-50/50 rounded-lg transition-colors"
         >
-          Clear All Filters
+          Hapus Semua Filter
         </button>
       </div>
     </CollapsiblePanel>

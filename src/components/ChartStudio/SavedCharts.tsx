@@ -73,7 +73,7 @@ export default function SavedCharts({ onLoadConfig, onClose }: SavedChartsProps)
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this chart configuration?')) return;
+    if (!confirm('Apakah Anda yakin ingin menghapus konfigurasi grafik ini?')) return;
 
     try {
       const response = await fetch(`/api/chart-config?id=${id}`, {
@@ -83,7 +83,7 @@ export default function SavedCharts({ onLoadConfig, onClose }: SavedChartsProps)
       if (response.ok) {
         fetchCharts();
       } else {
-        alert('Failed to delete chart configuration');
+        alert('Gagal menghapus konfigurasi grafik');
       }
     } catch (error) {
       console.error('Error deleting chart:', error);
@@ -108,10 +108,10 @@ export default function SavedCharts({ onLoadConfig, onClose }: SavedChartsProps)
       {/* Filter Tabs */}
       <div className="flex gap-2 p-6 border-b border-gray-200">
         {[
-          { value: 'all', label: 'All Charts' },
-          { value: 'templates', label: 'Templates' },
-          { value: 'my', label: 'My Charts' },
-          { value: 'public', label: 'Public' },
+          { value: 'all', label: 'Semua Grafik' },
+          { value: 'templates', label: 'Template' },
+          { value: 'my', label: 'Grafik Saya' },
+          { value: 'public', label: 'Publik' },
         ].map(tab => (
           <button
             key={tab.value}
@@ -131,12 +131,12 @@ export default function SavedCharts({ onLoadConfig, onClose }: SavedChartsProps)
       <div className="flex-1 overflow-y-auto p-6">
         {loading ? (
           <div className="text-center py-12 text-gray-500">
-            Loading...
+            Memuat...
           </div>
         ) : charts.length === 0 ? (
           <div className="text-center py-12 text-gray-500">
             <Clock className="w-12 h-12 mx-auto mb-4 opacity-50" />
-            <p>No saved charts found</p>
+            <p>Tidak ada grafik tersimpan</p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -158,7 +158,7 @@ export default function SavedCharts({ onLoadConfig, onClose }: SavedChartsProps)
                       )}
                       {chart.is_public && (
                         <span className="px-2 py-0.5 text-xs font-medium bg-green-100 text-green-700 rounded">
-                          Public
+                          Publik
                         </span>
                       )}
                     </div>
@@ -203,7 +203,7 @@ export default function SavedCharts({ onLoadConfig, onClose }: SavedChartsProps)
                       <button
                         onClick={() => handleDelete(chart.id)}
                         className="p-1.5 text-red-600 hover:bg-red-50/50 rounded-lg transition-colors"
-                        title="Delete"
+                        title="Hapus"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>

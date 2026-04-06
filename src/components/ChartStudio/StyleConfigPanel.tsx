@@ -27,7 +27,7 @@ export default function StyleConfigPanel({
         {/* Color Scheme */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-3">
-            Color Scheme
+            Skema Warna
           </label>
           <div className="grid grid-cols-3 gap-2">
             {Object.entries(COLOR_SCHEMES).map(([name, colors]) => (
@@ -64,7 +64,7 @@ export default function StyleConfigPanel({
               <div className="flex items-center gap-2">
                 <Type className="w-5 h-5 text-gray-500" />
                 <span className="text-sm font-medium text-gray-700">
-                  Show Data Labels
+                  Tampilkan Label Data
                 </span>
               </div>
               <div className="relative">
@@ -86,7 +86,7 @@ export default function StyleConfigPanel({
             <div className="flex items-center gap-2">
               <AlignLeft className="w-5 h-5 text-gray-500" />
               <span className="text-sm font-medium text-gray-700">
-                Show Legend
+                Tampilkan Legenda
               </span>
             </div>
             <div className="relative">
@@ -103,22 +103,30 @@ export default function StyleConfigPanel({
           {styles.showLegend && (
             <div className="mt-3">
               <label className="block text-xs text-gray-500 mb-2">
-                Legend Position
+                Posisi Legenda
               </label>
               <div className="flex gap-2">
-                {['top', 'bottom', 'left', 'right'].map(pos => (
-                  <button
-                    key={pos}
-                    onClick={() => onChange('legendPosition', pos)}
-                    className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
-                      styles.legendPosition === pos
-                        ? 'bg-purple-600 text-white'
-                        : 'bg-white/40 backdrop-blur-sm text-gray-700 hover:bg-white/60'
-                    }`}
-                  >
-                    {pos.charAt(0).toUpperCase() + pos.slice(1)}
-                  </button>
-                ))}
+                {['top', 'bottom', 'left', 'right'].map(pos => {
+                  const posLabels: Record<string, string> = {
+                    top: 'Atas',
+                    bottom: 'Bawah',
+                    left: 'Kiri',
+                    right: 'Kanan',
+                  };
+                  return (
+                    <button
+                      key={pos}
+                      onClick={() => onChange('legendPosition', pos)}
+                      className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
+                        styles.legendPosition === pos
+                          ? 'bg-purple-600 text-white'
+                          : 'bg-white/40 backdrop-blur-sm text-gray-700 hover:bg-white/60'
+                      }`}
+                    >
+                      {posLabels[pos]}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -131,7 +139,7 @@ export default function StyleConfigPanel({
               <div className="flex items-center gap-2">
                 <Grid3X3 className="w-5 h-5 text-gray-500" />
                 <span className="text-sm font-medium text-gray-700">
-                  Show Gridlines
+                  Tampilkan Garis Bantu
                 </span>
               </div>
               <div className="relative">
@@ -152,13 +160,16 @@ export default function StyleConfigPanel({
           <div>
             <label className="flex items-center justify-between cursor-pointer">
               <span className="text-sm font-medium text-gray-700">
-                Show Percentages
+                Tampilkan Persentase
               </span>
               <div className="relative">
                 <input
                   type="checkbox"
-                  checked={styles.showPercentage}
-                  onChange={(e) => onChange('showPercentage', e.target.checked)}
+                  checked={styles.showPercentage ?? false}
+                  onChange={(e) => {
+                    console.log('Tampilkan Persentase changed to:', e.target.checked);
+                    onChange('showPercentage', e.target.checked);
+                  }}
                   className="sr-only peer"
                 />
                 <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
@@ -169,9 +180,9 @@ export default function StyleConfigPanel({
 
         {/* For Donut chart - inner radius */}
         {chartType === 'donut' && (
-          <div>
+          <div className="p-4 bg-purple-50/60 backdrop-blur-sm rounded-lg border border-purple-200">
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Inner Radius
+              Radius Dalam
             </label>
             <input
               type="range"
