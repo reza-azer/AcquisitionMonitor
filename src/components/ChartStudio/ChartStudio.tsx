@@ -216,9 +216,9 @@ export default function ChartStudio({ onSaveConfig }: ChartStudioProps) {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Chart Studio</h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            Build custom charts to visualize your data
+          <h2 className="text-2xl font-bold text-gray-900">Studio Grafik</h2>
+          <p className="text-sm text-gray-500 mt-1">
+            Buat grafik khusus untuk memvisualisasikan data Anda
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -226,14 +226,14 @@ export default function ChartStudio({ onSaveConfig }: ChartStudioProps) {
             onClick={() => setShowSavedCharts(true)}
             className="px-4 py-2 text-sm font-medium text-gray-700 bg-white/60 backdrop-blur-lg border border-white/20 rounded-lg hover:bg-white/80 transition-all"
           >
-            Saved Charts
+            Grafik Tersimpan
           </button>
           <button
             onClick={() => setShowPresets(!showPresets)}
             className="px-4 py-2 text-sm font-medium text-purple-700 bg-purple-100/60 backdrop-blur-lg border border-purple-200/50 rounded-lg hover:bg-purple-200/60 transition-all flex items-center gap-2"
           >
             <Sparkles className="w-4 h-4" />
-            Templates
+            Template
           </button>
         </div>
       </div>

@@ -800,7 +800,7 @@ export default function App() {
           height="2.5rem"
         >
           <span className="text-sm">
-            🚀 <strong>Update v2.0.0:</strong> Sistem Major Update, Bintang Kejora Jagasatru <i> formerly Branch Acquisition Monitor</i> sekarang kembali online! Klik untuk melihat detail update.
+            🚀 <strong>Update v2.1.0:</strong> Sistem Major Update, Bintang Kejora Jagasatru <i> formerly Branch Acquisition Monitor</i> sekarang kembali online! Klik untuk melihat detail update.
           </span>
         </Banner>
       </div>
@@ -2153,7 +2153,7 @@ export default function App() {
           <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl p-4 sticky top-0 z-10">
             <div className="flex items-center gap-3 mb-2">
               <Megaphone className="w-6 h-6" />
-              <h4 className="font-black text-lg">Versi 2.0.0</h4>
+              <h4 className="font-black text-lg">Versi 2.1.0</h4>
             </div>
             <p className="text-sm text-blue-100">Released: {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
           </div>
@@ -2179,7 +2179,7 @@ export default function App() {
               </li>
               <li className="flex items-start gap-2">
                 <span className="text-purple-500 mt-1">💎</span>
-                <span><strong>On going:</strong> Development Chart, PDF & Excel Report Feature, Mobile Optimization</span>
+                <span><strong>On going:</strong>PDF & Excel Report Feature, Mobile Optimization</span>
               </li>
             </ul>
           </div>
@@ -2195,6 +2195,8 @@ export default function App() {
               <p>• [29/03/2026] - menambahkan beberapa fitur baru, integrasi realtime input dengan basis kalender</p>
               <p>• [30/03/2026] - separasi produk kredit dan non-kredit, report monthly/weekly adjustment, menambahkan thousand separator pada form</p>
               <p>• [01/04/2026] - finishing, menambahkan animasi dengan GSAP, dan beberapa mikrointeraksi</p>
+              <p>• [06/04/2026] - menambahkan fitur Chart Studio di tab Analytics </p>
+
             </div>
           </div>
 
