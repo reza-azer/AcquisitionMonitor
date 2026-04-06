@@ -307,8 +307,10 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    fetchData(selectedMonth, selectedYear);
-  }, [selectedMonth, selectedYear, fetchData]);
+    if (viewMode === 'dashboard') {
+      fetchData(selectedMonth, selectedYear);
+    }
+  }, [selectedMonth, selectedYear, viewMode, fetchData]);
 
   const formatToIDR = (value: number): string => {
     return new Intl.NumberFormat('id-ID').format(value);
@@ -798,7 +800,7 @@ export default function App() {
           height="2.5rem"
         >
           <span className="text-sm">
-            🚀 <strong>Update v2.0.0:</strong> Sistem Major Update, Bintang Kejora Jagasatru <i> formerly Branch Acquisition Monitor</i> sekarang kembali online! Klik untuk melihat detail update.
+            🚀 <strong>Update v2.1.0:</strong> Sistem Major Update, Bintang Kejora Jagasatru <i> formerly Branch Acquisition Monitor</i> sekarang kembali online! Klik untuk melihat detail update.
           </span>
         </Banner>
       </div>
@@ -1426,7 +1428,7 @@ export default function App() {
         )}
 
         {viewMode === 'dashboard' && (
-          <div className="space-y-4 sm:space-y-6 md:space-y-8 animate-in fade-in duration-500">
+          <div key={`dashboard-${selectedMonth}-${selectedYear}`} className="space-y-4 sm:space-y-6 md:space-y-8 animate-in fade-in duration-500">
             {/* Floating Navigation Bar - Sticky */}
             <div className="sticky top-[60px] sm:top-[68px] z-30 bg-slate-50/9 backdrop-blur-[8px] pb-4 -mx-4 sm:-mx-6 md:-mx-8 px-4 sm:px-6 md:px-8 pt-4">
               <div className="bg-white rounded-[20px] sm:rounded-[30px] md:rounded-[40px] p-4 sm:p-6 md:p-8 border border-slate-200 shadow-lg">
@@ -2116,7 +2118,7 @@ export default function App() {
 
         {viewMode === 'analytics' && (
           <div className="space-y-8 animate-in fade-in duration-500">
-            <DashboardAnalytics />
+            <DashboardAnalytics key={`analytics-${selectedMonth}-${selectedYear}`} />
           </div>
         )}
 
@@ -2151,7 +2153,7 @@ export default function App() {
           <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl p-4 sticky top-0 z-10">
             <div className="flex items-center gap-3 mb-2">
               <Megaphone className="w-6 h-6" />
-              <h4 className="font-black text-lg">Versi 2.0.0</h4>
+              <h4 className="font-black text-lg">Versi 2.1.0</h4>
             </div>
             <p className="text-sm text-blue-100">Released: {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
           </div>
@@ -2165,7 +2167,7 @@ export default function App() {
             <ul className="space-y-2 mt-4">
               <li className="flex items-start gap-2">
                 <span className="text-green-500 mt-1">✓</span>
-                <span><strong>Fitur Baru:</strong> Integrasi absensi, fleksibilitas produk, animasi, dan mikrointeraksi dari GSAP dan framer</span>
+                <span><strong>Fitur Baru:</strong> Integrasi absensi, fleksibilitas produk, animasi, Chart Studio, dan mikrointeraksi dari GSAP dan framer</span>
               </li>
               <li className="flex items-start gap-2">
                 <span className="text-blue-500 mt-1">🔧</span>
@@ -2177,7 +2179,7 @@ export default function App() {
               </li>
               <li className="flex items-start gap-2">
                 <span className="text-purple-500 mt-1">💎</span>
-                <span><strong>On going:</strong> Development Chart, PDF & Excel Report Feature, Mobile Optimization</span>
+                <span><strong>On going:</strong> PDF & Excel Report Feature, Mobile Optimization</span>
               </li>
             </ul>
           </div>
@@ -2193,6 +2195,8 @@ export default function App() {
               <p>• [29/03/2026] - menambahkan beberapa fitur baru, integrasi realtime input dengan basis kalender</p>
               <p>• [30/03/2026] - separasi produk kredit dan non-kredit, report monthly/weekly adjustment, menambahkan thousand separator pada form</p>
               <p>• [01/04/2026] - finishing, menambahkan animasi dengan GSAP, dan beberapa mikrointeraksi</p>
+              <p>• [06/04/2026] - menambahkan fitur Chart Studio di tab Analytics </p>
+
             </div>
           </div>
 
@@ -2215,11 +2219,11 @@ export default function App() {
       </BasicModal>
 
       <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-slate-200 px-2 sm:px-4 py-2 sm:py-3 md:hidden flex justify-around items-center z-50 rounded-t-[20px] sm:rounded-t-[30px] md:rounded-t-[40px] shadow-2xl overflow-x-auto">
-        <button onClick={() => setViewMode('dashboard')} className={`flex flex-col items-center gap-0.5 sm:gap-1 transition-all flex-shrink-0 px-2 py-1 ${viewMode === 'dashboard' ? 'text-blue-900 scale-110' : 'text-slate-300'}`}><BarChart3 className="w-5 h-5 sm:w-6 sm:h-6" /><span className="text-[6px] sm:text-[7px] font-black uppercase">Home</span></button>
-        <button onClick={() => setViewMode('analytics')} className={`flex flex-col items-center gap-0.5 sm:gap-1 transition-all flex-shrink-0 px-2 py-1 ${viewMode === 'analytics' ? 'text-blue-900 scale-110' : 'text-slate-300'}`}><Activity className="w-5 h-5 sm:w-6 sm:h-6" /><span className="text-[6px] sm:text-[7px] font-black uppercase">Analytics</span></button>
-        <button onClick={() => setViewMode('input')} className={`flex flex-col items-center gap-0.5 sm:gap-1 transition-all flex-shrink-0 px-2 py-1 ${viewMode === 'input' ? 'text-blue-900 scale-110' : 'text-slate-300'}`}><Edit2 className="w-5 h-5 sm:w-6 sm:h-6" /><span className="text-[6px] sm:text-[7px] font-black uppercase">Input</span></button>
-        <button onClick={() => setViewMode('backup')} className={`flex flex-col items-center gap-0.5 sm:gap-1 transition-all flex-shrink-0 px-2 py-1 ${viewMode === 'backup' ? 'text-blue-900 scale-110' : 'text-slate-300'}`}><Database className="w-5 h-5 sm:w-6 sm:h-6" /><span className="text-[6px] sm:text-[7px] font-black uppercase">Backup</span></button>
-        <button onClick={() => setViewMode('manage')} className={`flex flex-col items-center gap-0.5 sm:gap-1 transition-all flex-shrink-0 px-2 py-1 ${viewMode === 'manage' ? 'text-blue-900 scale-110' : 'text-slate-300'}`}><Settings className="w-5 h-5 sm:w-6 sm:h-6" /><span className="text-[6px] sm:text-[7px] font-black uppercase">Manage</span></button>
+        <button onClick={() => setViewMode('dashboard')} className={`flex flex-col items-center gap-0.5 sm:gap-1 transition-all flex-shrink-0 px-2 py-1 ${viewMode === 'dashboard' ? 'scale-110' : ''}`}><BarChart3 className={`w-2.5 h-2.5 sm:w-3 sm:h-3 ${viewMode === 'dashboard' ? 'text-blue-900' : 'text-slate-300'}`} /><span className="text-[6px] sm:text-[7px] font-black uppercase text-slate-500">Home</span></button>
+        <button onClick={() => setViewMode('analytics')} className={`flex flex-col items-center gap-0.5 sm:gap-1 transition-all flex-shrink-0 px-2 py-1 ${viewMode === 'analytics' ? 'scale-110' : ''}`}><Activity className={`w-2.5 h-2.5 sm:w-3 sm:h-3 ${viewMode === 'analytics' ? 'text-purple-600' : 'text-slate-300'}`} /><span className="text-[6px] sm:text-[7px] font-black uppercase text-slate-500">Analytics</span></button>
+        <button onClick={() => setViewMode('input')} className={`flex flex-col items-center gap-0.5 sm:gap-1 transition-all flex-shrink-0 px-2 py-1 ${viewMode === 'input' ? 'scale-110' : ''}`}><Edit2 className={`w-2.5 h-2.5 sm:w-3 sm:h-3 ${viewMode === 'input' ? 'text-emerald-600' : 'text-slate-300'}`} /><span className="text-[6px] sm:text-[7px] font-black uppercase text-slate-500">Edit</span></button>
+        <button onClick={() => setViewMode('backup')} className={`flex flex-col items-center gap-0.5 sm:gap-1 transition-all flex-shrink-0 px-2 py-1 ${viewMode === 'backup' ? 'scale-110' : ''}`}><Database className={`w-2.5 h-2.5 sm:w-3 sm:h-3 ${viewMode === 'backup' ? 'text-amber-600' : 'text-slate-300'}`} /><span className="text-[6px] sm:text-[7px] font-black uppercase text-slate-500">Backup</span></button>
+        <button onClick={() => setViewMode('manage')} className={`flex flex-col items-center gap-0.5 sm:gap-1 transition-all flex-shrink-0 px-2 py-1 ${viewMode === 'manage' ? 'scale-110' : ''}`}><Settings className={`w-2.5 h-2.5 sm:w-3 sm:h-3 ${viewMode === 'manage' ? 'text-red-600' : 'text-slate-300'}`} /><span className="text-[6px] sm:text-[7px] font-black uppercase text-slate-500">Manage</span></button>
       </div>
     </div>
   );
